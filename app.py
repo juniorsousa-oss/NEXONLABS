@@ -352,3 +352,8 @@ def export_projects(db: Session = Depends(session)):
 
 @app.get('/health')
 def health(): return {'status': 'ok'}
+
+
+# Módulo comercial isolado: preserva todas as rotas e tabelas existentes.
+from quotes_module import install_quotes
+install_quotes(app, Base, DB, engine, authorized, log, Project)
