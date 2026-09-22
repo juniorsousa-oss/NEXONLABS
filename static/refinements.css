@@ -51,3 +51,17 @@
 @media(max-width:1180px){.meeting-layout{grid-template-columns:1fr}.sidebar-footer .footer-molecule{left:34px}}
 @media(max-width:850px){.sidebar-footer .footer-molecule{left:50px}.meeting-calendar,.meeting-weekdays{gap:3px}.meeting-day,.meeting-blank{min-height:72px}.meeting-day{padding:5px 3px}.meeting-dot{font-size:9px;padding:3px}.meeting-more{font-size:9px}}
 @media(max-width:450px){.meeting-layout>.panel{padding:14px 8px}.meeting-month strong{min-width:115px}.meeting-entry{gap:7px}.meeting-entry .date-box{width:40px}.meeting-entry .secondary{padding:7px}}
+
+/* O banner aprovado permanece visível também no tablet e celular. */
+@media(max-width:1180px){
+  .hero{display:grid;grid-template-columns:1fr;height:auto;gap:14px}
+  .hero .slogan-card{display:flex;position:relative;top:auto;right:auto;width:100%;min-height:145px}
+  .slogan-card .molecule-art{width:48%}
+}
+@media(max-width:500px){
+  .hero .slogan-card{height:140px;padding:18px 17px}
+  .slogan-card h2{font-size:22px}
+  .slogan-card p{font-size:12px;max-width:190px}
+  .slogan-card .molecule-art{width:49%;opacity:.82}
+  .slogan-card .round-next{right:8px;bottom:9px}
+}
