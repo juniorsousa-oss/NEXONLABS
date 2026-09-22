@@ -38,6 +38,20 @@ Em produção, use **PostgreSQL persistente** em `DATABASE_URL` (`postgresql://.
 - `static/index.html`: estrutura da tela aprovada;
 - `static/app.js`: dados, renderização e ações sem alterar a linguagem visual.
 
+
+## Módulo comercial — orçamentos e precificação
+
+No menu **Orçamentos**, cadastre cliente, escopo, etapas, quantidades e horas estimadas. Os valores internos de custo/hora, reserva, despesas específicas, margem e taxas são usados exclusivamente no cálculo; não aparecem no PDF da proposta.
+
+- Fórmula de desenvolvimento: \`(horas × custo/hora × (1 + reserva) + despesas) / (1 - margem - taxas)\`. A reserva é aplicada apenas ao custo da mão de obra; não repita despesas já incorporadas ao custo/hora.
+- Mensalidade: quando aplicável, \`custo mensal / (1 - margem - taxas)\`, apresentada separadamente do valor único.
+- Percentuais de margem e tributos/taxas são premissas fornecidas pelo usuário; o sistema não determina alíquotas nem substitui análise contábil.
+- Os preços das etapas no PDF são rateados por horas entre os itens; os ajustes de centavos são alocados à última etapa.
+- Dados comerciais (nome, contato, CNPJ e logo PNG/JPEG até 300 KB) são configurados exclusivamente para novos PDFs; a identidade visual do aplicativo permanece inalterada.
+- O orçamento tem histórico, número sequencial por banco, status manual de negociação e exportação de PDF. Após aprovação, pode ser convertido em projeto. O sistema **não** envia e-mail, cobra clientes ou registra assinatura eletrônica.
+- Os dados internos de custo exigem autenticação, mas a aplicação ainda usa senha compartilhada; antes de oferecer acesso a clientes externos, implemente perfis individuais e permissões por cliente.
+- O PDF é uma proposta comercial, não é nota fiscal nem contrato assinado; formalize os termos e a eventual aceitação em instrumento apropriado.
+
 ## Testes
 
 ```bash
