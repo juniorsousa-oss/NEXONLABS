@@ -239,11 +239,11 @@ def install_quotes(app, Base, DB, engine, authorized, log, Project):
         db.commit()
         return {"ok": True}
 
-    @app.get("/api/quotes/company", dependencies=[Depends(authorized)])
+    @app.get("/api/quotes/settings/company", dependencies=[Depends(authorized)])
     def get_company(db: Session = Depends(session)):
         return company_dict(db)
 
-    @app.put("/api/quotes/company", dependencies=[Depends(authorized)])
+    @app.put("/api/quotes/settings/company", dependencies=[Depends(authorized)])
     def put_company(data: CompanyIn, db: Session = Depends(session)):
         record = db.get(Company, 1)
         if record:
