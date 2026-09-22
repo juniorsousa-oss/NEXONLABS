@@ -1,4 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Nexon Labs: núcleo conectado">
- <g stroke="#EAF7FC" stroke-width="6" stroke-linecap="round"><path d="M50 49 50 11M50 49 22 28M50 49 88 32M50 49 18 70M50 49 75 79M50 49 48 93"/></g>
- <circle cx="50" cy="49" r="14" fill="#0B2D4A" stroke="#FFF" stroke-width="3"/><circle cx="50" cy="11" r="9" fill="#14B8A6"/><circle cx="22" cy="28" r="8" fill="#18B3AE"/><circle cx="88" cy="32" r="8" fill="#EAF7FC"/><circle cx="18" cy="70" r="9" fill="#FFF"/><circle cx="75" cy="79" r="9" fill="#14B8A6"/><circle cx="48" cy="93" r="7" fill="#FFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Nexon Labs: núcleo com seis conexões">
+  <!-- Marca vetorial v2: núcleo branco, seis pontos radiais; duas conexões teal. -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="5.4" stroke-linecap="round">
+    <path d="M50 50 50 12M50 50 18 26M50 50 83 28M50 50 14 72M50 50 83 76M50 50 50 88"/>
+  </g>
+  <path d="M50 50 18 26M50 50 83 76" stroke="#14B8A6" stroke-width="5.4" stroke-linecap="round"/>
+  <g stroke="none"><circle cx="50" cy="50" r="16" fill="#FFFFFF"/><circle cx="50" cy="12" r="9" fill="#FFFFFF"/><circle cx="18" cy="26" r="9" fill="#14B8A6"/><circle cx="83" cy="28" r="9" fill="#FFFFFF"/><circle cx="14" cy="72" r="9" fill="#FFFFFF"/><circle cx="83" cy="76" r="10" fill="#14B8A6"/><circle cx="50" cy="88" r="9" fill="#FFFFFF"/></g>
 </svg>
