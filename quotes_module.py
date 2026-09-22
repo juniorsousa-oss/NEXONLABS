@@ -312,6 +312,27 @@ def build_pdf(data: QuoteIn, calc: dict, company: CompanyIn, info: dict):
     styles.add(ParagraphStyle(name="TotalQ", fontName="Helvetica-Bold", fontSize=12, leading=15, textColor=navy, alignment=TA_RIGHT))
     p = lambda value, sty="BodyQ": Paragraph(xml_escape(str(value)).replace("\n", "<br/>"), styles[sty])
     story = []
+    from reportlab.platypus import Flowable
+    class DefaultBrandLogo(Flowable):
+        """Desenho vetorial da marca no PDF quando não há logo personalizada."""
+        def __init__(self):
+            super().__init__()
+            self.width, self.height = 54, 54
+        def draw(self):
+            c = self.canv
+            c.setFillColor(navy)
+            c.roundRect(0, 0, 54, 54, 9, fill=1, stroke=0)
+            c.setLineWidth(2.7)
+            origin = (27, 27)
+            points = [(27,45),(11,37),(43,38),(10,15),(44,14),(27,8)]
+            for i, (x, y) in enumerate(points):
+                c.setStrokeColor(teal if i in (1,4) else colors.white)
+                c.line(*origin,x,y)
+                c.setFillColor(teal if i in (1,4) else colors.white)
+                c.circle(x,y,4.1,stroke=0,fill=1)
+            c.setFillColor(colors.white)
+            c.circle(27,27,7.2,stroke=0,fill=1)
+
     header = []
     if company.logo_data:
         try:
@@ -324,6 +345,8 @@ def build_pdf(data: QuoteIn, calc: dict, company: CompanyIn, info: dict):
             header.append(logo)
         except Exception:
             pass
+    if not header:
+        header.append(DefaultBrandLogo())
     name = [p(company.name, "BrandQ"), p(company.subtitle, "SmallQ")]
     header.append(name)
     headtable = Table([header], colWidths=([116, 390] if len(header)==2 else [506]), hAlign="LEFT")
