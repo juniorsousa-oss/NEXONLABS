@@ -87,14 +87,14 @@ def test_quote_pricing_pdf_company_and_conversion():
         }
         assert client.get("/api/quotes").status_code == 401
         assert client.get("/api/quotes/1/pdf").status_code == 401
-        assert client.put("/api/quotes/company",json={"name":"Teste"}).status_code == 401
+        assert client.put("/api/quotes/settings/company",json={"name":"Teste"}).status_code == 401
         client.post("/api/login",json={"password":"test-password"})
-        company = client.put("/api/quotes/company",json={
+        company = client.put("/api/quotes/settings/company",json={
             "name":"Marca provisória", "subtitle":"Soluções digitais",
             "email":"contato@example.com","logo_data":""
         })
         assert company.status_code == 200,company.text
-        bad_logo=client.put("/api/quotes/company",json={"name":"Marca provisória","logo_data":"data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="})
+        bad_logo=client.put("/api/quotes/settings/company",json={"name":"Marca provisória","logo_data":"data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="})
         assert bad_logo.status_code == 422
         invalid=client.post("/api/quotes",json={**payload,"margin_pct":"95.00","fees_pct":"8.00"})
         assert invalid.status_code == 422
