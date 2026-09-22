@@ -1,0 +1,48 @@
+/* Área comercial isolada. Paleta aprovada mantida, sem alterar os demais módulos. */
+.quote-toolbar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin:4px 0 16px;color:var(--muted);font-size:12px;flex-wrap:wrap}
+.quote-toolbar .secondary,.quote-controls .secondary,.quote-row .secondary,.quote-actions button,.quote-editor .secondary,.quote-company .secondary{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.quote-toolbar svg,.quote-controls svg,.quote-actions svg,.quote-row svg{width:16px;height:16px}
+.quote-table-wrap{width:100%;overflow-x:auto;margin-top:16px}
+.quote-table{width:100%;border-collapse:collapse;min-width:830px;text-align:left;font-size:12px}
+.quote-table th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#6c7f98;background:#f6f9fd;padding:13px 10px}
+.quote-table td{border-bottom:1px solid var(--border);padding:13px 10px;vertical-align:middle}
+.quote-table td strong{display:block;color:var(--navy);font-size:12px}
+.quote-table td small{display:block;color:var(--muted);font-size:11px;margin-top:5px}
+.quote-table .quote-controls{display:flex;flex-wrap:wrap;gap:6px}
+.quote-controls .secondary,.quote-controls .quote-pdf{white-space:nowrap;padding:7px 9px;font-size:11px;min-height:32px;border-radius:7px}
+.quote-controls .quote-delete{color:#ac2f3b}
+.quote-pill{display:inline-flex;align-items:center;border-radius:50px;padding:5px 10px;font-weight:700;background:#f0f4f9;color:#577087;white-space:nowrap}
+.quote-enviado{background:#e9f1fe;color:#1c64b9}.quote-aprovado{background:#e1f7ed;color:#10744f}.quote-recusado,.quote-vencido{background:#ffebed;color:#ac2f3b}
+.quote-editor,.quote-company{margin-bottom:16px}
+.quote-editor .panel-head,.quote-company .panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.quote-editor .panel-head h2,.quote-company .panel-head h2{font-size:20px}
+.quote-form,.quote-company form{display:block}
+.quote-section{padding:20px 0;border-top:1px solid var(--border)}
+.quote-section:first-child{border-top:0}
+.quote-section h3{margin:0 0 13px;font-size:15px;color:var(--navy)}
+.quote-section>p{line-height:1.5;margin:0 0 14px}
+.quote-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.quote-grid label,.quote-line label{display:flex;flex-direction:column;min-width:0;gap:6px;font-weight:600;color:var(--navy);font-size:12px}
+.quote-grid input,.quote-grid textarea,.quote-grid select,.quote-line input{display:block;border:1px solid #dce5f1;border-radius:9px;background:#fff;color:var(--ink);padding:11px 12px;width:100%;min-width:0;font-size:13px;outline-offset:2px}
+.quote-grid textarea{min-height:75px;resize:vertical}
+.quote-grid .quote-full{grid-column:1/-1}
+.quote-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.quote-row h3{margin:0}
+.quote-line{display:grid;grid-template-columns:80px minmax(210px,2fr) minmax(95px,.6fr) minmax(130px,.7fr) 42px;gap:10px;align-items:end;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:9px;background:#fff}
+.quote-step{font-size:11px;font-weight:700;color:var(--muted);padding-bottom:14px}
+.quote-line .quote-remove{width:40px;height:41px;padding:8px;color:#ae3343}
+.quote-internal{background:#f1f7fb;padding:20px;border-radius:12px;border:1px solid #dfebf3}
+.quote-result{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.quote-result>div{background:#fff;border:1px solid var(--border);border-radius:9px;padding:12px;display:flex;flex-direction:column;gap:5px}
+.quote-result span{font-size:12px;color:var(--muted)}
+.quote-result strong{font-size:17px;color:var(--navy)}
+.quote-result .quote-highlight{background:#e0f6f0;border-color:#a6ded2}
+.quote-result .quote-highlight strong{font-size:23px;color:#0e7065}
+.quote-result p{grid-column:1/-1;font-size:11px;margin:2px 0}
+.quote-error{grid-column:1/-1;color:#b12736!important}
+.quote-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:18px}
+.quote-company{margin-bottom:16px}
+.quote-company>p{line-height:1.5;margin:14px 0}
+.quote-company form .quote-actions{margin-top:16px}
+@media(max-width:1100px){.quote-line{grid-template-columns:55px minmax(120px,1fr) 83px 105px 42px;gap:7px}.quote-grid{gap:10px}}
+@media(max-width:720px){.quote-grid{grid-template-columns:1fr}.quote-line{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px}.quote-step{grid-column:1/-1;padding:0}.quote-line label:nth-of-type(1){grid-column:1/-1}.quote-line label:nth-of-type(2){grid-column:1}.quote-line label:nth-of-type(3){grid-column:2}.quote-line .quote-remove{grid-column:3;grid-row:3}.quote-result{grid-template-columns:1fr}.quote-result p{grid-column:1}.quote-section{padding:15px 0}.quote-internal{padding:14px}.quote-table{min-width:830px}}
