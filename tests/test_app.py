@@ -37,3 +37,34 @@ def test_validation_and_markup():
         assert c.post('/api/projects',json={'name':'Teste','started_at':'2027-10-02','due_at':'2027-10-01'}).status_code==422
         assert 'NEXON' in c.get('/').text
         assert 'DESIGN LOCK v1' in c.get('/static/style.css').text
+
+def test_meetings_calendar_and_client_agenda():
+    with TestClient(app) as c:
+        assert c.post('/api/meetings', json={
+            'title':'Reunião não autenticada','meeting_date':'2026-10-01',
+            'start_time':'09:00','end_time':'10:00'
+        }).status_code == 401
+        assert c.post('/api/login',json={'password':'test-password'}).status_code == 200
+        project = c.post('/api/projects',json={'name':'Cliente piloto'}).json()
+        data = {
+            'title':'Diagnóstico com cliente','client':'Indústria Alfa',
+            'project_id':project['id'],'meeting_date':'2026-10-01',
+            'start_time':'09:00','end_time':'10:00',
+            'location':'Online','meeting_url':'https://meet.example.com/teste',
+            'notes':'Levantamento inicial das necessidades'
+        }
+        created = c.post('/api/meetings',json=data)
+        assert created.status_code == 201, created.text
+        mid=created.json()['id']
+        meetings=c.get('/api/state').json()['meetings']
+        assert any(m['id']==mid and m['client']=='Indústria Alfa' for m in meetings)
+        invalid=c.post('/api/meetings',json={**data,'start_time':'11:00','end_time':'10:00'})
+        assert invalid.status_code == 422
+        bad_link=c.post('/api/meetings',json={**data,'meeting_url':'javascript:alert(1)'})
+        assert bad_link.status_code == 422
+        edited=c.put(f'/api/meetings/{mid}',json={**data,'title':'Reunião de alinhamento','meeting_date':'2026-10-02'})
+        assert edited.status_code == 200, edited.text
+        assert edited.json()['meeting_date']=='2026-10-02'
+        assert c.delete(f'/api/meetings/{mid}').status_code==200
+        assert not any(m['id']==mid for m in c.get('/api/state').json()['meetings'])
+        assert c.delete(f'/api/projects/{project["id"]}').status_code==200
