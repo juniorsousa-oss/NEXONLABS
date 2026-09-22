@@ -113,7 +113,7 @@ window.NexonQuotes = (() => {
     if(loading)return;
     loading=true;
     try {
-      const [q,c]=await Promise.all([api('/quotes'),api('/quotes/company')]);
+      const [q,c]=await Promise.all([api('/quotes'),api('/quotes/settings/company')]);
       quotes=q;company=c;loaded=true;
     }catch(err){notice(err.message);}
     finally{loading=false;if(route==='orcamentos'){render();if(showEditor)totals();}}
@@ -201,7 +201,7 @@ window.NexonQuotes = (() => {
           reader.readAsDataURL(file);
         });
       }
-      company=await api('/quotes/company',{method:'PUT',body:JSON.stringify(values)});
+      company=await api('/quotes/settings/company',{method:'PUT',body:JSON.stringify(values)});
       showCompany=false;render();notice('Dados comerciais para o PDF salvos.');
     }catch(err){notice(err.message);}
   });
