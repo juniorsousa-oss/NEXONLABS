@@ -133,7 +133,18 @@ class MeetingIn(BaseModel):
     client: str = Field(default='', max_length=160)
     project_id: int | None = Field(default=None, gt=0)
     meeting_date: date
-    start_time: str = Field(pattern=r'^([01][0-9]|2[0-3]):[0-5][0-9]
+    start_time: str = Field(pattern=r'^([01][0-9]|2[0-3]):[0-5][0-9]$')
+    end_time: str = Field(pattern=r'^([01][0-9]|2[0-3]):[0-5][0-9]$')
+    location: str = Field(default='', max_length=250)
+    meeting_url: str = Field(default='', max_length=500)
+    notes: str = Field(default='', max_length=4000)
+
+    @field_validator('title', 'client', 'location', 'meeting_url', 'notes')
+    @classmethod
+    def tidy(cls, value: str) -> str:
+        return value.strip()
+
+class LoginIn(BaseModel):
     password: str
 
 app = FastAPI(title='Nexon Labs | Gestão de Projetos', docs_url=None, redoc_url=None)
