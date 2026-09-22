@@ -9,3 +9,53 @@
 @media(min-width:1181px){.hero{height:97px;position:relative}.hero .slogan-card{position:absolute;top:0;right:0;width:37%}.right-stack{padding-top:60px}}
 
 @media(min-width:1501px){.metric-grid{max-width:calc(100% - 85px)}}
+
+
+/* DIMENSIONAMENTO v1.1 — correção autorizada: preservar cores, logo, tipografia e componentes.
+   A sidebar nunca deve sobrepor o menu, mesmo em telas baixas ou com zoom. */
+.sidebar{
+  display:flex;
+  flex-direction:column;
+  overflow-x:hidden;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:#3b6887 transparent;
+}
+.brand{flex:0 0 auto;}
+.menu{flex:0 0 auto;}
+.sidebar-footer{
+  position:relative;
+  left:auto;
+  bottom:auto;
+  width:100%;
+  height:260px;
+  flex:0 0 260px;
+  margin-top:auto;
+  padding-left:16px;
+}
+.footer-molecule{pointer-events:none;}
+/* A chamada institucional ocupa a mesma coluna das próximas entregas:
+   não pode cobrir o quarto indicador em larguras intermediárias. */
+@media(min-width:1181px){
+  .hero .slogan-card{width:calc(30% - 1px);}
+}
+/* Mantém os sete links inteiros; em monitores baixos a lateral rola em vez
+   de posicionar o slogan por cima de Equipe, Cronograma ou Configurações. */
+@media(max-height:850px) and (min-width:851px){
+  .sidebar-footer{height:165px;flex-basis:165px;}
+  .sidebar-footer p{font-size:10px;line-height:1.5;letter-spacing:2.2px;margin:13px 0 11px;}
+  .footer-molecule{width:145px;height:145px;bottom:-72px;left:65px;}
+}
+/* A transição para o layout reduzido já existente não deve espremer o logo
+   ou perder a faixa da marca; nenhum elemento flutua sobre os cards. */
+@media(max-width:1180px){
+  .sidebar{flex-shrink:0;}
+  .sidebar-footer{opacity:.8;}
+}
+@media(max-width:850px){
+  .sidebar{left:-265px;flex-basis:265px;overflow-y:auto;}
+  .sidebar.open{left:0;}
+  .sidebar-footer{height:210px;flex-basis:210px;}
+  .sidebar-footer p{font-size:11px;line-height:1.6;letter-spacing:2.7px;margin:16px 0 12px;}
+  .footer-molecule{width:166px;height:166px;bottom:-78px;left:50px;}
+}
