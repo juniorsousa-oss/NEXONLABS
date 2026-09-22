@@ -1,0 +1,53 @@
+/* Revisão visual v2: alinhamento de elementos já aprovados. Sem mudanças nas cores base. */
+.brand{gap:9px;padding:1px 17px 39px;min-height:80px}
+.brand-mark{width:56px;height:56px;display:block;overflow:visible}
+.brand-word strong{font-size:21px;line-height:1.08;letter-spacing:-.95px;white-space:nowrap}
+.brand-word small{font-size:7px;letter-spacing:2.65px;white-space:nowrap}
+.nav-link svg{width:26px;height:26px;overflow:visible;stroke-width:1.85}
+.nav-link:focus-visible{outline:2px solid #74e3d3;outline-offset:-3px}
+.sidebar-footer{height:282px}
+.sidebar-footer .footer-molecule{position:absolute;left:50px;bottom:-5px;width:205px;height:177px;opacity:.97;object-fit:contain}
+.sidebar-footer p{letter-spacing:3.4px}
+.slogan-card{isolation:isolate}
+.slogan-card>div:first-child{position:relative;z-index:1;flex:none}
+.slogan-card .molecule-art{right:0;top:0;width:53%;height:100%;opacity:1;pointer-events:none}
+.slogan-card .molecule-art img{display:block;width:100%;height:100%;object-fit:cover;object-position:center right}
+.slogan-card .round-next{z-index:2}
+.project-panel{min-width:0}
+.projects-view{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.projects-view .project-panel{min-height:460px}
+.projects-view .project-panel .panel-head h2{font-size:19px}
+.projects-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:3px}
+.projects-summary span{display:inline-flex;gap:7px;align-items:center;background:#fff;border:1px solid var(--border);padding:9px 14px;border-radius:9px;color:var(--muted)}
+.projects-summary strong{color:var(--navy)}
+/* Agenda: cartões e calendário usam a linguagem visual da tela principal. */
+.meeting-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(290px,1fr);gap:16px;align-items:start}
+.meeting-layout>.panel{min-width:0}
+.meeting-toolbar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:21px;flex-wrap:wrap}
+.meeting-toolbar h2{font-size:20px;margin:0 0 5px;letter-spacing:-.4px}
+.meeting-toolbar p{font-size:12px;margin:0}
+.meeting-month{display:flex;gap:9px;align-items:center;text-transform:capitalize;color:var(--navy)}
+.meeting-month strong{min-width:148px;text-align:center}
+.meeting-month .secondary{padding:5px 7px;min-width:30px;min-height:32px}
+.meeting-month svg{width:16px;height:16px}
+.meeting-weekdays,.meeting-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.meeting-weekdays{margin-bottom:8px;color:#7488a2;font-weight:700;font-size:11px;text-align:center}
+.meeting-weekdays span{padding:8px 0}
+.meeting-day,.meeting-blank{min-width:0;min-height:100px;border-radius:10px}
+.meeting-day{background:#fff;border:1px solid #e2eaf4;text-align:left;padding:8px 6px;display:flex;flex-direction:column;gap:5px;color:var(--ink)}
+.meeting-day:hover,.meeting-day:focus-visible{background:#eefaf8;border-color:#14B8A6}
+.meeting-day.today{border-color:#14B8A6;box-shadow:inset 0 0 0 1px #14B8A6}
+.meeting-number{font-size:12px;font-weight:700;align-self:flex-end}
+.meeting-day.today .meeting-number{background:var(--teal);color:#fff;border-radius:50%;width:24px;height:24px;display:grid;place-items:center}
+.meeting-dot{display:block;background:#dff6f3;color:#086f69;border-radius:5px;font-size:10px;line-height:1.4;padding:4px 5px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:100%;width:100%}
+.meeting-more{font-size:10px;color:#2479b9}
+.meeting-agenda{display:flex;flex-direction:column;gap:9px;margin-top:18px}
+.meeting-entry{display:flex;align-items:center;gap:12px;border:1px solid #e2eaf4;border-radius:11px;padding:7px;min-width:0}
+.meeting-copy{min-width:0;flex:1}
+.meeting-copy strong{display:block;color:var(--navy);font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.meeting-copy small{display:block;margin-top:4px;color:var(--muted);font-size:11px;line-height:1.35}
+.meeting-entry .secondary{font-size:11px;padding:7px 9px;flex:none}
+.meeting-all{margin-top:17px}
+@media(max-width:1180px){.meeting-layout{grid-template-columns:1fr}.sidebar-footer .footer-molecule{left:34px}}
+@media(max-width:850px){.sidebar-footer .footer-molecule{left:50px}.meeting-calendar,.meeting-weekdays{gap:3px}.meeting-day,.meeting-blank{min-height:72px}.meeting-day{padding:5px 3px}.meeting-dot{font-size:9px;padding:3px}.meeting-more{font-size:9px}}
+@media(max-width:450px){.meeting-layout>.panel{padding:14px 8px}.meeting-month strong{min-width:115px}.meeting-entry{gap:7px}.meeting-entry .date-box{width:40px}.meeting-entry .secondary{padding:7px}}
