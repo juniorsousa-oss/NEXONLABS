@@ -47,7 +47,7 @@ No menu **Orçamentos**, cadastre cliente, escopo, etapas, quantidades e horas e
 - Mensalidade: quando aplicável, \`custo mensal / (1 - margem - taxas)\`, apresentada separadamente do valor único.
 - Percentuais de margem e tributos/taxas são premissas fornecidas pelo usuário; o sistema não determina alíquotas nem substitui análise contábil.
 - Os preços das etapas no PDF são rateados por horas entre os itens; os ajustes de centavos são alocados à última etapa.
-- Dados comerciais (nome, contato, CNPJ e logo PNG/JPEG até 300 KB) são configurados exclusivamente para novos PDFs; a identidade visual do aplicativo permanece inalterada.
+- Dados comerciais (nome, contato, CNPJ e logo PNG/JPEG até 300 KB) são configurados somente para a apresentação no PDF; a identidade visual do aplicativo permanece inalterada. PDFs reemitidos após mudança de marca usam os dados comerciais atuais. Guarde o arquivo enviado ao cliente para preservar a versão apresentada.
 - O orçamento tem histórico, número sequencial por banco, status manual de negociação e exportação de PDF. Após aprovação, pode ser convertido em projeto. O sistema **não** envia e-mail, cobra clientes ou registra assinatura eletrônica.
 - Os dados internos de custo exigem autenticação, mas a aplicação ainda usa senha compartilhada; antes de oferecer acesso a clientes externos, implemente perfis individuais e permissões por cliente.
 - O PDF é uma proposta comercial, não é nota fiscal nem contrato assinado; formalize os termos e a eventual aceitação em instrumento apropriado.
