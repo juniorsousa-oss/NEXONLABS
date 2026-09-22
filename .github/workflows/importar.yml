@@ -1,0 +1,45 @@
+name: Importar fonte inicial
+on:
+  push:
+    paths:
+      - 'source_parts/**'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Reconstituir projeto e validar integridade
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat source_parts/part*.txt | base64 -d > /tmp/nexonlabs_source.tar.br
+          python -m pip install -q brotli
+          python - <<'PY'
+          import brotli,tarfile,io
+          from pathlib import Path
+          data=brotli.decompress(Path('/tmp/nexonlabs_source.tar.br').read_bytes())
+          with tarfile.open(fileobj=io.BytesIO(data),mode='r:') as archive:
+              root=Path.cwd().resolve()
+              for item in archive.getmembers():
+                  target=(root/item.name).resolve()
+                  if not target.is_relative_to(root):
+                      raise RuntimeError('Caminho inseguro no pacote')
+              archive.extractall(root, filter='data')
+          PY
+          python -m py_compile app.py
+          python -m pip install -q -r requirements.txt pytest httpx
+          python -m pytest -q
+      - name: Publicar código-fonte
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app.py static/ requirements.txt render.yaml README.md tests/ .gitignore
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: Nexon Labs gestão de projetos v1 aprovado'
+            git push
+          fi
