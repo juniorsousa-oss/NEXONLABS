@@ -357,3 +357,7 @@ def health(): return {'status': 'ok'}
 # Módulo comercial isolado: preserva todas as rotas e tabelas existentes.
 from quotes_module import install_quotes
 install_quotes(app, Base, DB, engine, authorized, log, Project)
+
+# Atendimento interno: chamados de suporte e solicitações vinculados a clientes/projetos.
+from tickets_module import install_tickets
+install_tickets(app, Base, DB, engine, authorized, log, Project)
