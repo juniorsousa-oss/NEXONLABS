@@ -129,3 +129,60 @@ def test_quote_pricing_pdf_company_and_conversion():
         assert client.put(f"/api/quotes/{q['id']}",json=payload).status_code == 409
         assert client.delete(f"/api/quotes/{q['id']}").status_code == 409
         assert any(p["id"] == project.json()["id"] for p in client.get("/api/state").json()["projects"])
+
+
+def test_tickets_lifecycle_audit_and_permissions():
+    with TestClient(app) as c:
+        payload = {
+            "title":"Ajustar relatório de estoque",
+            "client":"Cliente Alfa",
+            "requester":"Marina",
+            "contact":"marina@example.com",
+            "description":"O relatório apresenta divergência entre saldos e movimentos.",
+            "type":"erro",
+            "priority":"alta",
+            "status":"aberto",
+            "assignee":"Suporte",
+            "project_id":None,
+            "due_at":"2026-10-15",
+        }
+        assert c.get("/api/tickets").status_code == 401
+        assert c.post("/api/tickets", json=payload).status_code == 401
+        assert c.post("/api/login", json={"password":"test-password"}).status_code == 200
+        missing=c.post("/api/tickets",json={**payload,"project_id":99999999})
+        assert missing.status_code==422
+        invalid=c.post("/api/tickets",json={**payload,"description":"x"})
+        assert invalid.status_code==422
+        project=c.post("/api/projects",json={"name":"Aplicativo do cliente"}).json()
+        payload["project_id"]=project["id"]
+        created=c.post("/api/tickets",json=payload)
+        assert created.status_code==201,created.text
+        ticket=created.json()
+        tid=ticket["id"]
+        assert ticket["number"].startswith("CH-")
+        assert ticket["status"]=="aberto"
+        assert len(ticket["events"])==1
+        assert ticket["events"][0]["kind"]=="abertura"
+        assert any(t["id"]==tid for t in c.get("/api/tickets").json())
+        comment=c.post(f"/api/tickets/{tid}/comments",json={"message":"  Solicitado print ao cliente.  "})
+        assert comment.status_code==201,comment.text
+        assert comment.json()["events"][-1]["message"]=="Solicitado print ao cliente."
+        changed=c.put(f"/api/tickets/{tid}",json={
+            **payload,"status":"em_atendimento","assignee":"Júnior","priority":"critica"
+        })
+        assert changed.status_code==200,changed.text
+        assert changed.json()["status"]=="em_atendimento"
+        assert any("Situação" in e["message"] for e in changed.json()["events"])
+        assert any(e["kind"]=="comentario" for e in changed.json()["events"])
+        closed=c.put(f"/api/tickets/{tid}",json={**payload,"status":"fechado"})
+        assert closed.status_code==200,closed.text
+        assert closed.json()["closed_at"]
+        assert len(closed.json()["events"])==4
+        reopened=c.put(f"/api/tickets/{tid}",json={**payload,"status":"aberto"})
+        assert reopened.status_code==200,reopened.text
+        assert reopened.json()["closed_at"] is None
+        assert c.post(f"/api/tickets/{tid}/comments",json={"message":" "}).status_code==422
+        assert c.post("/api/tickets/99999999/comments",json={"message":"Teste"}).status_code==404
+        assert c.delete(f"/api/projects/{project['id']}").status_code==200
+        after=c.get("/api/tickets").json()
+        assert next(t for t in after if t["id"]==tid)["project_id"] is None
