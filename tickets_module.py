@@ -92,8 +92,11 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
     def to_dict(record, db):
         data = TicketInput.model_validate_json(record.payload)
         events = db.scalars(select(TicketEvent).where(TicketEvent.ticket_id == record.id).order_by(TicketEvent.id)).all()
+        public = data.model_dump(mode="json")
+        # O vínculo deve refletir a tabela de projetos, não uma cópia antiga no payload.
+        public["project_id"] = record.project_id if record.project_id is not None and db.get(Project, record.project_id) is not None else None
         return {
-            **data.model_dump(mode="json"),
+            **public,
             "id": record.id,
             "number": f"CH-{record.created_at.year}-{record.id:05d}",
             "created_at": stamp(record.created_at),
