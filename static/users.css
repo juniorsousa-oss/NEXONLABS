@@ -1,0 +1,17 @@
+/* Identificação e gestão de acesso sem alterar o layout aprovado do restante do app. */
+.accounts-layout{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+.account-panel{min-width:0}
+.account-panel .panel-head h2{font-size:18px}
+.account-panel>p{margin:14px 0;line-height:1.55;font-size:12px}
+.account-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:17px}
+.account-fields label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:600;color:var(--navy)}
+.account-fields input{min-width:0;width:100%;background:#fff;border:1px solid #dce5f1;border-radius:9px;padding:11px 12px;color:var(--ink);font-weight:400}
+.account-form-actions{display:flex;justify-content:flex-end;margin-top:15px}
+.account-note{font-size:11px;color:var(--muted);line-height:1.5;margin:13px 0 0}
+.account-list{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+.account-row{display:flex;justify-content:space-between;align-items:center;gap:14px;min-width:0;padding:12px;border:1px solid var(--border);border-radius:10px}
+.account-row strong,.account-row small{display:block;overflow-wrap:anywhere}
+.account-row strong{color:var(--navy);font-size:13px}
+.account-row small{color:var(--muted);font-size:11px;margin-top:5px}
+.account-row .secondary{font-size:11px;flex:none}
+@media(max-width:650px){.account-fields{grid-template-columns:1fr}.account-panel .panel-head{align-items:flex-start}.account-row{align-items:flex-start}.account-row .secondary{margin-top:2px}}
