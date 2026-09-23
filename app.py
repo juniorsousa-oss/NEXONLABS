@@ -97,6 +97,8 @@ class Meeting(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 Base.metadata.create_all(engine)
+from accounts_module import setup_accounts, public, session_user, find_by_password, password_in_use, hash_password, MAX_ACCOUNTS
+Account = setup_accounts(Base, engine, DB)
 
 Status = Literal['planejamento', 'em_andamento', 'concluido']
 
@@ -152,10 +154,16 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv('SESSION_SECRET', 'LO
 app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
 
 def authorized(request: Request):
-    configured = os.getenv('APP_PASSWORD', '')
-    if configured and request.session.get('logged_in') is not True:
+    current = session_user(request, DB, Account)
+    if current is None:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail='Sessão encerrada. Faça login novamente.')
-    return True
+    return current
+
+def admin_only(request: Request):
+    current = authorized(request)
+    if current["role"] != "admin":
+        raise HTTPException(status_code=403, detail='Somente administradores podem gerenciar acessos.')
+    return current
 
 def session():
     with DB() as db:
@@ -186,25 +194,141 @@ def log(db: Session, msg: str):
 
 @app.get('/')
 def index(request: Request):
-    if os.getenv('APP_PASSWORD') and not request.session.get('logged_in'):
-        return FileResponse(ROOT / 'static' / 'login.html')
-    return FileResponse(ROOT / 'static' / 'index.html')
+    if session_user(request, DB, Account) is None:
+        return FileResponse(ROOT / 'static' / 'login.html', headers={'Cache-Control':'no-store'})
+    return FileResponse(ROOT / 'static' / 'index.html', headers={'Cache-Control':'no-store'})
+
+_LOGIN_FAILURES = {}
 
 @app.post('/api/login')
 def login(data: LoginIn, request: Request):
-    actual = os.getenv('APP_PASSWORD', '')
-    if not actual or hmac.compare_digest(data.password, actual):
-        request.session['logged_in'] = True
-        return {'ok': True}
-    raise HTTPException(status_code=401, detail='Senha incorreta.')
+    # Restrição simples por endereço de conexão; mensagens não revelam quais contas existem.
+    from time import monotonic
+    origin = request.client.host if request.client else "unknown"
+    now = monotonic()
+    fails = [stamp for stamp in _LOGIN_FAILURES.get(origin, []) if now - stamp < 300]
+    if len(fails) >= 12:
+        raise HTTPException(status_code=429, detail='Muitas tentativas de acesso. Tente novamente em alguns minutos.')
+    with DB() as db:
+        account = find_by_password(db, Account, data.password)
+        if account is None:
+            fails.append(now)
+            _LOGIN_FAILURES[origin] = fails
+            raise HTTPException(status_code=401, detail='Senha incorreta.')
+        request.session.clear()
+        request.session['account_id'] = account.id
+        request.session['account_version'] = account.session_version
+        _LOGIN_FAILURES.pop(origin, None)
+        return {'ok': True, 'user': public(account)}
 
 @app.post('/api/logout')
 def logout(request: Request):
     request.session.clear()
     return {'ok': True}
 
+class AccountCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    password: str = Field(min_length=8, max_length=256)
+    role: Literal['admin', 'usuario'] = 'usuario'
+
+    @field_validator('name')
+    @classmethod
+    def trim_name(cls, value: str):
+        return value.strip()
+
+class AccountUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    role: Literal['admin', 'usuario']
+    active: bool
+    new_password: str | None = Field(default=None, min_length=8, max_length=256)
+
+    @field_validator('name')
+    @classmethod
+    def trim_name(cls, value: str):
+        return value.strip()
+
+class ProfileUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    current_password: str | None = Field(default=None, max_length=256)
+    new_password: str | None = Field(default=None, min_length=8, max_length=256)
+
+    @field_validator('name')
+    @classmethod
+    def trim_name(cls, value: str):
+        return value.strip()
+
+@app.get('/api/accounts', dependencies=[Depends(admin_only)])
+def list_accounts(db: Session = Depends(session)):
+    return [public(a) for a in db.scalars(select(Account).order_by(Account.id)).all()]
+
+@app.post('/api/accounts', dependencies=[Depends(admin_only)], status_code=201)
+def create_account(data: AccountCreate, db: Session = Depends(session)):
+    if not data.name:
+        raise HTTPException(422, 'Informe o nome do usuário.')
+    if db.scalar(select(func.count()).select_from(Account)) >= MAX_ACCOUNTS:
+        raise HTTPException(422, 'Limite de contas atingido.')
+    if password_in_use(db, Account, data.password):
+        raise HTTPException(409, 'Essa senha já está vinculada a outro usuário. Defina uma senha exclusiva.')
+    account=Account(name=data.name, password_hash=hash_password(data.password), role=data.role)
+    db.add(account)
+    log(db, f'Conta de acesso criada para {account.name}.')
+    db.commit()
+    db.refresh(account)
+    return public(account)
+
+@app.put('/api/accounts/{account_id}', dependencies=[Depends(admin_only)])
+def update_account(account_id: int, data: AccountUpdate, request: Request, db: Session = Depends(session)):
+    account=db.get(Account, account_id)
+    if account is None:
+        raise HTTPException(404, 'Usuário não encontrado.')
+    if not data.name:
+        raise HTTPException(422, 'Informe o nome do usuário.')
+    current=authorized(request)
+    if account.id == current['id'] and (not data.active or data.role != 'admin'):
+        raise HTTPException(409, 'Não é permitido desativar ou remover sua própria função administrativa.')
+    if account.role == 'admin' and (data.role != 'admin' or not data.active):
+        remaining=db.scalar(select(func.count()).select_from(Account).where(
+            Account.role == 'admin', Account.active.is_(True), Account.id != account_id))
+        if not remaining:
+            raise HTTPException(409, 'Mantenha pelo menos um administrador ativo.')
+    if data.new_password and password_in_use(db, Account, data.new_password, skip_id=account.id):
+        raise HTTPException(409, 'Essa senha já está vinculada a outro usuário.')
+    credentials_changed=(account.active != data.active or account.role != data.role or bool(data.new_password))
+    account.name,account.active,account.role=data.name,data.active,data.role
+    if data.new_password:
+        account.password_hash=hash_password(data.new_password)
+    if credentials_changed:
+        account.session_version+=1
+    log(db, f'Acesso de {account.name} atualizado.')
+    db.commit()
+    db.refresh(account)
+    return public(account)
+
+@app.put('/api/accounts/me', dependencies=[Depends(authorized)])
+def update_my_profile(data: ProfileUpdate, request: Request, db: Session = Depends(session)):
+    current=authorized(request)
+    account=db.get(Account, current['id'])
+    if not data.name:
+        raise HTTPException(422, 'Informe seu nome.')
+    if data.new_password:
+        if not data.current_password or not __import__('accounts_module').verify_password(
+            data.current_password, account.password_hash):
+            raise HTTPException(403, 'A senha atual não confere.')
+        if password_in_use(db, Account, data.new_password, skip_id=account.id):
+            raise HTTPException(409, 'Essa senha já está vinculada a outro usuário.')
+        account.password_hash=hash_password(data.new_password)
+        account.session_version+=1
+    account.name=data.name
+    db.commit()
+    db.refresh(account)
+    if data.new_password:
+        request.session.clear()
+        request.session['account_id']=account.id
+        request.session['account_version']=account.session_version
+    return public(account)
+
 @app.get('/api/state', dependencies=[Depends(authorized)])
-def state(db: Session = Depends(session)):
+def state(request: Request, db: Session = Depends(session)):
     projects = db.scalars(select(Project).order_by(Project.created_at.desc(), Project.id.desc())).all()
     tasks = db.scalars(select(Task).order_by(Task.id.desc())).all()
     members = db.scalars(select(Member).order_by(Member.name)).all()
@@ -214,8 +338,10 @@ def state(db: Session = Depends(session)):
                 meetings=[meeting_dict(m) for m in meetings],
                 members=[dict(id=m.id, name=m.name, role=m.role, email=m.email) for m in members],
                 activities=[dict(id=a.id, message=a.message, created_at=stamp(a.created_at)) for a in activities],
-                user=os.getenv('APP_DISPLAY_NAME', 'Equipe Nexon Labs'),
-                auth_enabled=bool(os.getenv('APP_PASSWORD')))
+                user=authorized(request)['name'],
+                user_id=authorized(request)['id'],
+                user_role=authorized(request)['role'],
+                auth_enabled=True)
 
 @app.post('/api/projects', dependencies=[Depends(authorized)], status_code=201)
 def add_project(data: ProjectIn, db: Session = Depends(session)):
