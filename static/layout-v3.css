@@ -1,0 +1,354 @@
+/* Nexon Labs · acabamento v3: conflitos documentados na revisão de 22/09.
+   Preserva paleta, símbolo, tipografia e componentes da identidade aprovada. */
+
+/* 1. Sidebar com três áreas distintas: marca, navegação e assinatura institucional.
+   O menu pode rolar quando a altura da tela é insuficiente, sem invadir o rodapé. */
+.sidebar{
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  height:100vh;
+  height:100dvh;
+  padding:21px 14px 14px;
+}
+.sidebar .brand{
+  flex:none;
+  min-height:76px;
+  padding:0 10px 15px;
+  margin:0;
+  gap:9px;
+}
+.sidebar .brand-mark{width:53px;height:53px;flex:none}
+.sidebar .brand-word{min-width:0}
+.sidebar .brand-word strong{font-size:19px;white-space:nowrap;letter-spacing:-.8px}
+.sidebar .brand-word small{font-size:6.7px;letter-spacing:2.45px;white-space:nowrap}
+.sidebar .menu{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  padding:0 3px 8px 0;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(132,185,207,.6) transparent;
+  overscroll-behavior:contain;
+}
+.sidebar .nav-section{
+  display:block;
+  flex:none;
+  padding:12px 14px 4px;
+  color:#98bed0;
+  font-weight:700;
+  letter-spacing:2px;
+  font-size:9px;
+  line-height:1.25;
+}
+.sidebar .nav-link{
+  flex:none;
+  min-height:47px;
+  padding:10px 13px;
+  gap:15px;
+  font-size:13.5px;
+  line-height:1.2;
+  border-radius:10px;
+  white-space:nowrap;
+}
+.sidebar .nav-link svg{width:23px;height:23px;stroke-width:1.8}
+.sidebar .nav-link.active{
+  box-shadow:inset 3px 0 0 #6ee3d5;
+}
+.sidebar .sidebar-footer{
+  position:relative;
+  left:auto;
+  right:auto;
+  bottom:auto;
+  flex:0 0 122px;
+  width:100%;
+  height:122px;
+  min-height:122px;
+  margin:8px 0 0;
+  padding:14px 9px 6px 12px;
+  opacity:1;
+  border-top:1px solid rgba(142,206,214,.25);
+  overflow:hidden;
+  isolation:isolate;
+}
+.sidebar-footer .footer-line{display:none}
+.sidebar-footer p{
+  position:relative;
+  z-index:1;
+  max-width:132px;
+  margin:0;
+  color:#e8f4f9;
+  font-size:10px;
+  line-height:1.56;
+  font-weight:600;
+  letter-spacing:1.15px;
+  overflow-wrap:normal;
+}
+.sidebar-footer .footer-molecule{
+  position:absolute;
+  top:auto;
+  left:auto;
+  right:-10px;
+  bottom:2px;
+  width:100px;
+  height:96px;
+  object-fit:contain;
+  opacity:.62;
+  z-index:0;
+  pointer-events:none;
+}
+
+/* 2. Banner: texto e ilustração ocupam áreas independentes. A ilustração
+   permanece dentro do card e a seta tem espaço exclusivo na extremidade. */
+.hero,.hero .slogan-card{min-width:0}
+.hero{
+  position:static;
+  height:auto;
+  min-height:165px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(355px,34%);
+  align-items:center;
+  gap:16px;
+  margin-bottom:17px;
+}
+.hero .hero-text{padding:5px 8px}
+.hero .slogan-card{
+  position:relative;
+  display:flex;
+  top:auto;
+  right:auto;
+  width:100%;
+  height:157px;
+  min-height:157px;
+  padding:19px 20px 16px 22px;
+  align-items:center;
+  isolation:isolate;
+  overflow:hidden;
+}
+.slogan-card>div:first-child{
+  position:relative;
+  z-index:2;
+  flex:0 0 56%;
+  min-width:0;
+}
+.slogan-card h2{
+  max-width:100%;
+  margin:0 0 7px;
+  font-size:clamp(20px,1.47vw,26px);
+  line-height:1.2;
+  letter-spacing:-.65px;
+}
+.slogan-card p{
+  max-width:100%;
+  font-size:clamp(11px,.81vw,14px);
+  line-height:1.45;
+}
+.slogan-card .molecule-art{
+  position:absolute;
+  top:8px;
+  right:39px;
+  bottom:auto;
+  width:37%;
+  height:calc(100% - 16px);
+  min-width:0;
+  opacity:1;
+  overflow:hidden;
+  pointer-events:none;
+  z-index:1;
+}
+.slogan-card .molecule-art img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center;
+}
+.slogan-card .round-next{
+  position:absolute;
+  right:9px;
+  bottom:11px;
+  z-index:3;
+  width:37px;
+  height:37px;
+  background:#e2f5f3;
+  border:2px solid #fff;
+  box-shadow:0 2px 7px rgba(15,68,85,.1);
+}
+
+/* 3. Hierarquia executiva e estados de leitura. A Home não repete a
+   listagem operacional de Projetos, exibida na sua aba própria. */
+.main{min-width:0}
+.home-metrics{grid-template-columns:repeat(4,minmax(0,1fr));max-width:none;margin-bottom:16px}
+.home-metrics .metric{
+  min-width:0;
+  min-height:133px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  padding:18px 16px 15px;
+  border-radius:12px;
+}
+.home-metrics .metric-heading{min-width:0}
+.home-metrics .metric-heading .num{font-size:clamp(23px,1.7vw,29px)}
+.home-metrics .metric-foot{
+  min-height:30px;
+  margin-top:14px;
+  color:#627693;
+  font-size:11px;
+  line-height:1.42;
+}
+.home-metrics .metric .metric-foot .up{display:none}
+.home-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.65fr) minmax(310px,1fr);
+  gap:16px;
+  align-items:start;
+}
+.home-grid>.home-main{min-width:0}
+.home-grid .right-stack{display:flex;flex-direction:column;gap:16px;padding-top:0;min-width:0}
+.home-grid .right-stack .panel{min-width:0}
+.home-section-head{margin:0 0 17px}
+.home-section-head h2{font-size:19px;letter-spacing:-.4px}
+.home-priority-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.home-project-card{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-width:0;
+  padding:15px 14px;
+  border:1px solid #dfe8f3;
+  border-radius:11px;
+  background:#fff;
+  color:var(--ink);
+  text-align:left;
+  transition:background .15s,border-color .15s,transform .15s;
+}
+.home-project-card:hover{background:#f6fbfd;border-color:#b2dcd8;transform:translateY(-1px)}
+.home-project-card:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.home-project-card .home-project-name{font-size:14px;line-height:1.35;font-weight:700;overflow-wrap:anywhere}
+.home-project-card .home-client{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.home-project-card .pill{align-self:flex-start;padding:6px 9px;font-size:10px}
+.home-project-card .home-project-meta{display:flex;justify-content:space-between;gap:7px;font-size:11px;color:var(--muted)}
+.home-project-card .progress-track{height:7px;width:100%;min-width:0}
+.home-quick-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:16px}
+.home-quick-links button{
+  display:flex;
+  align-items:center;
+  text-align:left;
+  min-width:0;
+  gap:11px;
+  padding:15px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:11px;
+  color:var(--navy);
+}
+.home-quick-links button:hover{border-color:#14b8a6;background:#f3fbfa}
+.home-quick-links svg{color:#088e80;width:23px;height:23px}
+.home-quick-links strong{display:block;font-size:12px}
+.home-quick-links small{display:block;font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4}
+.home-mini-agenda{display:flex;flex-direction:column;gap:8px;margin-top:13px}
+.home-mini-agenda .delivery{min-width:0}
+.home-mini-agenda .delivery-body strong{white-space:normal}
+.home-mini-agenda .delivery-body small{white-space:normal;line-height:1.35}
+.home-empty{padding:18px 12px;border:1px dashed #d8e4ed;border-radius:10px;background:#f9fbfd}
+.home-empty p{color:var(--muted);font-size:12px;line-height:1.5;margin:5px 0 12px}
+.home-empty strong{font-size:13px}
+.home-empty .secondary{font-size:11px}
+.home-grid .small-link{white-space:nowrap}
+
+/* 4. Topo e controles com ritmo consistente, sem alterar a identidade. */
+.topbar{gap:18px}
+.topbar .search-wrap{flex:1 1 365px;max-width:475px;min-width:0}
+.topbar .top-actions{margin-left:auto;flex:none}
+.topbar .profile{min-width:0}
+.topbar .icon-button,.topbar .profile{min-height:40px}
+.topbar .profile .avatar{display:flex;align-items:center;justify-content:center}
+.panel-head{min-width:0}
+.panel-head h2{min-width:0}
+
+/* 5. Altura baixa e zoom: menu independente, assinatura nunca cobre links. */
+@media(max-height:735px){
+  .sidebar .brand{min-height:68px;padding-bottom:11px}
+  .sidebar .nav-section{padding-top:8px}
+  .sidebar .nav-link{min-height:43px;padding-top:8px;padding-bottom:8px}
+  .sidebar .sidebar-footer{flex-basis:90px;min-height:90px;height:90px;padding-top:9px}
+  .sidebar-footer p{font-size:9px;letter-spacing:.8px;max-width:144px}
+  .sidebar-footer .footer-molecule{width:73px;height:69px;bottom:0}
+}
+@media(min-width:851px) and (max-width:1100px){
+  .sidebar{width:210px;flex-basis:210px;padding:17px 9px 10px}
+  .sidebar .brand{gap:7px;padding-left:6px;padding-right:0}
+  .sidebar .brand-mark{width:43px;height:43px}
+  .sidebar .brand-word strong{font-size:16px}
+  .sidebar .brand-word small{font-size:6px;letter-spacing:1.6px}
+  .sidebar .nav-link{gap:11px;padding:9px 10px;font-size:12.5px;min-height:44px}
+  .sidebar .nav-section{padding-left:11px}
+  .sidebar .sidebar-footer{padding-left:8px}
+  .sidebar-footer .footer-molecule{width:75px;height:78px;right:-9px;bottom:0}
+  .sidebar-footer p{max-width:115px;font-size:9px;letter-spacing:.8px}
+  .hero{grid-template-columns:1fr;gap:12px}
+  .hero .slogan-card{height:150px;min-height:150px}
+  .home-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .home-grid{grid-template-columns:1fr}
+  .home-grid .right-stack{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(min-width:1101px) and (max-width:1450px){
+  .home-grid{grid-template-columns:1fr}
+  .home-grid .right-stack{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .slogan-card h2{font-size:23px}
+  .slogan-card p{font-size:13px}
+}
+@media(max-width:850px){
+  .sidebar{
+    position:fixed;
+    left:-265px;
+    width:265px;
+    height:100vh;
+    height:100dvh;
+    padding:18px 13px 12px;
+    overflow:hidden;
+  }
+  .sidebar.open{left:0}
+  .sidebar .nav-link{font-size:14px;min-height:47px}
+  .sidebar .sidebar-footer{flex-basis:115px;height:115px;min-height:115px}
+  .hero{grid-template-columns:1fr;min-height:0;gap:11px}
+  .hero .slogan-card{width:100%;height:145px;min-height:145px}
+  .slogan-card h2{font-size:22px}
+  .slogan-card p{font-size:12px}
+  .home-grid{grid-template-columns:1fr}
+  .home-grid .right-stack{display:grid;grid-template-columns:1fr 1fr}
+  .home-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .topbar .search-wrap{flex:1 1 auto}
+  .home-priority-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:610px){
+  .hero .slogan-card{padding:17px 15px;min-height:140px;height:140px}
+  .slogan-card>div:first-child{flex-basis:56%}
+  .slogan-card h2{font-size:20px;line-height:1.18}
+  .slogan-card p{font-size:11px}
+  .slogan-card .molecule-art{right:34px;width:36%;top:8px;height:calc(100% - 16px)}
+  .slogan-card .round-next{right:5px;bottom:7px;width:32px;height:32px}
+  .home-grid .right-stack{grid-template-columns:1fr}
+  .home-priority-cards{grid-template-columns:1fr}
+  .home-quick-links{grid-template-columns:1fr}
+  .home-metrics .metric{padding:14px 11px}
+  .home-metrics .metric-heading{gap:7px}
+  .home-metrics .metric-heading .num{font-size:24px}
+  .home-metrics .metric-heading .mlabel{font-size:11px}
+}
+@media(max-width:380px){
+  .slogan-card>div:first-child{flex-basis:56%}
+  .slogan-card h2{font-size:18px}
+  .slogan-card p{font-size:10px}
+  .slogan-card .molecule-art{right:29px;width:35%}
+  .home-metrics .metric-heading .micon svg{width:23px;height:23px}
+}
+@media(prefers-reduced-motion:reduce){
+  .home-project-card{transition:none}
+  .home-project-card:hover{transform:none}
+}
