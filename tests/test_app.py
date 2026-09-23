@@ -186,3 +186,93 @@ def test_tickets_lifecycle_audit_and_permissions():
         assert c.delete(f"/api/projects/{project['id']}").status_code==200
         after=c.get("/api/tickets").json()
         assert next(t for t in after if t["id"]==tid)["project_id"] is None
+
+
+def test_password_identifies_each_person_and_enforces_permissions():
+    from accounts_module import verify_password
+    from app import Account, DB
+    with TestClient(app) as anonymous:
+        assert 'Senha de acesso' in anonymous.get('/').text
+        assert anonymous.get('/api/state').status_code == 401
+        assert anonymous.get('/api/accounts').status_code == 401
+        assert anonymous.post('/api/accounts',json={
+            'name':'Usuário indevido','password':'indevia123'
+        }).status_code == 401
+        assert anonymous.post('/api/login',json={'password':'wrong'}).status_code == 401
+
+    with TestClient(app) as admin:
+        response=admin.post('/api/login',json={'password':'test-password'})
+        assert response.status_code==200,response.text
+        assert response.json()['user']['role']=='admin'
+        assert admin.get('/').status_code==200
+        initial=admin.get('/api/state').json()
+        assert initial['user_id']==response.json()['user']['id']
+        assert initial['user_role']=='admin'
+        assert initial['user']==response.json()['user']['name']
+        users_before=admin.get('/api/accounts')
+        assert users_before.status_code==200
+        assert users_before.json()
+        assert all('password' not in u for u in users_before.json())
+        same=admin.post('/api/accounts',json={'name':'Senha duplicada','password':'test-password'})
+        assert same.status_code==409
+        created=admin.post('/api/accounts',json={
+            'name':'Bianca','password':'senha-distinta-987','role':'usuario'
+        })
+        assert created.status_code==201,created.text
+        new_user=created.json()
+        assert new_user['name']=='Bianca'
+        assert new_user['role']=='usuario'
+        assert 'password' not in new_user
+        with DB() as db:
+            user=db.get(Account,new_user['id'])
+            assert user.password_hash!='senha-distinta-987'
+            assert verify_password('senha-distinta-987',user.password_hash)
+
+        with TestClient(app) as employee:
+            assert employee.get('/api/state').status_code==401
+            logged=employee.post('/api/login',json={'password':'senha-distinta-987'})
+            assert logged.status_code==200,logged.text
+            assert logged.json()['user']['name']=='Bianca'
+            profile=employee.get('/api/state').json()
+            assert profile['user']=='Bianca'
+            assert profile['user_role']=='usuario'
+            assert profile['user_id']==new_user['id']
+            assert employee.get('/api/accounts').status_code==403
+            assert employee.post('/api/accounts',json={
+                'name':'Invasor','password':'outra-senha-valida'
+            }).status_code==403
+            renamed=employee.put('/api/profile',json={'name':'Bianca Beatriz'})
+            assert renamed.status_code==200,renamed.text
+            assert employee.get('/api/state').json()['user']=='Bianca Beatriz'
+            assert employee.put('/api/profile',json={
+                'name':'Bianca Beatriz','current_password':'errada',
+                'new_password':'senha-alterada-123'
+            }).status_code==403
+            pwd=employee.put('/api/profile',json={
+                'name':'Bianca Beatriz','current_password':'senha-distinta-987',
+                'new_password':'senha-alterada-123'
+            })
+            assert pwd.status_code==200,pwd.text
+            assert employee.get('/api/state').status_code==200
+            assert employee.post('/api/logout').status_code==200
+            assert employee.get('/').text.find('Senha de acesso')>=0
+            assert employee.post('/api/login',json={'password':'senha-distinta-987'}).status_code==401
+            assert employee.post('/api/login',json={'password':'senha-alterada-123'}).status_code==200
+            assert employee.get('/api/state').json()['user']=='Bianca Beatriz'
+
+            assert admin.put(f"/api/accounts/{new_user['id']}",json={
+                'name':'Bianca Beatriz','role':'usuario','active':False
+            }).status_code==200
+            assert employee.get('/api/state').status_code==401
+            assert employee.get('/').text.find('Senha de acesso')>=0
+            assert employee.post('/api/login',json={'password':'senha-alterada-123'}).status_code==401
+            assert admin.put(f"/api/accounts/{new_user['id']}",json={
+                'name':'Bianca Beatriz','role':'usuario','active':True,
+                'new_password':'nova-senha-pessoal-321'
+            }).status_code==200
+            assert employee.post('/api/login',json={'password':'nova-senha-pessoal-321'}).status_code==200
+            assert employee.get('/api/state').json()['user']=='Bianca Beatriz'
+        assert admin.put(f"/api/accounts/{response.json()['user']['id']}",json={
+            'name':'Administrador','role':'usuario','active':False
+        }).status_code==409
+        assert admin.get('/api/state').json()['user_role']=='admin'
