@@ -78,7 +78,7 @@ function dashboard(){
     '<span><strong>Orçamentos</strong><small>Precificação e propostas comerciais</small></span></button>'+
     '<button type="button" data-route="reunioes">'+icon('calendar')+
     '<span><strong>Reuniões</strong><small>Agendamentos com clientes</small></span></button></div>';
-  return '<div class="hero"><div class="hero-text"><h1>Olá, ${esc((state.user||'').split(' ')[0]||'bem-vindo')}!</h1>'+
+  return '<div class="hero"><div class="hero-text"><h1>Olá, '+esc((state.user||'').split(' ')[0]||'bem-vindo')+'!</h1>'+
     '<p>Acompanhe seus projetos e transforme planos em resultados.</p></div>'+banner()+'</div>'+
     metrics+'<div class="home-grid"><div class="home-main">'+homePriorityPanel()+quick+
     '</div>'+homeSidebar()+'</div>';
