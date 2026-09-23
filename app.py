@@ -100,6 +100,14 @@ Base.metadata.create_all(engine)
 from accounts_module import setup_accounts, public, session_user, find_by_password, password_in_use, hash_password, verify_password, MAX_ACCOUNTS
 Account = setup_accounts(Base, engine, DB)
 
+# Nova tabela independente: evita modificar contas já cadastradas no PostgreSQL.
+class AccountPhoto(Base):
+    __tablename__ = 'app_account_photos'
+    account_id: Mapped[int] = mapped_column(ForeignKey('app_accounts.id', ondelete='CASCADE'), primary_key=True)
+    image: Mapped[bytes] = mapped_column(nullable=False)
+
+Base.metadata.create_all(engine, tables=[AccountPhoto.__table__])
+
 Status = Literal['planejamento', 'em_andamento', 'concluido']
 
 class ProjectIn(BaseModel):
@@ -327,6 +335,75 @@ def update_my_profile(data: ProfileUpdate, request: Request, db: Session = Depen
         request.session['account_version']=account.session_version
     return public(account)
 
+class ProfilePhotoIn(BaseModel):
+    # Base64 do arquivo original; limite validado novamente após decodificação.
+    photo_data: str = Field(min_length=24, max_length=1_500_000)
+
+@app.get('/api/profile/avatar', dependencies=[Depends(authorized)])
+def get_my_avatar(request: Request, db: Session = Depends(session)):
+    current = authorized(request)
+    photo = db.get(AccountPhoto, current['id'])
+    if photo is None:
+        raise HTTPException(404, 'Foto de perfil não cadastrada.')
+    return Response(
+        content=photo.image, media_type='image/jpeg',
+        headers={'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff'}
+    )
+
+@app.put('/api/profile/avatar', dependencies=[Depends(authorized)])
+def save_my_avatar(data: ProfilePhotoIn, request: Request, db: Session = Depends(session)):
+    import base64
+    import binascii
+    from PIL import Image, ImageOps, UnidentifiedImageError
+    if not data.photo_data.startswith(('data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/webp;base64,')):
+        raise HTTPException(422, 'Selecione uma foto PNG, JPEG ou WebP.')
+    try:
+        original = base64.b64decode(data.photo_data.partition(',')[2], validate=True)
+    except (ValueError, binascii.Error):
+        raise HTTPException(422, 'Não foi possível ler a imagem.')
+    if len(original) > 1_000_000:
+        raise HTTPException(413, 'A foto original deve ter no máximo 1 MB.')
+    try:
+        from PIL import Image
+        with Image.open(io.BytesIO(original)) as candidate:
+            if candidate.format not in ('PNG', 'JPEG', 'WEBP'):
+                raise ValueError('Formato de imagem não permitido.')
+            if candidate.width < 32 or candidate.height < 32:
+                raise ValueError('A foto deve ter ao menos 32 × 32 pixels.')
+            if candidate.width * candidate.height > 16_000_000:
+                raise ValueError('A imagem possui resolução muito alta.')
+            candidate.load()
+            normalized = ImageOps.exif_transpose(candidate)
+            normalized.thumbnail((320, 320), Image.Resampling.LANCZOS)
+            if normalized.mode in ('RGBA', 'LA') or (normalized.mode == 'P' and 'transparency' in normalized.info):
+                rgba = normalized.convert('RGBA')
+                white = Image.new('RGB', rgba.size, 'white')
+                white.paste(rgba, mask=rgba.getchannel('A'))
+                normalized = white
+            else:
+                normalized = normalized.convert('RGB')
+            output = io.BytesIO()
+            normalized.save(output, format='JPEG', quality=84, optimize=True)
+            safe_image = output.getvalue()
+    except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
+        raise HTTPException(422, 'Arquivo inválido. Envie uma foto PNG, JPEG ou WebP.') from error
+    current = authorized(request)
+    photo = db.get(AccountPhoto, current['id'])
+    if photo:
+        photo.image = safe_image
+    else:
+        db.add(AccountPhoto(account_id=current['id'], image=safe_image))
+    db.commit()
+    return {'ok': True, 'has_photo': True}
+
+@app.delete('/api/profile/avatar', dependencies=[Depends(authorized)])
+def delete_my_avatar(request: Request, db: Session = Depends(session)):
+    photo = db.get(AccountPhoto, authorized(request)['id'])
+    if photo:
+        db.delete(photo)
+        db.commit()
+    return {'ok': True, 'has_photo': False}
+
 @app.get('/api/state', dependencies=[Depends(authorized)])
 def state(request: Request, db: Session = Depends(session)):
     projects = db.scalars(select(Project).order_by(Project.created_at.desc(), Project.id.desc())).all()
@@ -341,6 +418,7 @@ def state(request: Request, db: Session = Depends(session)):
                 user=authorized(request)['name'],
                 user_id=authorized(request)['id'],
                 user_role=authorized(request)['role'],
+                has_photo=db.get(AccountPhoto, authorized(request)['id']) is not None,
                 auth_enabled=True)
 
 @app.post('/api/projects', dependencies=[Depends(authorized)], status_code=201)
