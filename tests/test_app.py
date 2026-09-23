@@ -276,3 +276,58 @@ def test_password_identifies_each_person_and_enforces_permissions():
             'name':'Administrador','role':'usuario','active':False
         }).status_code==409
         assert admin.get('/api/state').json()['user_role']=='admin'
+
+
+def test_user_avatar_upload_is_private_normalized_and_removable():
+    import base64
+    import io
+    from PIL import Image
+    with TestClient(app) as anonymous:
+        assert anonymous.get('/api/profile/avatar').status_code == 401
+        assert anonymous.put('/api/profile/avatar',json={'photo_data':'not-an-image'}).status_code == 401
+        assert anonymous.delete('/api/profile/avatar').status_code == 401
+    with TestClient(app) as admin:
+        assert admin.post('/api/login',json={'password':'test-password'}).status_code == 200
+        assert admin.get('/api/state').json()['has_photo'] is False
+        assert admin.get('/api/profile/avatar').status_code == 404
+        bad = admin.put('/api/profile/avatar',json={
+            'photo_data':'data:image/png;base64,' + base64.b64encode(b'not a png').decode()
+        })
+        assert bad.status_code == 422, bad.text
+        invalid_type = admin.put('/api/profile/avatar',json={
+            'photo_data':'data:image/svg+xml;base64,' + base64.b64encode(b'<svg/>').decode()
+        })
+        assert invalid_type.status_code == 422
+        image=Image.new('RGB',(800,600),color=(30,90,150))
+        output=io.BytesIO()
+        image.save(output,format='PNG')
+        photo_data='data:image/png;base64,' + base64.b64encode(output.getvalue()).decode()
+        saved=admin.put('/api/profile/avatar',json={'photo_data':photo_data})
+        assert saved.status_code == 200, saved.text
+        assert saved.json()['has_photo'] is True
+        avatar=admin.get('/api/profile/avatar')
+        assert avatar.status_code == 200
+        assert avatar.headers['content-type'].startswith('image/jpeg')
+        assert avatar.headers['cache-control']=='private, no-store'
+        assert avatar.content.startswith(b'\xff\xd8')
+        actual=Image.open(io.BytesIO(avatar.content))
+        assert max(actual.size)<=320
+        assert admin.get('/api/state').json()['has_photo'] is True
+        other=admin.post('/api/accounts',json={
+            'name':'Perfil sem foto','password':'foto-individual-123','role':'usuario'
+        })
+        assert other.status_code == 201,other.text
+        with TestClient(app) as employee:
+            assert employee.post('/api/login',json={'password':'foto-individual-123'}).status_code == 200
+            assert employee.get('/api/state').json()['has_photo'] is False
+            assert employee.get('/api/profile/avatar').status_code == 404
+            assert employee.put('/api/profile/avatar',json={'photo_data':photo_data}).status_code == 200
+            assert employee.get('/api/state').json()['has_photo'] is True
+            assert employee.delete('/api/profile/avatar').status_code == 200
+            assert employee.get('/api/profile/avatar').status_code == 404
+            assert employee.get('/api/state').json()['has_photo'] is False
+        # A foto do administrador não é alterada pelo segundo usuário.
+        assert admin.get('/api/profile/avatar').content == avatar.content
+        assert admin.delete('/api/profile/avatar').status_code == 200
+        assert admin.get('/api/state').json()['has_photo'] is False
+        assert admin.get('/api/profile/avatar').status_code == 404
