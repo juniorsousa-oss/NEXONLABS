@@ -11,7 +11,7 @@ window.NexonUsers = (() => {
       '</span><div class="account-photo-controls"><label for="profile-photo-upload" class="secondary account-photo-upload">Escolher foto</label>'+
       '<input id="profile-photo-upload" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Selecionar foto de perfil">'+
       (state.has_photo?'<button type="button" class="secondary" data-account-action="remove-photo">Remover foto</button>':'')+
-      '<small>Foto PNG, JPG ou WebP de até 1 MB. Será ajustada para o avatar.</small></div></div>'+
+      '<small>Foto PNG, JPG ou WebP de até 2 MB. Será ajustada para o avatar.</small></div></div>'+
       '<form id="profile-form" class="account-form"><div class="account-fields">'+
       '<label>Nome exibido após o login<input name="name" required minlength="2" maxlength="120" autocomplete="name" value="'+clean(state.user||'')+'"></label>'+
       '<label>Senha atual (apenas para alterar a senha)<input name="current_password" type="password" minlength="1" maxlength="256" autocomplete="current-password" placeholder="Senha atual"></label>'+
@@ -82,8 +82,8 @@ window.NexonUsers = (() => {
     if(!['image/png','image/jpeg','image/webp'].includes(file.type)){
       notice('Escolha uma imagem PNG, JPG ou WebP.');input.value='';return;
     }
-    if(file.size>1_000_000){
-      notice('A foto deve ter no máximo 1 MB.');input.value='';return;
+    if(file.size>2_000_000){
+      notice('A foto deve ter no máximo 2 MB.');input.value='';return;
     }
     input.disabled=true;
     try{
