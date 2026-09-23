@@ -97,7 +97,7 @@ class Meeting(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 Base.metadata.create_all(engine)
-from accounts_module import setup_accounts, public, session_user, find_by_password, password_in_use, hash_password, MAX_ACCOUNTS
+from accounts_module import setup_accounts, public, session_user, find_by_password, password_in_use, hash_password, verify_password, MAX_ACCOUNTS
 Account = setup_accounts(Base, engine, DB)
 
 Status = Literal['planejamento', 'em_andamento', 'concluido']
@@ -304,14 +304,14 @@ def update_account(account_id: int, data: AccountUpdate, request: Request, db: S
     db.refresh(account)
     return public(account)
 
-@app.put('/api/accounts/me', dependencies=[Depends(authorized)])
+@app.put('/api/profile', dependencies=[Depends(authorized)])
 def update_my_profile(data: ProfileUpdate, request: Request, db: Session = Depends(session)):
     current=authorized(request)
     account=db.get(Account, current['id'])
     if not data.name:
         raise HTTPException(422, 'Informe seu nome.')
     if data.new_password:
-        if not data.current_password or not __import__('accounts_module').verify_password(
+        if not data.current_password or not verify_password(
             data.current_password, account.password_hash):
             raise HTTPException(403, 'A senha atual não confere.')
         if password_in_use(db, Account, data.new_password, skip_id=account.id):
