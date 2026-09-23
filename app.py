@@ -337,7 +337,7 @@ def update_my_profile(data: ProfileUpdate, request: Request, db: Session = Depen
 
 class ProfilePhotoIn(BaseModel):
     # Base64 do arquivo original; limite validado novamente após decodificação.
-    photo_data: str = Field(min_length=24, max_length=1_500_000)
+    photo_data: str = Field(min_length=24, max_length=2_800_000)
 
 @app.get('/api/profile/avatar', dependencies=[Depends(authorized)])
 def get_my_avatar(request: Request, db: Session = Depends(session)):
@@ -361,8 +361,8 @@ def save_my_avatar(data: ProfilePhotoIn, request: Request, db: Session = Depends
         original = base64.b64decode(data.photo_data.partition(',')[2], validate=True)
     except (ValueError, binascii.Error):
         raise HTTPException(422, 'Não foi possível ler a imagem.')
-    if len(original) > 1_000_000:
-        raise HTTPException(413, 'A foto original deve ter no máximo 1 MB.')
+    if len(original) > 2_000_000:
+        raise HTTPException(413, 'A foto original deve ter no máximo 2 MB.')
     try:
         from PIL import Image
         with Image.open(io.BytesIO(original)) as candidate:
