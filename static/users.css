@@ -15,3 +15,16 @@
 .account-row small{color:var(--muted);font-size:11px;margin-top:5px}
 .account-row .secondary{font-size:11px;flex:none}
 @media(max-width:650px){.account-fields{grid-template-columns:1fr}.account-panel .panel-head{align-items:flex-start}.account-row{align-items:flex-start}.account-row .secondary{margin-top:2px}}
+
+/* Avatar do usuário: mesmo tamanho aprovado, foto circular e área exclusiva no perfil. */
+.avatar{position:relative;overflow:hidden}
+.avatar .profile-avatar-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.account-photo-section{display:flex;align-items:center;gap:17px;flex-wrap:wrap;margin:16px 0;padding:15px;border:1px solid var(--border);border-radius:11px;background:#f7fafd}
+.account-photo-preview{display:inline-flex;align-items:center;justify-content:center;position:relative;flex:none;width:76px;height:76px;background:var(--navy);color:#fff;border-radius:50%;overflow:hidden;font-size:25px;font-weight:700}
+.account-photo-preview img{display:block;width:100%;height:100%;object-fit:cover}
+.account-photo-controls{display:flex;gap:9px;align-items:center;flex-wrap:wrap;min-width:0;flex:1}
+.account-photo-controls .account-photo-upload{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:9px 13px;border-radius:9px}
+.account-photo-controls input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.account-photo-controls input[type=file]:focus-visible + .secondary{outline:2px solid var(--teal)}
+.account-photo-controls small{width:100%;color:var(--muted);font-size:11px;line-height:1.5}
+@media(max-width:480px){.account-photo-section{gap:12px;padding:12px}.account-photo-preview{width:64px;height:64px}}
