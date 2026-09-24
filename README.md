@@ -41,6 +41,14 @@ Em produção, use **PostgreSQL persistente** em `DATABASE_URL` (`postgresql://.
 - Não compartilhe senhas entre pessoas. Se você perder o único acesso administrativo, a recuperação exigirá uma ação administrativa controlada no banco ou no ambiente; alterar apenas a variável `APP_PASSWORD` não sobrescreve as senhas existentes.
 - Os dados cadastrados no sistema continuam visíveis aos usuários autorizados desta versão. A diferenciação administrador/usuário restringe a **gestão de acessos**, não o acesso a projetos e orçamentos.
 
+## Materiais de identidade dos colaboradores — modelo B aprovado
+
+No menu **Equipe → Colaboradores**, escolha **Editar** para completar nome, cargo, WhatsApp, e-mail opcional, cidade e site. Os campos novos são guardados em uma tabela própria para não excluir os registros anteriores. Colaboradores não são necessariamente contas de login.
+
+Em **Cartão e assinatura** há prévias com os dados salvos e as exportações: assinatura em PNG e HTML; frente e verso do cartão em PNG; cartão completo com duas páginas em PDF 96 × 56 mm (90 × 50 mm de corte e 3 mm de sangria por borda). O QR Code é codificado com a URL do site registrada no perfil; se ela for o domínio do app privado, o visitante verá o login. Não coloque contato de e-mail ou WhatsApp inventado: os campos em branco são omitidos.
+
+**Referência visual:** composição **Opção B — Tecnológica e Moderna** aprovada: assinatura escuro/branco com separação diagonal turquesa, frente azul-marinho com elemento de teclado no lado direito e chamada "DA IDEIA À OPERAÇÃO"; verso branco com QR central e faixa escura de quatro serviços. As formas, letras e efeitos são recriados digitalmente, portanto não representam uma cópia de pixels da montagem em imagem; conferir as prévias e uma prova da gráfica antes da impressão definitiva. A imagem da assinatura HTML é incorporada como data URI, que pode ser bloqueada por alguns clientes de e-mail; nesses casos, use o PNG ou hospede a imagem em HTTPS.
+
 ## Identidade visual
 
 - `static/style.css`: layout e paleta com **DESIGN LOCK v1**;
