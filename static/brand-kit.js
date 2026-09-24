@@ -146,8 +146,8 @@ window.NexonBrandUI=(()=>{
     if(confirmed){confirmed.disabled=true;confirmed.checked=false;}
     updateInstallButton();
     if(!file){fileFeedback('Nenhum arquivo selecionado.');return;}
-    const mime=file.type==='image/png'||/\\.png$/i.test(file.name)?'image/png':
-      file.type==='image/jpeg'||/\\.jpe?g$/i.test(file.name)?'image/jpeg':'';
+    const mime=file.type==='image/png'||/\.png$/i.test(file.name)?'image/png':
+      file.type==='image/jpeg'||/\.jpe?g$/i.test(file.name)?'image/jpeg':'';
     if(!mime){fileFeedback('Escolha a imagem completa em PNG (.png) ou JPEG (.jpg/.jpeg).',true);return;}
     if(file.size>6_000_000){fileFeedback('A imagem ultrapassa 6 MB. Selecione o arquivo completo até 6 MB.',true);return;}
     fileFeedback('Lendo '+file.name+'... aguarde a prévia.');
