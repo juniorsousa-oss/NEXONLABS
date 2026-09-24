@@ -137,6 +137,21 @@ class MemberIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     role: str = Field(default='Equipe', max_length=120)
     email: str = Field(default='', max_length=200)
+    whatsapp: str = Field(default='', max_length=40)
+    city: str = Field(default='Patos de Minas - MG', max_length=120)
+    site: str = Field(default='https://nexonlabs.onrender.com', max_length=250)
+
+    @field_validator('name','role','email','whatsapp','city','site')
+    @classmethod
+    def tidy_member(cls,value):
+        return value.strip()
+
+    @field_validator('site')
+    @classmethod
+    def validate_site(cls,value):
+        if value and not value.startswith(('https://','http://')):
+            raise ValueError('O site deve começar com https:// ou http://.')
+        return value
 
 class MeetingIn(BaseModel):
     title: str = Field(min_length=2, max_length=180)
@@ -199,6 +214,10 @@ def task_dict(t: Task):
 
 def log(db: Session, msg: str):
     db.add(Activity(message=msg[:350]))
+
+def member_dict(member: Member, db: Session):
+    return dict(id=member.id, name=member.name, role=member.role,
+                email=member.email, **member_brand_extra(db,member))
 
 @app.get('/')
 def index(request: Request):
@@ -413,7 +432,7 @@ def state(request: Request, db: Session = Depends(session)):
     meetings = db.scalars(select(Meeting).order_by(Meeting.meeting_date, Meeting.start_time, Meeting.id)).all()
     return dict(projects=[project_dict(p) for p in projects], tasks=[task_dict(t) for t in tasks],
                 meetings=[meeting_dict(m) for m in meetings],
-                members=[dict(id=m.id, name=m.name, role=m.role, email=m.email) for m in members],
+                members=[member_dict(m,db) for m in members],
                 activities=[dict(id=a.id, message=a.message, created_at=stamp(a.created_at)) for a in activities],
                 user=authorized(request)['name'],
                 user_id=authorized(request)['id'],
@@ -480,19 +499,36 @@ def remove_task(task_id: int, db: Session = Depends(session)):
 
 @app.post('/api/members', dependencies=[Depends(authorized)], status_code=201)
 def add_member(data: MemberIn, db: Session = Depends(session)):
-    if not data.name.strip(): raise HTTPException(422, 'Informe o nome.')
-    if db.scalar(select(Member).where(func.lower(Member.name) == data.name.strip().lower())):
+    if not data.name: raise HTTPException(422, 'Informe o nome.')
+    if db.scalar(select(Member).where(func.lower(Member.name) == data.name.lower())):
         raise HTTPException(409, 'Já existe um integrante com esse nome.')
-    member = Member(name=data.name.strip(), role=data.role.strip(), email=data.email.strip())
-    db.add(member); log(db, f'{member.name} adicionado à equipe.')
-    db.commit(); db.refresh(member)
-    return dict(id=member.id, name=member.name, role=member.role, email=member.email)
+    member=Member(name=data.name,role=data.role,email=data.email)
+    db.add(member);db.flush()
+    member_brand_sync(db,member,data)
+    log(db,f'{member.name} adicionado à equipe.')
+    db.commit();db.refresh(member)
+    return member_dict(member,db)
+
+@app.put('/api/members/{member_id}', dependencies=[Depends(authorized)])
+def edit_member(member_id: int, data: MemberIn, db: Session = Depends(session)):
+    member=db.get(Member,member_id)
+    if member is None:raise HTTPException(404,'Colaborador não encontrado.')
+    if not data.name:raise HTTPException(422,'Informe o nome.')
+    duplicate=db.scalar(select(Member).where(func.lower(Member.name)==data.name.lower(),Member.id!=member_id))
+    if duplicate:raise HTTPException(409,'Já existe outro colaborador com esse nome.')
+    member.name,member.role,member.email=data.name,data.role,data.email
+    member_brand_sync(db,member,data)
+    log(db,f'Colaborador {member.name} atualizado.')
+    db.commit();db.refresh(member)
+    return member_dict(member,db)
 
 @app.delete('/api/members/{member_id}', dependencies=[Depends(authorized)])
 def remove_member(member_id: int, db: Session = Depends(session)):
-    member = db.get(Member, member_id)
-    if member is None: raise HTTPException(404, 'Integrante não encontrado.')
-    db.delete(member); db.commit(); return {'ok': True}
+    member=db.get(Member,member_id)
+    if member is None:raise HTTPException(404,'Integrante não encontrado.')
+    profile=db.get(MemberBrand,member_id)
+    if profile:db.delete(profile)
+    db.delete(member);db.commit();return {'ok':True}
 
 def meeting_dict(m: Meeting):
     return dict(id=m.id, title=m.title, client=m.client, project_id=m.project_id,
@@ -565,3 +601,9 @@ install_quotes(app, Base, DB, engine, authorized, log, Project)
 # Atendimento interno: chamados de suporte e solicitações vinculados a clientes/projetos.
 from tickets_module import install_tickets
 install_tickets(app, Base, DB, engine, authorized, log, Project)
+
+# Identidade visual Opção B por colaborador; dados em tabela separada para preservar cadastros.
+from brand_kit import install_brand_kit
+MemberBrand, member_brand_extra, member_brand_sync = install_brand_kit(
+    app, Base, DB, engine, authorized, log, Member, member_dict
+)
