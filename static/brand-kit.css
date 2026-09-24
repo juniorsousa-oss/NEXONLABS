@@ -29,3 +29,11 @@
 .brand-template-install .brand-template-error{background:#fff5f3;border-color:#f0b2a7;color:#983d34}
 .brand-template-install .form-actions{justify-content:flex-end;gap:9px;flex-wrap:wrap;margin-top:4px}
 .brand-template-install button[disabled]{opacity:.58;cursor:not-allowed}
+
+/* Referência PNG/JPEG: prévia real antes de confirmar e instalar. */
+.brand-template-preview{display:block;width:100%;max-height:310px;object-fit:contain;border:1px solid #d7e4ee;border-radius:10px;background:#f5f8fc}
+.brand-template-preview[hidden]{display:none}
+.brand-template-confirm{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:10px;line-height:1.55;font-size:12px}
+.brand-template-confirm input{width:18px;height:18px;flex:none;margin:1px 0 0;accent-color:#14b8a6}
+.brand-template-confirm input:disabled{opacity:.6}
+@media(max-width:610px){.brand-template-preview{max-height:210px}.brand-template-install .form-actions button{width:100%}}
