@@ -57,3 +57,17 @@
 .ticket-transition-box textarea{min-height:100px;width:100%;padding:11px 12px;border:1px solid #c5dfe0;border-radius:9px;resize:vertical;background:#fff;color:var(--ink)}
 .ticket-finalized-at{font-size:12px}
 @media(max-width:680px){.ticket-row-actions{justify-content:flex-start}}
+
+/* Fechamento não pode ficar oculto dentro da edição; preservar botões acessíveis no mobile. */
+.ticket-row-wrap{border:1px solid var(--border);border-radius:11px;background:#fff;overflow:hidden}
+.ticket-row-wrap .ticket-row{border:0;border-radius:0}
+.ticket-row-actions{display:flex;justify-content:flex-end;padding:0 15px 12px;gap:8px}
+.ticket-row-actions button{font-size:11px;min-height:34px}
+.ticket-detail-actions{flex-wrap:wrap;justify-content:flex-end}
+.ticket-detail-tags small{color:var(--muted);font-size:11px}
+.ticket-transition-box{background:#f6faff;border:1px solid #b8dce5;border-radius:12px;padding:17px;margin:19px 0}
+.ticket-transition-box h3{font-size:15px;margin:0 0 8px}
+.ticket-transition-box p{font-size:12px;line-height:1.5}
+.ticket-transition-box label{display:flex;flex-direction:column;gap:8px;font-weight:600;font-size:12px;margin-top:12px}
+.ticket-transition-box textarea{min-height:100px;width:100%;resize:vertical;border:1px solid #c8d9e7;border-radius:9px;padding:11px;color:var(--ink);font-size:13px}
+@media(max-width:680px){.ticket-row-actions{justify-content:flex-start}.ticket-detail-actions{justify-content:flex-start}}
