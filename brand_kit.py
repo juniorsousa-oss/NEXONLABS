@@ -392,7 +392,10 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
 
         # Cachear imagens por conteúdo da matriz + informações do colaborador.
         # Uma alteração nesses dados provoca geração nova sem exibir versão antiga.
-        key=artifact_key(data,source.image if source is not None else None,kind,format)
+        # A frente não contém dados pessoais: a mesma arte aprovada é
+        # compartilhada entre os colaboradores no cache do servidor.
+        cache_data={} if kind=='front' and source is not None else data
+        key=artifact_key(cache_data,source.image if source is not None else None,kind,format)
         content,media,filename,etag=cached_artifact(key,generate)
         common={'ETag':etag,'Vary':'Cookie',
                 'Cache-Control':'private, no-cache, must-revalidate',
