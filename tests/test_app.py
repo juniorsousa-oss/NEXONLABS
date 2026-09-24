@@ -174,13 +174,40 @@ def test_tickets_lifecycle_audit_and_permissions():
         assert changed.json()["status"]=="em_atendimento"
         assert any("Situação" in e["message"] for e in changed.json()["events"])
         assert any(e["kind"]=="comentario" for e in changed.json()["events"])
-        closed=c.put(f"/api/tickets/{tid}",json={**payload,"status":"fechado"})
+        # Fechamento e reabertura exigem um motivo registrado.
+        assert c.put(f"/api/tickets/{tid}",json={**payload,"status":"fechado"}).status_code==422
+        assert c.post(f"/api/tickets/{tid}/transition",json={"status":"fechado","message":" "}).status_code==422
+        closed=c.post(f"/api/tickets/{tid}/transition",json={
+            "status":"fechado","message":"Corrigida divergência dos saldos e validado com o cliente."
+        })
         assert closed.status_code==200,closed.text
         assert closed.json()["closed_at"]
+        assert closed.json()["status"]=="fechado"
         assert len(closed.json()["events"])==4
-        reopened=c.put(f"/api/tickets/{tid}",json={**payload,"status":"aberto"})
+        assert closed.json()["events"][-1]["kind"]=="situacao"
+        assert "Corrigida divergência" in closed.json()["events"][-1]["message"]
+        assert c.post(f"/api/tickets/{tid}/transition",json={"status":"fechado","message":"Mesmo chamado"}).status_code==409
+        assert c.put(f"/api/tickets/{tid}",json={**payload,"status":"aberto"}).status_code==422
+        assert c.post(f"/api/tickets/{tid}/transition",json={"status":"aguardando_cliente","message":"Tentar editar fechado"}).status_code==409
+        reopened=c.post(f"/api/tickets/{tid}/transition",json={
+            "status":"aberto","message":"Cliente relatou recorrência do erro; investigar novamente."
+        })
         assert reopened.status_code==200,reopened.text
+        assert reopened.json()["status"]=="aberto"
         assert reopened.json()["closed_at"] is None
+        assert reopened.json()["events"][-1]["kind"]=="situacao"
+        assert len(reopened.json()["events"])==5
+        solved=c.post(f"/api/tickets/{tid}/transition",json={
+            "status":"resolvido","message":"Nova validação feita, divergência eliminada."
+        })
+        assert solved.status_code==200,solved.text
+        assert solved.json()["closed_at"] is None
+        assert solved.json()["status"]=="resolvido"
+        finalized=c.post(f"/api/tickets/{tid}/transition",json={
+            "status":"fechado","message":"Cliente confirmou recebimento e atendimento encerrado."
+        })
+        assert finalized.status_code==200,finalized.text
+        assert finalized.json()["closed_at"] is not None
         assert c.post(f"/api/tickets/{tid}/comments",json={"message":" "}).status_code==422
         assert c.post("/api/tickets/99999999/comments",json={"message":"Teste"}).status_code==404
         assert c.delete(f"/api/projects/{project['id']}").status_code==200
@@ -459,3 +486,20 @@ def test_colaborador_brand_kit_aprovado():
         assert 'wa.me/' not in generated
         assert client.delete(f'/api/members/{mid}').status_code==200
         assert client.get(root+'card?format=pdf').status_code==404
+
+
+def test_ticket_closure_requires_auth_and_valid_lifecycle():
+    with TestClient(app) as anonymous:
+        assert anonymous.post('/api/tickets/1/transition',json={
+            'status':'fechado','message':'Resolvido por suporte.'
+        }).status_code==401
+    with TestClient(app) as client:
+        assert client.post('/api/login',json={'password':'test-password'}).status_code==200
+        assert client.post('/api/tickets',json={
+            'title':'Cadastro iniciado fechado','client':'Cliente XYZ',
+            'description':'Teste para validar que precisa ser registrado e fechado depois.',
+            'status':'fechado'
+        }).status_code==422
+        assert client.post('/api/tickets/999999/transition',json={
+            'status':'fechado','message':'Este chamado não existe.'
+        }).status_code==404
