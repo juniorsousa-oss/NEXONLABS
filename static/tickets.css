@@ -71,3 +71,15 @@
 .ticket-transition-box label{display:flex;flex-direction:column;gap:8px;font-weight:600;font-size:12px;margin-top:12px}
 .ticket-transition-box textarea{min-height:100px;width:100%;resize:vertical;border:1px solid #c8d9e7;border-radius:9px;padding:11px;color:var(--ink);font-size:13px}
 @media(max-width:680px){.ticket-row-actions{justify-content:flex-start}.ticket-detail-actions{justify-content:flex-start}}
+
+/* Chamados: encerrar/reabrir é ação visível, com relato obrigatório e histórico. */
+.ticket-row-wrap{display:flex;gap:8px;align-items:stretch;border:1px solid #e0e8f2;border-radius:11px;background:#fff;overflow:hidden;min-width:0}
+.ticket-row-wrap>.ticket-row{flex:1 1 auto;min-width:0;border:0;border-radius:0}
+.ticket-row-actions{display:flex;align-items:center;flex:0 0 auto;padding:9px 12px 9px 0}
+.ticket-row-actions button{font-size:11px;max-width:145px;white-space:normal;line-height:1.35}
+.ticket-transition-box{margin:20px 0 12px;padding:18px;border:1px solid #b7e4df;background:#f3fbfa;border-radius:12px}
+.ticket-transition-box h3{font-size:15px;margin:0 0 7px;color:var(--navy)}
+.ticket-transition-box p{margin:0 0 13px;line-height:1.5}
+.ticket-transition-box label{display:flex;flex-direction:column;gap:8px;font-size:12px;font-weight:600}
+.ticket-transition-box textarea{width:100%;min-height:105px;padding:11px;border:1px solid #cddfe8;border-radius:9px;background:#fff;color:var(--ink);resize:vertical}
+@media(max-width:650px){.ticket-row-wrap{flex-direction:column}.ticket-row-actions{padding:0 12px 12px;justify-content:flex-end}.ticket-row-actions button{max-width:none}}
