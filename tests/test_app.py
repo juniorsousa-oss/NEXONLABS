@@ -627,3 +627,63 @@ def test_ticket_explicit_close_reopen_with_reason():
         finally_closed=c.post(endpoint,json={'status':'fechado','message':'Cliente confirmou normalização.'})
         assert finally_closed.status_code==200,finally_closed.text
         assert finally_closed.json()['status']=='fechado'
+
+
+def test_reference_original_pixel_fidelity(monkeypatch):
+    """Reprodução da arte B usa pixels da matriz, sem reinterpretar a frente.
+    A identidade exata da referência real está fixada por SHA256 em produção.
+    """
+    import base64
+    import hashlib
+    import io
+    from PIL import Image
+    from pypdf import PdfReader
+    import approved_template
+    master=Image.new("RGB",(1536,1024),(241,245,249))
+    # Três regiões visivelmente distintas: o pixel deve atravessar o gerador intacto.
+    from PIL import ImageDraw
+    draw=ImageDraw.Draw(master)
+    draw.rectangle((800,445,1500,690),fill=(11,35,61))
+    draw.rectangle((792,110,1510,394),fill=(255,255,255))
+    draw.rectangle((799,730,1503,986),fill=(255,255,255))
+    raw=io.BytesIO()
+    master.save(raw,format="JPEG",quality=92)
+    original=raw.getvalue()
+    value='data:image/jpeg;base64,'+base64.b64encode(original).decode()
+    with TestClient(app) as anonymous:
+        assert anonymous.get('/api/brand-reference/status').status_code==401
+        assert anonymous.put('/api/brand-reference',json={'image_data':value}).status_code==401
+    with TestClient(app) as admin:
+        assert admin.post('/api/login',json={'password':'test-password'}).status_code==200
+        status=admin.get('/api/brand-reference/status')
+        assert status.status_code==200
+        assert status.json()['installed'] is False
+        assert admin.put('/api/brand-reference',json={'image_data':value}).status_code==422
+        monkeypatch.setattr(approved_template,'APPROVED_SHA256',hashlib.sha256(original).hexdigest())
+        saved=admin.put('/api/brand-reference',json={'image_data':value})
+        assert saved.status_code==200,saved.text
+        assert admin.get('/api/brand-reference/status').json()['installed'] is True
+        view=admin.get('/api/brand-reference/front')
+        assert view.status_code==200
+        assert Image.open(io.BytesIO(view.content)).size==(711,260)
+        member=admin.post('/api/members',json={
+            'name':'Equipe matriz B','role':'Desenvolvedor',
+            'whatsapp':'(34) 99662-1546','city':'Patos de Minas - MG',
+            'site':'https://nexonlabs.onrender.com'
+        })
+        assert member.status_code==201,member.text
+        mid=member.json()['id']
+        front=admin.get(f'/api/members/{mid}/brand/front?format=png')
+        assert front.status_code==200,front.text[:100]
+        # Frente institucional exportada sem nenhum redesenho, cor ou proporção diferentes.
+        assert front.content==view.content
+        signature=admin.get(f'/api/members/{mid}/brand/signature?format=png')
+        assert signature.status_code==200
+        assert Image.open(io.BytesIO(signature.content)).size==(733,292)
+        back=admin.get(f'/api/members/{mid}/brand/back?format=png')
+        assert back.status_code==200
+        assert Image.open(io.BytesIO(back.content)).size==(718,269)
+        pdf=admin.get(f'/api/members/{mid}/brand/card?format=pdf')
+        assert pdf.status_code==200,pdf.text[:120]
+        assert len(PdfReader(io.BytesIO(pdf.content)).pages)==2
+        assert admin.delete(f'/api/members/{mid}').status_code==200
