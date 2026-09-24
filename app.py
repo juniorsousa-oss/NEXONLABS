@@ -655,3 +655,7 @@ from brand_kit import install_brand_kit
 MemberBrand, member_brand_extra, member_brand_sync = install_brand_kit(
     app, Base, DB, engine, authorized, log, Member, member_dict
 )
+
+# A referência visual original fica persistida no PostgreSQL e só é instalada pelo administrador.
+from approved_template import install_reference
+ApprovedArtwork = install_reference(app, Base, DB, engine, authorized, admin_only)
