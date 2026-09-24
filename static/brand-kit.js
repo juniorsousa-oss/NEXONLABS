@@ -159,11 +159,14 @@ window.NexonBrandUI=(()=>{
         reader.onerror=()=>reject(Error('Não foi possível ler o arquivo selecionado.'));
         reader.readAsDataURL(file);
       });
-      if(!image_data.startsWith('data:image/jpeg;base64,')){
-        throw Error('A imagem selecionada precisa ser o JPEG original. Salve o arquivo do chat em Arquivos e selecione-o novamente.');
+      // Alguns seletores de arquivos do iPhone retornam MIME vazio para .jpeg.
+      // O servidor confere os bytes JPEG, as dimensões e a identidade da referência.
+      const normalized=image_data.replace(/^data:[^;]*;base64,/, 'data:image/jpeg;base64,');
+      if(!normalized.startsWith('data:image/jpeg;base64,')){
+        throw Error('Não foi possível ler o JPEG. Selecione o arquivo original salvo em Arquivos.');
       }
       fileFeedback('Enviando imagem e verificando a referência aprovada...');
-      await api('/brand-reference',{method:'PUT',body:JSON.stringify({image_data})});
+      await api('/brand-reference',{method:'PUT',body:JSON.stringify({image_data:normalized})});
       referenceReady=true;referenceChecked=true;
       closeModal();notice('Imagem aprovada instalada. As prévias de cartão e assinatura estão liberadas.');
       render();
