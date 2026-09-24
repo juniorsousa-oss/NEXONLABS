@@ -52,6 +52,26 @@ function context(file,extras={}){
   assert.match(captured.body,/city:Patos de Minas - MG/);
   assert.match(captured.body,/role:CEO \| Diretor de Criação e Branding/);
 
+  // Uma pessoa ainda não aberta não pode depender de rolar até a imagem ou
+  // de atualizar a página caso o primeiro carregamento falhe.
+  let previewMarkup='';
+  const readyMembers=context('static/brand-kit.js',{
+    state:{members:[member],projects:[],user_role:'admin'},route:'equipe',
+    api:async()=>({installed:true}),
+    modal:(title,body)=>{previewMarkup=body;}
+  });
+  readyMembers.obj.window.NexonBrandUI.page();
+  await Promise.resolve();await Promise.resolve();
+  readyMembers.handlers.click({target:{closest:()=>({
+    dataset:{brandAction:'preview',id:'42'}
+  })}});
+  assert.equal((previewMarkup.match(/loading="eager"/g)||[]).length,3);
+  assert.match(previewMarkup,/Carregando prévia/);
+  assert.match(previewMarkup,/data-brand-action="retry-image"/);
+  assert.match(previewMarkup,/data-brand-image="signature"/);
+  assert.match(previewMarkup,/data-brand-image="front"/);
+  assert.match(previewMarkup,/data-brand-image="back"/);
+
   let ticket={id:8,number:'CH-2026-00008',title:'Erro no sistema',
     client:'Cliente A',description:'Relatório com divergência',status:'aberto',priority:'normal',
     events:[],project_id:null,assignee:'',due_at:null,requester:'',contact:'',type:'erro'};
