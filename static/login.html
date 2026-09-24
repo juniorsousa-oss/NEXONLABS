@@ -1,1 +1,48 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nexon Labs | Acesso</title><link rel="icon" type="image/svg+xml" href="/static/logo.svg"><link rel="stylesheet" href="/static/style.css?v=1"></head><body class="login-page"><main class="login-card"><img src="/static/logo.svg" width="72" height="72" alt=""><h1>NEXON LABS</h1><p>Gestão de projetos · Acesso restrito</p><form id="login-form"><label for="password">Senha de acesso</label><input id="password" type="password" autocomplete="current-password" required autofocus placeholder="Digite sua senha"><button class="primary" type="submit">Entrar</button><small id="login-error" role="alert"></small></form></main><script>document.querySelector('#login-form').addEventListener('submit',async e=>{e.preventDefault();let el=document.querySelector('#login-error');el.textContent='';try{let r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.querySelector('#password').value})});if(!r.ok){el.textContent=r.status===429?'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.':'Senha incorreta.';document.querySelector('#password').value='';return}document.querySelector('#password').value='';location.assign('/')}catch{el.textContent='Não foi possível conectar ao servidor.'}})</script></body></html>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nexon Labs | Acesso</title><link rel="icon" type="image/svg+xml" href="/static/logo.svg"><link rel="stylesheet" href="/static/style.css?v=1"></head><body class="login-page"><main class="login-card"><img src="/static/logo.svg" width="72" height="72" alt=""><h1>NEXON LABS</h1><p>Gestão de projetos · Acesso restrito</p><form id="login-form"><label for="password">Senha de acesso</label><input id="password" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required autofocus placeholder="Digite sua senha"><label class="show-password"><input type="checkbox" id="reveal-password"> Mostrar senha digitada</label><button class="primary" type="submit">Entrar</button><small id="login-error" role="alert"></small></form></main><style>
+.login-card .show-password{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:#52647e;cursor:pointer}
+.login-card .show-password input{padding:0;margin:0;width:15px;height:15px;accent-color:#14B8A6}
+.login-card #login-error{line-height:1.5;min-height:18px;display:block}
+</style><script>
+const passwordInput=document.querySelector('#password');
+const errorLabel=document.querySelector('#login-error');
+document.querySelector('#reveal-password').addEventListener('change',e=>{
+  passwordInput.type=e.target.checked?'text':'password';
+});
+document.querySelector('#login-form').addEventListener('submit',async e=>{
+  e.preventDefault();
+  errorLabel.textContent='';
+  const button=e.target.querySelector('button[type="submit"]');
+  button.disabled=true;
+  try{
+    const response=await fetch('/api/login',{
+      method:'POST',
+      credentials:'same-origin',
+      cache:'no-store',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:passwordInput.value})
+    });
+    if(response.ok){
+      passwordInput.value='';
+      location.replace('/');
+      return;
+    }
+    // Não chamar erros do servidor, validação ou bloqueio de "senha incorreta".
+    if(response.status===401){
+      errorLabel.textContent='A senha não foi reconhecida. Confira as letras, os espaços e o preenchimento automático do dispositivo.';
+    }else if(response.status===429){
+      errorLabel.textContent='Muitas tentativas de acesso. Aguarde alguns minutos antes de tentar novamente.';
+    }else if(response.status===422){
+      errorLabel.textContent='Não foi possível validar os dados enviados. Atualize a página e tente novamente.';
+    }else if(response.status>=500){
+      errorLabel.textContent='O servidor não conseguiu verificar o acesso. Tente novamente em instantes; não é necessário alterar a senha.';
+    }else{
+      errorLabel.textContent='Não foi possível concluir o acesso (erro '+response.status+'). Atualize a página e tente novamente.';
+    }
+    // Não alterar o valor: o usuário pode verificar o que o navegador preencheu.
+  }catch{
+    errorLabel.textContent='Não foi possível conectar ao servidor. Verifique a conexão e tente novamente, sem alterar a senha.';
+  }finally{
+    button.disabled=false;
+  }
+});
+</script></body></html>
