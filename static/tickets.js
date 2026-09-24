@@ -66,7 +66,7 @@ window.NexonTickets = (() => {
       labelField('Contato','contact',t.contact||'','text','maxlength="180"')+
       '<label>Categoria'+select('type',typeLabels,t.type||'suporte')+'</label>'+
       '<label>Prioridade'+select('priority',priorityLabels,t.priority||'normal')+'</label>'+
-      '<label>Situação'+select('status',Object.fromEntries(Object.entries(statusLabels).filter(([key])=>!['resolvido','fechado'].includes(key)||key===t.status)),t.status||'aberto')+'</label>'+
+      '<label>Situação'+select('status',Object.fromEntries(Object.entries(statusLabels).filter(([key])=>['resolvido','fechado'].includes(t.status)?key===t.status:!['resolvido','fechado'].includes(key))),t.status||'aberto')+'</label>'+
       labelField('Responsável','assignee',t.assignee||'','text','list="ticket-owners" maxlength="140"')+
       '<datalist id="ticket-owners">'+state.members.map(m=>'<option value="'+escape(m.name)+'"></option>').join('')+'</datalist>'+
       labelField('Prazo para atendimento','due_at',t.due_at||'','date','')+
