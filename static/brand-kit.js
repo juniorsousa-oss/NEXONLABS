@@ -131,7 +131,7 @@ window.NexonBrandUI=(()=>{
     if(button)button.disabled=!file;
     if(!file){fileFeedback('Nenhum arquivo selecionado.');return;}
     const size=(file.size/1024).toFixed(0);
-    const valid=/\\.jpe?g$/i.test(file.name)||file.type==='image/jpeg';
+    const valid=/\.jpe?g$/i.test(file.name)||file.type==='image/jpeg';
     if(!valid){
       if(button)button.disabled=true;
       fileFeedback('O arquivo '+file.name+' não é JPEG. Selecione o arquivo original (.jpg ou .jpeg) da arte aprovada.',true);
