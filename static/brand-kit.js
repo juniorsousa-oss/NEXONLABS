@@ -5,6 +5,7 @@ window.NexonBrandUI=(()=>{
   const html=v=>esc(v??'');
   const site='https://nexonlabs.onrender.com';
   let busy=false,referenceReady=false,referenceChecked=false,referenceLoading=false;
+  let selectedReference='',referenceFits=false;
   async function checkReference(){
     if(referenceLoading)return;
     referenceLoading=true;
@@ -41,18 +42,26 @@ window.NexonBrandUI=(()=>{
       '</div></section>';
   }
   function installDialog(){
+    selectedReference='';referenceFits=false;
     modal('Instalar modelo aprovado — Opção B',
       '<form id="brand-template-form" class="brand-template-install">'+
-      '<p>Selecione o arquivo <strong>JPEG original da imagem aprovada</strong> (1536 × 1024 pixels). A seleção será exibida abaixo antes da instalação.</p>'+
-      '<label for="brand-template-file">Imagem de referência *<input type="file" id="brand-template-file" name="reference" accept=".jpg,.jpeg,image/jpeg" required></label>'+
+      '<p>Selecione a <strong>imagem completa da referência aprovada</strong>, com as opções A e B lado a lado, em <strong>PNG ou JPEG</strong>. Depois confira a prévia antes de instalar.</p>'+
+      '<label for="brand-template-file">Imagem aprovada *<input type="file" id="brand-template-file" name="reference" accept=".png,.jpg,.jpeg,image/png,image/jpeg" required></label>'+
       '<p id="brand-template-feedback" class="member-brand-hint brand-template-feedback" role="status" aria-live="polite">Nenhum arquivo selecionado.</p>'+
-      '<p class="member-brand-hint">Uma imagem copiada da tela ou salva novamente pelo WhatsApp pode não corresponder ao arquivo original aprovado. Nesse caso, salve o JPEG original deste chat em Arquivos e selecione esse arquivo.</p>'+
+      '<img id="brand-template-preview" class="brand-template-preview" alt="Prévia da imagem completa selecionada, incluindo a Opção B à direita" hidden>'+
+      '<label class="brand-template-confirm"><input id="brand-template-confirmed" type="checkbox" disabled> Confirmei na prévia que a arte da direita é a Opção B aprovada.</label>'+
+      '<p class="member-brand-hint">Imagem completa: 1536 × 1024 pixels, até 6 MB. Não envie uma captura apenas do cartão, nem uma imagem recortada.</p>'+
       '<div class="form-actions"><button type="button" class="secondary" data-action="close-modal">Cancelar</button>'+
       '<button id="brand-install-button" type="submit" class="primary" disabled>Instalar imagem aprovada</button></div></form>');
   }
   function fileFeedback(message,isError=false){
     const text=document.querySelector('#brand-template-feedback');
     if(text){text.textContent=message;text.classList.toggle('brand-template-error',isError);}
+  }
+  function updateInstallButton(){
+    const button=document.querySelector('#brand-install-button');
+    const checkbox=document.querySelector('#brand-template-confirmed');
+    if(button)button.disabled=!(selectedReference&&referenceFits&&checkbox?.checked);
   }
   function memberForm(m){
     const item=m||{};
@@ -124,54 +133,72 @@ window.NexonBrandUI=(()=>{
     if(action==='preview')preview(Number(button.dataset.id));
     if(action==='download')download(button);
   });
-  document.addEventListener('change',event=>{
+  document.addEventListener('change',async event=>{
+    if(event.target.id==='brand-template-confirmed'){
+      updateInstallButton();return;
+    }
     if(event.target.id!=='brand-template-file')return;
-    const input=event.target,file=input.files?.[0];
-    const button=document.querySelector('#brand-install-button');
-    if(button)button.disabled=!file;
+    const file=event.target.files?.[0];
+    const preview=document.querySelector('#brand-template-preview');
+    const confirmed=document.querySelector('#brand-template-confirmed');
+    selectedReference='';referenceFits=false;
+    if(preview){preview.hidden=true;preview.removeAttribute('src');}
+    if(confirmed){confirmed.disabled=true;confirmed.checked=false;}
+    updateInstallButton();
     if(!file){fileFeedback('Nenhum arquivo selecionado.');return;}
-    const size=(file.size/1024).toFixed(0);
-    const valid=/\.jpe?g$/i.test(file.name)||file.type==='image/jpeg';
-    if(!valid){
-      if(button)button.disabled=true;
-      fileFeedback('O arquivo '+file.name+' não é JPEG. Selecione o arquivo original (.jpg ou .jpeg) da arte aprovada.',true);
-      return;
+    const mime=file.type==='image/png'||/\\.png$/i.test(file.name)?'image/png':
+      file.type==='image/jpeg'||/\\.jpe?g$/i.test(file.name)?'image/jpeg':'';
+    if(!mime){fileFeedback('Escolha a imagem completa em PNG (.png) ou JPEG (.jpg/.jpeg).',true);return;}
+    if(file.size>6_000_000){fileFeedback('A imagem ultrapassa 6 MB. Selecione o arquivo completo até 6 MB.',true);return;}
+    fileFeedback('Lendo '+file.name+'... aguarde a prévia.');
+    try{
+      const result=await new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onload=()=>resolve(String(reader.result||''));
+        reader.onerror=()=>reject(Error('Não foi possível ler a imagem.'));
+        reader.readAsDataURL(file);
+      });
+      const encoded=result.split(',')[1];
+      if(!encoded)throw Error('Não foi possível ler os dados da imagem.');
+      const value='data:'+mime+';base64,'+encoded;
+      const image=new Image();
+      await new Promise((resolve,reject)=>{
+        image.onload=resolve;
+        image.onerror=()=>reject(Error('O arquivo não abriu como imagem válida.'));
+        image.src=value;
+      });
+      if(preview){preview.src=value;preview.hidden=false;}
+      if(image.naturalWidth!==1536||image.naturalHeight!==1024){
+        fileFeedback('Imagem selecionada: '+file.name+' ('+image.naturalWidth+' × '+image.naturalHeight+' pixels). É necessária a imagem completa de 1536 × 1024 pixels, sem recortes.',true);
+        return;
+      }
+      selectedReference=value;referenceFits=true;
+      if(confirmed)confirmed.disabled=false;
+      fileFeedback('Arquivo selecionado: '+file.name+' ('+Math.round(file.size/1024)+' KB). Confira a Opção B à direita na prévia, marque a confirmação e toque em “Instalar imagem aprovada”.');
+      updateInstallButton();
+    }catch(error){
+      fileFeedback('Não foi possível visualizar: '+(error.message||'arquivo inválido'),true);
     }
-    if(file.size>1_200_000){
-      if(button)button.disabled=true;
-      fileFeedback('O arquivo excede 1,2 MB. Selecione o JPEG original da imagem aprovada.',true);
-      return;
-    }
-    fileFeedback('Arquivo selecionado: '+file.name+' ('+size+' KB). Toque em “Instalar imagem aprovada” para concluir.');
   });
   document.addEventListener('submit',async event=>{
     if(event.target.id!=='brand-template-form')return;
     event.preventDefault();
-    const form=event.target,input=form.querySelector('#brand-template-file');
-    const file=input?.files?.[0],button=form.querySelector('#brand-install-button');
-    if(!file){fileFeedback('Selecione a imagem antes de instalar.',true);return;}
+    const form=event.target,button=form.querySelector('#brand-install-button');
+    const confirmed=form.querySelector('#brand-template-confirmed')?.checked;
+    if(!selectedReference||!referenceFits||!confirmed){
+      fileFeedback('Selecione a imagem completa, confira a prévia e marque a confirmação antes de instalar.',true);
+      return;
+    }
     if(button){button.disabled=true;button.textContent='Instalando...';}
-    fileFeedback('Lendo e verificando a imagem. Aguarde...');
+    fileFeedback('Enviando imagem e validando a referência...');
     try{
-      const image_data=await new Promise((resolve,reject)=>{
-        const reader=new FileReader();
-        reader.onload=()=>resolve(String(reader.result||''));
-        reader.onerror=()=>reject(Error('Não foi possível ler o arquivo selecionado.'));
-        reader.readAsDataURL(file);
-      });
-      // Alguns seletores de arquivos do iPhone retornam MIME vazio para .jpeg.
-      // O servidor confere os bytes JPEG, as dimensões e a identidade da referência.
-      const normalized=image_data.replace(/^data:[^;]*;base64,/, 'data:image/jpeg;base64,');
-      if(!normalized.startsWith('data:image/jpeg;base64,')){
-        throw Error('Não foi possível ler o JPEG. Selecione o arquivo original salvo em Arquivos.');
-      }
-      fileFeedback('Enviando imagem e verificando a referência aprovada...');
-      await api('/brand-reference',{method:'PUT',body:JSON.stringify({image_data:normalized})});
-      referenceReady=true;referenceChecked=true;
-      closeModal();notice('Imagem aprovada instalada. As prévias de cartão e assinatura estão liberadas.');
+      await api('/brand-reference',{method:'PUT',
+        body:JSON.stringify({image_data:selectedReference,confirmed:true})});
+      referenceReady=true;referenceChecked=true;selectedReference='';referenceFits=false;
+      closeModal();notice('Imagem instalada. Confira as prévias personalizadas antes de imprimir.');
       render();
     }catch(error){
-      fileFeedback('Não foi possível instalar: '+(error?.message||'erro desconhecido')+' O cadastro e as senhas não foram alterados.',true);
+      fileFeedback('Não foi possível instalar: '+(error?.message||'erro desconhecido')+'. Sua imagem não foi substituída.',true);
       if(button){button.disabled=false;button.textContent='Tentar instalar novamente';}
     }
   });
