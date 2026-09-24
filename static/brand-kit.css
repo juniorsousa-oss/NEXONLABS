@@ -37,3 +37,13 @@
 .brand-template-confirm input{width:18px;height:18px;flex:none;margin:1px 0 0;accent-color:#14b8a6}
 .brand-template-confirm input:disabled{opacity:.6}
 @media(max-width:610px){.brand-template-preview{max-height:210px}.brand-template-install .form-actions button{width:100%}}
+
+/* Prévia instantânea: mantém a área reservada enquanto o arquivo é carregado. */
+.brand-preview-media{position:relative;min-height:112px;display:flex;align-items:center;justify-content:center;flex-direction:column;border-radius:9px;border:1px solid #dfe8f3;background:#fff;overflow:hidden}
+.brand-preview-media>img{display:none;width:100%;height:auto;border:0;border-radius:0;object-fit:contain}
+.brand-preview-media>img.brand-image-loaded{display:block}
+.brand-preview-media>.brand-image-progress{padding:18px;color:#627693;text-align:center;font-size:12px}
+.brand-preview-media>.brand-image-error{padding:13px;text-align:center;color:#52647e;font-size:12px}
+.brand-preview-media>.brand-image-error p{margin:0 0 10px}
+.brand-preview-media>.brand-image-error button{min-height:35px}
+.brand-preview-media>[hidden]{display:none!important}
