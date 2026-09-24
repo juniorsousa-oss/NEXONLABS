@@ -41,11 +41,18 @@ window.NexonBrandUI=(()=>{
       '</div></section>';
   }
   function installDialog(){
-    modal('Instalar matriz visual Opção B',
-      '<div class="brand-template-install"><p>A imagem original aprovada será verificada antes de ativar as prévias.</p>'+
-      '<label>Imagem original com as duas opções (JPEG)<input type="file" id="brand-template-file" accept="image/jpeg" required></label>'+
-      '<p class="member-brand-hint">Use a imagem completa como foi aprovada, sem recortar, alterar ou comprimir o arquivo.</p>'+
-      '<div class="form-actions"><button type="button" class="secondary" data-action="close-modal">Cancelar</button></div></div>');
+    modal('Instalar modelo aprovado — Opção B',
+      '<form id="brand-template-form" class="brand-template-install">'+
+      '<p>Selecione o arquivo <strong>JPEG original da imagem aprovada</strong> (1536 × 1024 pixels). A seleção será exibida abaixo antes da instalação.</p>'+
+      '<label for="brand-template-file">Imagem de referência *<input type="file" id="brand-template-file" name="reference" accept=".jpg,.jpeg,image/jpeg" required></label>'+
+      '<p id="brand-template-feedback" class="member-brand-hint brand-template-feedback" role="status" aria-live="polite">Nenhum arquivo selecionado.</p>'+
+      '<p class="member-brand-hint">Uma imagem copiada da tela ou salva novamente pelo WhatsApp pode não corresponder ao arquivo original aprovado. Nesse caso, salve o JPEG original deste chat em Arquivos e selecione esse arquivo.</p>'+
+      '<div class="form-actions"><button type="button" class="secondary" data-action="close-modal">Cancelar</button>'+
+      '<button id="brand-install-button" type="submit" class="primary" disabled>Instalar imagem aprovada</button></div></form>');
+  }
+  function fileFeedback(message,isError=false){
+    const text=document.querySelector('#brand-template-feedback');
+    if(text){text.textContent=message;text.classList.toggle('brand-template-error',isError);}
   }
   function memberForm(m){
     const item=m||{};
@@ -117,23 +124,53 @@ window.NexonBrandUI=(()=>{
     if(action==='preview')preview(Number(button.dataset.id));
     if(action==='download')download(button);
   });
-  document.addEventListener('change',async event=>{
+  document.addEventListener('change',event=>{
     if(event.target.id!=='brand-template-file')return;
     const input=event.target,file=input.files?.[0];
-    if(!file)return;
-    if(file.type!=='image/jpeg'||file.size>1_200_000){
-      notice('Use a imagem JPEG original aprovada com até 1,2 MB.');input.value='';return;
+    const button=document.querySelector('#brand-install-button');
+    if(button)button.disabled=!file;
+    if(!file){fileFeedback('Nenhum arquivo selecionado.');return;}
+    const size=(file.size/1024).toFixed(0);
+    const valid=/\\.jpe?g$/i.test(file.name)||file.type==='image/jpeg';
+    if(!valid){
+      if(button)button.disabled=true;
+      fileFeedback('O arquivo '+file.name+' não é JPEG. Selecione o arquivo original (.jpg ou .jpeg) da arte aprovada.',true);
+      return;
     }
-    input.disabled=true;
+    if(file.size>1_200_000){
+      if(button)button.disabled=true;
+      fileFeedback('O arquivo excede 1,2 MB. Selecione o JPEG original da imagem aprovada.',true);
+      return;
+    }
+    fileFeedback('Arquivo selecionado: '+file.name+' ('+size+' KB). Toque em “Instalar imagem aprovada” para concluir.');
+  });
+  document.addEventListener('submit',async event=>{
+    if(event.target.id!=='brand-template-form')return;
+    event.preventDefault();
+    const form=event.target,input=form.querySelector('#brand-template-file');
+    const file=input?.files?.[0],button=form.querySelector('#brand-install-button');
+    if(!file){fileFeedback('Selecione a imagem antes de instalar.',true);return;}
+    if(button){button.disabled=true;button.textContent='Instalando...';}
+    fileFeedback('Lendo e verificando a imagem. Aguarde...');
     try{
       const image_data=await new Promise((resolve,reject)=>{
-        const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));
-        reader.onerror=()=>reject(Error('Não foi possível ler o arquivo.'));reader.readAsDataURL(file);
+        const reader=new FileReader();
+        reader.onload=()=>resolve(String(reader.result||''));
+        reader.onerror=()=>reject(Error('Não foi possível ler o arquivo selecionado.'));
+        reader.readAsDataURL(file);
       });
+      if(!image_data.startsWith('data:image/jpeg;base64,')){
+        throw Error('A imagem selecionada precisa ser o JPEG original. Salve o arquivo do chat em Arquivos e selecione-o novamente.');
+      }
+      fileFeedback('Enviando imagem e verificando a referência aprovada...');
       await api('/brand-reference',{method:'PUT',body:JSON.stringify({image_data})});
       referenceReady=true;referenceChecked=true;
-      closeModal();notice('Matriz original validada e instalada. As prévias usam a arte aprovada.');render();
-    }catch(error){notice(error.message);input.value='';input.disabled=false;}
+      closeModal();notice('Imagem aprovada instalada. As prévias de cartão e assinatura estão liberadas.');
+      render();
+    }catch(error){
+      fileFeedback('Não foi possível instalar: '+(error?.message||'erro desconhecido')+' O cadastro e as senhas não foram alterados.',true);
+      if(button){button.disabled=false;button.textContent='Tentar instalar novamente';}
+    }
   });
   return {page,memberForm};
 })();
