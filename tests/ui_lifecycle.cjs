@@ -30,7 +30,8 @@ function context(file,extras={}){
     whatsapp:'(34) 99662-1546',email:'',city:'Patos de Minas - MG',
     site:'https://nexonlabs.onrender.com'};
   const members=context('static/brand-kit.js',{
-    state:{members:[member],projects:[]},
+    state:{members:[member],projects:[],user_role:'admin'},route:'equipe',
+    api:async()=>({installed:false}),
     modal:(title,body)=>{captured={title,body};}
   });
   const list=members.obj.window.NexonBrandUI.page();
