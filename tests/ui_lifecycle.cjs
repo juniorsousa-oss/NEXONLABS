@@ -40,6 +40,9 @@ function context(file,extras={}){
   assert.match(captured.body,/id="brand-template-form"/);
   assert.match(captured.body,/id="brand-install-button"/);
   assert.match(captured.body,/id="brand-template-feedback"/);
+  assert.match(captured.body,/\.png/);
+  assert.match(captured.body,/id="brand-template-preview"/);
+  assert.match(captured.body,/id="brand-template-confirmed"/);
   assert.match(list,/Editar cadastro/);
   assert.match(list,/data-brand-action="edit" data-id="42"/);
   members.handlers.click({target:{closest:()=>({dataset:{brandAction:'edit',id:'42'}})}});
