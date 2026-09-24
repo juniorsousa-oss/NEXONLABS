@@ -35,6 +35,11 @@ function context(file,extras={}){
     modal:(title,body)=>{captured={title,body};}
   });
   const list=members.obj.window.NexonBrandUI.page();
+  members.handlers.click({target:{closest:()=>({dataset:{brandAction:'install'}})}});
+  assert.equal(captured.title,'Instalar modelo aprovado — Opção B');
+  assert.match(captured.body,/id="brand-template-form"/);
+  assert.match(captured.body,/id="brand-install-button"/);
+  assert.match(captured.body,/id="brand-template-feedback"/);
   assert.match(list,/Editar cadastro/);
   assert.match(list,/data-brand-action="edit" data-id="42"/);
   members.handlers.click({target:{closest:()=>({dataset:{brandAction:'edit',id:'42'}})}});
@@ -67,6 +72,13 @@ function context(file,extras={}){
   tickets.obj.render=()=>{displayed=tickets.obj.window.NexonTickets.page();};
   await tickets.obj.window.NexonTickets.load();
   displayed=tickets.obj.window.NexonTickets.page();
+  assert.match(displayed,/Concluir e fechar/);
+  assert.match(displayed,/Marcar como resolvido/);
+  await tickets.handlers.click({target:{closest:()=>({dataset:{ticketAction:'open',id:'8'}})}});
+  assert.match(displayed,/Atualizar situação do chamado/);
+  assert.match(displayed,/Em atendimento/);
+  assert.match(displayed,/Aguardando cliente/);
+  assert.match(displayed,/Marcar como resolvido/);
   assert.match(displayed,/Concluir e fechar/);
   await tickets.handlers.click({target:{closest:()=>({dataset:{ticketAction:'transition',id:'8',status:'fechado'}})}});
   assert.match(displayed,/ticket-transition-form/);
