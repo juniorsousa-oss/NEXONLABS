@@ -128,17 +128,42 @@ window.NexonTickets = (() => {
     const button=event.target.closest('[data-ticket-action]');
     if(!button)return;
     const action=button.dataset.ticketAction,id=Number(button.dataset.id);
+    if(action==='transition'){
+      const target=tickets.find(t=>t.id===id);
+      if(!target){notice('Chamado não encontrado. Atualize a página.');return;}
+      detail=id;editing=null;showEditor=false;transition={id,status:button.dataset.status};render();
+      document.querySelector('#ticket-transition-form textarea')?.focus();return;
+    }
+    if(action==='cancel-transition'){transition=null;render();return;}
     if(action==='new'){editing=null;detail=null;showEditor=true;render();return;}
     if(action==='filter'){filter=button.dataset.value;detail=null;showEditor=false;render();return;}
     if(action==='retry'){loaded=false;error='';render();return;}
-    if(action==='open'){detail=id;showEditor=false;render();return;}
-    if(action==='edit'){editing=tickets.find(t=>t.id===id);showEditor=true;render();return;}
-    if(action==='back'){showEditor=false;editing=null;detail=null;render();return;}
+    if(action==='open'){detail=id;transition=null;showEditor=false;render();return;}
+    if(action==='edit'){editing=tickets.find(t=>t.id===id);transition=null;showEditor=true;render();return;}
+    if(action==='back'){showEditor=false;editing=null;detail=null;transition=null;render();return;}
   });
   document.addEventListener('submit',async event=>{
     const form=event.target;
-    if(form.id!=='ticket-form'&&form.id!=='ticket-comment-form')return;
+    if(form.id!=='ticket-form'&&form.id!=='ticket-comment-form'&&form.id!=='ticket-transition-form')return;
     event.preventDefault();
+    if(form.id==='ticket-transition-form'){
+      if(submitting||!transition)return;
+      submitting=true;
+      const submit=form.querySelector('button[type="submit"]');
+      if(submit)submit.disabled=true;
+      try{
+        const targetId=Number(form.dataset.id),status=transition.status;
+        const updated=await api('/tickets/'+targetId+'/transition',{
+          method:'POST',body:JSON.stringify({status,message:form.elements.message.value})
+        });
+        detail=updated.id;transition=null;
+        notice(status==='fechado'?'Chamado fechado e registrado no histórico.':
+          status==='resolvido'?'Chamado resolvido.':status==='aberto'?'Chamado reaberto.':'Situação atualizada.');
+        await reload();
+      }catch(err){notice(err.message);if(submit)submit.disabled=false;}
+      finally{submitting=false;}
+      return;
+    }
     if(form.id==='ticket-form'){
       const values=Object.fromEntries(new FormData(form).entries());
       values.project_id=values.project_id?Number(values.project_id):null;
