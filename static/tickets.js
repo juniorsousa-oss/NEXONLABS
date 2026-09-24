@@ -33,6 +33,21 @@ window.NexonTickets = (() => {
         .map(([value,label])=>'<button type="button" class="tab '+(filter===value?'active':'')+'" data-ticket-action="filter" data-value="'+value+'">'+label+'</button>').join('')+
       '</div>';
   }
+  function statusActions(t,compact=false){
+    const current=t.status;
+    const actions=current==='fechado'?[['aberto','Reabrir chamado']]:
+      current==='resolvido'?[['fechado','Fechar chamado'],['em_atendimento','Retomar atendimento']]:
+      [
+        ...(current==='aberto'?[['em_atendimento','Em atendimento']]:[['aberto','Reabrir atendimento']]),
+        ...(current!=='aguardando_cliente'?[['aguardando_cliente','Aguardando cliente']]:[]),
+        ['resolvido','Marcar como resolvido'],
+        ['fechado','Concluir e fechar']
+      ];
+    const visible=compact?(current==='fechado'?actions:current==='resolvido'?[actions[0]]:actions.filter(([key])=>key==='resolvido'||key==='fechado')):actions;
+    return '<div class="'+(compact?'ticket-row-actions':'ticket-workflow-actions')+'" role="group" aria-label="Alterar situação do chamado">'+
+      visible.map(([status,label])=>'<button type="button" class="'+(status==='resolvido'?'primary':'secondary')+
+        '" data-ticket-action="transition" data-id="'+t.id+'" data-status="'+status+'">'+label+'</button>').join('')+'</div>';
+  }
   function ticketRow(t){
     const project=state.projects.find(p=>p.id===t.project_id);
     return '<div class="ticket-row-wrap"><button type="button" class="ticket-row" data-ticket-action="open" data-id="'+t.id+'">'+
@@ -42,11 +57,7 @@ window.NexonTickets = (() => {
       '<span class="ticket-priority priority-'+t.priority+'">'+escape(priorityLabels[t.priority])+'</span>'+
       '<small>Responsável: '+escape(t.assignee||'Não atribuído')+'</small>'+
       '<small>Prazo: '+localDate(t.due_at)+'</small></div></button>'+
-      '<div class="ticket-row-actions">'+
-      (t.status==='fechado'?'<button type="button" class="secondary" data-ticket-action="transition" data-id="'+t.id+'" data-status="aberto">Reabrir</button>':
-       t.status==='resolvido'?'<button type="button" class="secondary" data-ticket-action="transition" data-id="'+t.id+'" data-status="fechado">Fechar chamado</button>':
-       '<button type="button" class="secondary" data-ticket-action="transition" data-id="'+t.id+'" data-status="fechado">Concluir e fechar</button>')+
-      '</div></div>';
+      statusActions(t,true)+'</div>';
   }
   function listing(){
     let visible=tickets.slice();
@@ -83,10 +94,7 @@ window.NexonTickets = (() => {
     return '<section class="panel ticket-detail"><div class="ticket-detail-top"><div><span class="muted">'+escape(t.number)+' · '+escape(typeLabels[t.type])+'</span>'+
       '<h2>'+escape(t.title)+'</h2></div><div class="ticket-detail-actions"><button type="button" class="secondary" data-ticket-action="back">Voltar</button>'+
       '<button type="button" class="secondary" data-ticket-action="edit" data-id="'+t.id+'">'+icon('edit')+' Editar</button>'+
-      (t.status==='fechado'?'<button type="button" class="primary" data-ticket-action="transition" data-id="'+t.id+'" data-status="aberto">Reabrir chamado</button>':
-       t.status==='resolvido'?'<button type="button" class="primary" data-ticket-action="transition" data-id="'+t.id+'" data-status="fechado">Fechar chamado</button>'+
-          '<button type="button" class="secondary" data-ticket-action="transition" data-id="'+t.id+'" data-status="aberto">Reabrir</button>':
-       '<button type="button" class="primary" data-ticket-action="transition" data-id="'+t.id+'" data-status="fechado">Concluir e fechar</button>')+'</div></div>'+
+      '</div></div>'+ 
       '<div class="ticket-detail-tags"><span class="ticket-status status-'+t.status+'">'+escape(statusLabels[t.status])+'</span>'+
       '<span class="ticket-priority priority-'+t.priority+'">'+escape(priorityLabels[t.priority])+'</span></div>'+
       '<div class="ticket-details-grid"><div><small>Cliente</small><strong>'+escape(t.client)+'</strong></div>'+
@@ -96,6 +104,9 @@ window.NexonTickets = (() => {
       '<div><small>Projeto</small><strong>'+escape(project?.name||'Não vinculado')+'</strong></div>'+
       '<div><small>Prazo</small><strong>'+localDate(t.due_at)+'</strong></div></div>'+
       '<div class="ticket-description"><h3>Descrição</h3><p>'+escape(t.description)+'</p></div>'+
+      '<section class="ticket-workflow"><h3>Atualizar situação do chamado</h3>'+
+      '<p class="muted">Situação atual: <strong>'+escape(statusLabels[t.status])+'</strong>. Escolha a próxima etapa e registre uma justificativa.</p>'+
+      statusActions(t,false)+'</section>'+
       (transition?.id===t.id?transitionForm(t):'')+'<div class="ticket-history"><h3>Histórico de atendimento</h3>'+
       '<div class="ticket-events">'+(events.length?events.map(e=>'<div class="ticket-event"><span class="ticket-event-dot"></span>'+
         '<div><small>'+when(e.created_at)+' · '+(e.kind==='comentario'?'Registro':e.kind==='alteracao'?'Atualização':e.kind==='situacao'?'Mudança de situação':'Abertura')+'</small>'+
