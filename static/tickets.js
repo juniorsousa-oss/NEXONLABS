@@ -66,7 +66,7 @@ window.NexonTickets = (() => {
       labelField('Contato','contact',t.contact||'','text','maxlength="180"')+
       '<label>Categoria'+select('type',typeLabels,t.type||'suporte')+'</label>'+
       '<label>Prioridade'+select('priority',priorityLabels,t.priority||'normal')+'</label>'+
-      '<label>Situação'+select('status',statusLabels,t.status||'aberto')+'</label>'+
+      '<label>Situação'+select('status',Object.fromEntries(Object.entries(statusLabels).filter(([key])=>!['resolvido','fechado'].includes(key)||key===t.status)),t.status||'aberto')+'</label>'+
       labelField('Responsável','assignee',t.assignee||'','text','list="ticket-owners" maxlength="140"')+
       '<datalist id="ticket-owners">'+state.members.map(m=>'<option value="'+escape(m.name)+'"></option>').join('')+'</datalist>'+
       labelField('Prazo para atendimento','due_at',t.due_at||'','date','')+
@@ -96,18 +96,31 @@ window.NexonTickets = (() => {
       '<div><small>Projeto</small><strong>'+escape(project?.name||'Não vinculado')+'</strong></div>'+
       '<div><small>Prazo</small><strong>'+localDate(t.due_at)+'</strong></div></div>'+
       '<div class="ticket-description"><h3>Descrição</h3><p>'+escape(t.description)+'</p></div>'+
-      '<div class="ticket-history"><h3>Histórico de atendimento</h3>'+
+      (transition?.id===t.id?transitionForm(t):'')+'<div class="ticket-history"><h3>Histórico de atendimento</h3>'+
       '<div class="ticket-events">'+(events.length?events.map(e=>'<div class="ticket-event"><span class="ticket-event-dot"></span>'+
-        '<div><small>'+when(e.created_at)+' · '+(e.kind==='comentario'?'Registro':e.kind==='alteracao'?'Atualização':'Abertura')+'</small>'+
+        '<div><small>'+when(e.created_at)+' · '+(e.kind==='comentario'?'Registro':e.kind==='alteracao'?'Atualização':e.kind==='situacao'?'Mudança de situação':'Abertura')+'</small>'+
         '<p>'+escape(e.message)+'</p></div></div>').join(''):'<p class="muted">Nenhum registro.</p>')+'</div>'+
       '<form id="ticket-comment-form" data-ticket-id="'+t.id+'"><label>Novo registro / andamento<textarea name="message" required minlength="2" maxlength="4000" placeholder="Registre o contato com o cliente, a análise ou a solução aplicada..."></textarea></label>'+
       '<div class="ticket-form-actions"><button class="primary" type="submit">Adicionar registro</button></div></form></div></section>';
+  }
+  function transitionForm(ticket){
+    const choices={aberto:'Reabrir chamado',em_atendimento:'Iniciar ou retomar atendimento',
+      aguardando_cliente:'Aguardar cliente',resolvido:'Marcar como resolvido',fechado:'Concluir e fechar chamado'};
+    const action=transition.status;
+    return '<form id="ticket-transition-form" class="ticket-transition-box" data-id="'+ticket.id+'">'+
+      '<h3>'+escape(choices[action])+'</h3>'+
+      '<p class="muted">Registre a solução aplicada ou o motivo da mudança. O relato ficará no histórico do chamado.</p>'+
+      '<label>Relato do atendimento / justificativa *<textarea name="message" required minlength="5" maxlength="4000" '+
+      'placeholder="Descreva a solução aplicada, o resultado ou o motivo da reabertura..."></textarea></label>'+
+      '<div class="ticket-form-actions">'+
+      '<button type="button" class="secondary" data-ticket-action="cancel-transition">Cancelar</button>'+
+      '<button type="submit" class="primary" '+(submitting?'disabled':'')+'>'+escape(choices[action])+'</button></div></form>';
   }
   function page(){
     if(!loaded&&!loading)load();
     let content=error?'<section class="panel"><p>'+escape(error)+'</p><button class="secondary" type="button" data-ticket-action="retry">Tentar novamente</button></section>':
       !loaded?'<section class="panel"><p class="muted">Carregando chamados...</p></section>':
-      showEditor?editor():detail?detailPage(tickets.find(t=>t.id===detail)||tickets[0]):listing();
+      showEditor?editor():detail?(tickets.find(t=>t.id===detail)?detailPage(tickets.find(t=>t.id===detail)):listing()):listing();
     return heading('Chamados','Registre solicitações de clientes, acompanhe responsáveis, prazos e o histórico do atendimento.',
       '<button type="button" class="primary" data-ticket-action="new">'+icon('plus')+' Novo chamado</button>')+content;
   }
