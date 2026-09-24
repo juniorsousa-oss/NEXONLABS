@@ -44,3 +44,16 @@
 .ticket-history form{border-top:1px solid var(--border);padding-top:16px}
 @media(max-width:1050px){.tickets-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ticket-details-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.ticket-fields,.ticket-row{grid-template-columns:minmax(0,1fr)}.ticket-row-meta{justify-content:flex-start}.ticket-row-meta small{text-align:left}.ticket-details-grid{grid-template-columns:minmax(0,1fr)}.ticket-detail-top h2{font-size:19px}}
+
+/* Encerramento de chamados: ação inequívoca sem abrir o formulário de edição. */
+.ticket-row-wrap{border:1px solid #dfe8f3;border-radius:12px;background:#fff;overflow:hidden}
+.ticket-row-wrap .ticket-row{border:0;border-radius:0}
+.ticket-row-actions{display:flex;justify-content:flex-end;gap:8px;padding:0 15px 12px}
+.ticket-row-actions button{font-size:11px;min-height:35px}
+.ticket-transition-box{margin:18px 0 0;padding:16px;border-radius:11px;border:1px solid #a6dcd5;background:#f4fbfa}
+.ticket-transition-box h3{margin:0 0 7px;font-size:15px;color:var(--navy)}
+.ticket-transition-box p{font-size:12px;line-height:1.55;margin:0 0 12px}
+.ticket-transition-box label{display:flex;flex-direction:column;gap:8px;font-size:12px;font-weight:600}
+.ticket-transition-box textarea{min-height:100px;width:100%;padding:11px 12px;border:1px solid #c5dfe0;border-radius:9px;resize:vertical;background:#fff;color:var(--ink)}
+.ticket-finalized-at{font-size:12px}
+@media(max-width:680px){.ticket-row-actions{justify-content:flex-start}}
