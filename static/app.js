@@ -46,7 +46,7 @@ function homePriorityPanel(){
 }
 function homeUpcomingMeetings(){
   const now=new Date(),today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
-  const upcoming=(state.meetings||[]).filter(m=>m.meeting_date>=today)
+  const upcoming=(state.meetings||[]).filter(m=>m.meeting_date>=today&&m.status==='agendada')
     .slice().sort((a,b)=>(a.meeting_date+a.start_time).localeCompare(b.meeting_date+b.start_time)).slice(0,3);
   return '<section class="panel home-meetings-panel"><div class="panel-head"><h2>Próximas reuniões</h2>'+
     '<button type="button" class="small-link" data-route="reunioes">Ver agenda</button></div>'+
