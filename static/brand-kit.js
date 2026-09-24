@@ -12,7 +12,7 @@ window.NexonBrandUI=(()=>{
       const response=await api('/brand-reference/status');
       referenceReady=Boolean(response.installed);referenceChecked=true;
     }catch(e){referenceChecked=true;notice(e.message);}
-    finally{referenceLoading=false;if(route==='equipe')render();}
+    finally{referenceLoading=false;if(typeof route!=='undefined'&&route==='equipe'&&typeof render==='function')render();}
   }
   function avatar(member){return html(initials(member.name))}
   function page(){
