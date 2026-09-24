@@ -96,6 +96,16 @@ class Meeting(Base):
     notes: Mapped[str] = mapped_column(Text, default='')
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+class MeetingClosure(Base):
+    """Histórico de conclusão independente dos agendamentos existentes."""
+    __tablename__='meeting_closures'
+    meeting_id: Mapped[int]=mapped_column(ForeignKey('meetings.id',ondelete='CASCADE'),primary_key=True)
+    status: Mapped[str]=mapped_column(String(16),nullable=False,default='agendada')
+    note: Mapped[str]=mapped_column(Text,nullable=False,default='')
+    updated_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc))
+    updated_by: Mapped[str]=mapped_column(String(120),nullable=False,default='')
+
+
 Base.metadata.create_all(engine)
 from accounts_module import setup_accounts, public, session_user, find_by_password, password_in_use, hash_password, verify_password, MAX_ACCOUNTS
 Account = setup_accounts(Base, engine, DB)
@@ -431,7 +441,7 @@ def state(request: Request, db: Session = Depends(session)):
     activities = db.scalars(select(Activity).order_by(Activity.id.desc()).limit(30)).all()
     meetings = db.scalars(select(Meeting).order_by(Meeting.meeting_date, Meeting.start_time, Meeting.id)).all()
     return dict(projects=[project_dict(p) for p in projects], tasks=[task_dict(t) for t in tasks],
-                meetings=[meeting_dict(m) for m in meetings],
+                meetings=[meeting_dict(m,db) for m in meetings],
                 members=[member_dict(m,db) for m in members],
                 activities=[dict(id=a.id, message=a.message, created_at=stamp(a.created_at)) for a in activities],
                 user=authorized(request)['name'],
@@ -530,11 +540,16 @@ def remove_member(member_id: int, db: Session = Depends(session)):
     if profile:db.delete(profile)
     db.delete(member);db.commit();return {'ok':True}
 
-def meeting_dict(m: Meeting):
+def meeting_dict(m: Meeting, db: Session):
+    lifecycle=db.get(MeetingClosure,m.id)
     return dict(id=m.id, title=m.title, client=m.client, project_id=m.project_id,
                 meeting_date=m.meeting_date.isoformat(), start_time=m.start_time,
                 end_time=m.end_time, location=m.location, meeting_url=m.meeting_url,
-                notes=m.notes, created_at=stamp(m.created_at))
+                notes=m.notes, created_at=stamp(m.created_at),
+                status=lifecycle.status if lifecycle else 'agendada',
+                closure_note=lifecycle.note if lifecycle else '',
+                closure_at=stamp(lifecycle.updated_at) if lifecycle else None,
+                closure_by=lifecycle.updated_by if lifecycle else '')
 
 def validate_meeting(data: MeetingIn, db: Session):
     if not data.title.strip():
@@ -554,7 +569,7 @@ def add_meeting(data: MeetingIn, db: Session = Depends(session)):
     log(db, f'Reunião {meeting.title} agendada para {meeting.meeting_date.isoformat()}.')
     db.commit()
     db.refresh(meeting)
-    return meeting_dict(meeting)
+    return meeting_dict(meeting,db)
 
 @app.put('/api/meetings/{meeting_id}', dependencies=[Depends(authorized)])
 def edit_meeting(meeting_id: int, data: MeetingIn, db: Session = Depends(session)):
@@ -567,14 +582,47 @@ def edit_meeting(meeting_id: int, data: MeetingIn, db: Session = Depends(session
     log(db, f'Reunião {meeting.title} atualizada.')
     db.commit()
     db.refresh(meeting)
-    return meeting_dict(meeting)
+    return meeting_dict(meeting,db)
+
+class MeetingOutcomeIn(BaseModel):
+    status: Literal['agendada','realizada','cancelada']
+    note: str = Field(min_length=5,max_length=2000)
+
+    @field_validator('note')
+    @classmethod
+    def clean_note(cls,value):
+        value=value.strip()
+        if len(value)<5:raise ValueError('Registre ao menos 5 caracteres sobre o resultado ou motivo.')
+        return value
+
+@app.post('/api/meetings/{meeting_id}/outcome', dependencies=[Depends(authorized)])
+def set_meeting_outcome(meeting_id: int, data: MeetingOutcomeIn, request: Request, db: Session=Depends(session)):
+    meeting=db.get(Meeting,meeting_id)
+    if meeting is None:raise HTTPException(404,'Reunião não encontrada.')
+    existing=db.get(MeetingClosure,meeting_id)
+    current=existing.status if existing else 'agendada'
+    if current==data.status:raise HTTPException(409,'A reunião já está nesta situação.')
+    actor=authorized(request)['name']
+    if existing is None:
+        existing=MeetingClosure(meeting_id=meeting_id)
+        db.add(existing)
+    existing.status=data.status
+    existing.note=data.note
+    existing.updated_at=datetime.now(timezone.utc)
+    existing.updated_by=actor
+    log(db,f'Reunião {meeting.id} {data.status} por {actor}.')
+    db.commit()
+    return meeting_dict(meeting,db)
 
 @app.delete('/api/meetings/{meeting_id}', dependencies=[Depends(authorized)])
 def remove_meeting(meeting_id: int, db: Session = Depends(session)):
     meeting = db.get(Meeting, meeting_id)
     if meeting is None:
         raise HTTPException(404, 'Reunião não encontrada.')
-    log(db, f'Reunião {meeting.title} cancelada.')
+    # Exclusão é distinta do cancelamento: preserve a reunião cancelada no histórico.
+    lifecycle=db.get(MeetingClosure,meeting_id)
+    if lifecycle:db.delete(lifecycle)
+    log(db, f'Reunião {meeting.title} excluída.')
     db.delete(meeting)
     db.commit()
     return {'ok': True}
