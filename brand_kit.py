@@ -7,6 +7,7 @@ As artes de colaboradores são documentos internos autenticados.
 from __future__ import annotations
 
 import io
+import os
 import html
 import math
 import re
@@ -316,7 +317,30 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
             raise HTTPException(422,'A assinatura está disponível em PNG ou HTML.')
         member=member_or_404(db,member_id)
         data=member_data(db,member)
-        if kind=='card':
+        # Nunca mostrar a reconstrução aproximada em produção quando o layout
+        # aprovado não estiver instalado. Somente a matriz original é aceita.
+        from approved_template import faces as approved_faces, draw_personalized, encode as approved_png
+        from approved_template import signature_html as approved_html, card_pdf as approved_pdf
+        from app import ApprovedArtwork
+        source=db.get(ApprovedArtwork,1)
+        if source is None and os.getenv('APP_ENV')=='production':
+            raise HTTPException(409,'A Opção B original ainda não foi instalada. Um administrador precisa carregar a imagem aprovada em Colaboradores.')
+        if source is not None:
+            with Image.open(io.BytesIO(source.image)) as original:
+                parts=approved_faces(original)
+            front=draw_personalized(parts['front'],data,'front')
+            back=draw_personalized(parts['back'],data,'back')
+            if kind=='card':
+                content=approved_pdf(front,back);media='application/pdf';filename='cartao'
+            else:
+                art=draw_personalized(parts[kind],data,kind)
+                png=approved_png(art)
+                if format=='html':
+                    content=approved_html(data,png).encode('utf-8')
+                    media='text/html; charset=utf-8';filename='assinatura'
+                else:
+                    content=png;media='image/png';filename=kind
+        elif kind=='card':
             content=card_pdf(data);media='application/pdf';filename='cartao'
         else:
             art=render(data,kind);png=image_png(art)
