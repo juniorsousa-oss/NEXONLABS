@@ -331,3 +331,53 @@ def test_user_avatar_upload_is_private_normalized_and_removable():
         assert admin.delete('/api/profile/avatar').status_code == 200
         assert admin.get('/api/state').json()['has_photo'] is False
         assert admin.get('/api/profile/avatar').status_code == 404
+
+
+def test_same_password_on_independent_devices_and_session_cookie():
+    """Simula computadores, celulares e navegador novo na mesma instalação."""
+    with TestClient(app) as admin:
+        login = admin.post('/api/login', json={'password':'test-password'})
+        assert login.status_code == 200, login.text
+        user = admin.post('/api/accounts', json={
+            'name':'Acesso multiplataforma','password':'Acesso-Portatil-736',
+            'role':'usuario'
+        })
+        assert user.status_code == 201, user.text
+        uid = user.json()['id']
+        # Cada cliente tem cookies próprios e user-agent diferente.
+        with TestClient(app, headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0) Chrome/126'}) as desktop, \
+             TestClient(app, headers={'User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile Safari'}) as phone, \
+             TestClient(app, headers={'User-Agent':'Mozilla/5.0 (Linux; Android 15) Chrome/126 Mobile'}) as other:
+            for browser in (desktop, phone, other):
+                assert 'Senha de acesso' in browser.get('/').text
+                response=browser.post('/api/login',json={'password':'Acesso-Portatil-736'})
+                assert response.status_code==200, response.text
+                assert response.json()['user']['id']==uid
+                state=browser.get('/api/state')
+                assert state.status_code==200, state.text
+                assert state.json()['user_id']==uid
+                assert state.json()['user']=='Acesso multiplataforma'
+                assert 'NEXON LABS' in browser.get('/').text
+            # Alterar a senha encerra as sessões anteriores de todos os dispositivos.
+            updated=admin.put(f'/api/accounts/{uid}',json={
+                'name':'Acesso multiplataforma','role':'usuario','active':True,
+                'new_password':'Senha-Nova-736'
+            })
+            assert updated.status_code==200, updated.text
+            for browser in (desktop,phone,other):
+                assert browser.get('/api/state').status_code==401
+                assert browser.post('/api/login',json={'password':'Acesso-Portatil-736'}).status_code==401
+                assert browser.post('/api/login',json={'password':'Senha-Nova-736'}).status_code==200
+                assert browser.get('/api/state').json()['user_id']==uid
+
+
+def test_login_error_page_distinguishes_password_and_server_failures():
+    with TestClient(app) as client:
+        page=client.get('/')
+        assert page.status_code==200
+        source=page.text
+        assert 'response.status===401' in source
+        assert 'response.status===429' in source
+        assert 'response.status>=500' in source
+        assert "fetch('/api/state'" in source
+        assert 'este navegador não manteve a sessão' in source
