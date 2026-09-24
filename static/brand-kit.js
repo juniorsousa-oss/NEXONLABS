@@ -18,7 +18,7 @@ window.NexonBrandUI=(()=>{
         '<p>'+html(m.role||'Colaborador')+(m.email?' · '+html(m.email):'')+'</p>'+
         '<small>'+html(m.whatsapp||'WhatsApp não informado')+' · '+html(m.city||'Cidade não informada')+'</small></div></div>'+
         '<div class="member-brand-actions">'+
-        '<button type="button" class="secondary" data-brand-action="edit" data-id="'+m.id+'">Editar</button>'+
+        '<button type="button" class="secondary" data-brand-action="edit" data-id="'+m.id+'" aria-label="Editar cadastro de '+html(m.name)+'">'+icon('edit')+' Editar cadastro</button>'+
         '<button type="button" class="primary" data-brand-action="preview" data-id="'+m.id+'">'+icon('file')+' Cartão e assinatura</button>'+
         '<button type="button" class="danger" data-action="delete-member" data-id="'+m.id+'">Remover</button>'+
         '</div></div>').join(''):
