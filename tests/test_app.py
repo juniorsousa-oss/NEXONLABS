@@ -572,3 +572,58 @@ def test_quote_approve_reject_actions():
         assert approved.status_code==200,approved.text
         assert approved.json()['status']=='aprovado'
         assert client.put(f"/api/quotes/{quote['id']}",json={**approved.json(),'status':'recusado'}).status_code==409
+
+
+def test_ticket_explicit_close_reopen_with_reason():
+    from fastapi.testclient import TestClient
+    payload = {
+        'title':'Falha em tela de cliente','client':'Cliente Teste',
+        'description':'Ao salvar pedido aparece erro de comunicação.',
+        'status':'aberto','priority':'normal','type':'suporte',
+        'assignee':'Atendimento'
+    }
+    with TestClient(app) as c:
+        assert c.post('/api/tickets/99999/transition',json={
+            'status':'fechado','message':'Chamado investigado e resolvido.'
+        }).status_code==401
+        assert c.post('/api/login',json={'password':'test-password'}).status_code==200
+        created=c.post('/api/tickets',json=payload)
+        assert created.status_code==201,created.text
+        ticket=created.json()
+        tid=ticket['id']
+        endpoint=f'/api/tickets/{tid}/transition'
+        # Não permitir fechar por um PUT genérico sem explicar a conclusão.
+        illegal=c.put(f'/api/tickets/{tid}',json={**payload,'status':'fechado'})
+        assert illegal.status_code==422
+        assert c.post(endpoint,json={'status':'fechado','message':' '}).status_code==422
+        assert c.post(endpoint,json={'status':'fechado','message':'nada'}).status_code==422
+        closed=c.post(endpoint,json={'status':'fechado',
+            'message':'Correção aplicada, conferida e comunicada ao cliente.'})
+        assert closed.status_code==200,closed.text
+        assert closed.json()['status']=='fechado'
+        assert closed.json()['closed_at']
+        history=closed.json()['events']
+        assert len(history)==2
+        assert history[-1]['kind']=='situacao'
+        assert 'Correção aplicada' in history[-1]['message']
+        assert c.post(endpoint,json={'status':'fechado','message':'Já fechado.'}).status_code==409
+        assert c.put(f'/api/tickets/{tid}',json={**payload,'status':'aberto'}).status_code==422
+        assert c.post(endpoint,json={'status':'aguardando_cliente',
+            'message':'Aguardar mais detalhes.'}).status_code==409
+        reopened=c.post(endpoint,json={'status':'aberto',
+            'message':'Cliente informou recorrência do erro e solicitou nova análise.'})
+        assert reopened.status_code==200,reopened.text
+        assert reopened.json()['status']=='aberto'
+        assert reopened.json()['closed_at'] is None
+        assert len(reopened.json()['events'])==3
+        assert any('reabert' in e['message'].lower() or 'Aberto' in e['message']
+            for e in reopened.json()['events'])
+        assert c.post('/api/tickets/999999/transition',json={
+            'status':'fechado','message':'Tentativa sem registro válido.'
+        }).status_code==404
+        c.post(endpoint,json={'status':'resolvido','message':'Ajuste novamente testado.'})
+        resolved=c.get('/api/tickets').json()
+        assert next(x for x in resolved if x['id']==tid)['status']=='resolvido'
+        finally_closed=c.post(endpoint,json={'status':'fechado','message':'Cliente confirmou normalização.'})
+        assert finally_closed.status_code==200,finally_closed.text
+        assert finally_closed.json()['status']=='fechado'
