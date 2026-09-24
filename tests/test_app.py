@@ -381,3 +381,81 @@ def test_login_error_page_distinguishes_password_and_server_failures():
         assert 'response.status>=500' in source
         assert "fetch('/api/state'" in source
         assert 'este navegador não manteve a sessão' in source
+
+
+def test_colaborador_brand_kit_aprovado():
+    """Pessoa com cadastro existente recebe novos campos sem quebra de dados,
+    e PDFs/PNGs/HTML só são fornecidos em sessão autenticada."""
+    from io import BytesIO
+    from PIL import Image
+    from pypdf import PdfReader
+    with TestClient(app) as anonymous:
+        assert anonymous.get('/api/members/1/brand/card?format=pdf').status_code==401
+        assert anonymous.get('/api/members/1/brand/signature?format=png').status_code==401
+    with TestClient(app) as client:
+        assert client.post('/api/login',json={'password':'test-password'}).status_code==200
+        existing=client.post('/api/members',json={'name':'Colaborador pré-existente','role':'Operações'})
+        assert existing.status_code==201,existing.text
+        existing_id=existing.json()['id']
+        previous=next(x for x in client.get('/api/state').json()['members'] if x['id']==existing_id)
+        assert previous['whatsapp']==''
+        assert previous['name']=='Colaborador pré-existente'
+        assert previous['city']=='Patos de Minas - MG'
+        assert previous['site']=='https://nexonlabs.onrender.com'
+
+        invalid=client.post('/api/members',json={
+            'name':'Pessoa com link inválido','site':'javascript:alert(1)'
+        })
+        assert invalid.status_code==422
+        payload={
+            'name':'Júnior Andrade','role':'CEO | Diretor de Criação e Branding',
+            'email':'','whatsapp':'(34) 99662-1546',
+            'city':'Patos de Minas - MG','site':'https://nexonlabs.onrender.com'
+        }
+        user=client.post('/api/members',json=payload)
+        assert user.status_code==201,user.text
+        mid=user.json()['id']
+        assert user.json()['whatsapp']==payload['whatsapp']
+        assert user.json()['role']==payload['role']
+        assert user.json()['email']==''
+        root=f'/api/members/{mid}/brand/'
+        for kind,size in (('front',(1134,661)),('back',(1134,661)),('signature',(1180,455))):
+            response=client.get(root+kind+'?format=png')
+            assert response.status_code==200,(kind,response.text[:150])
+            assert response.headers['content-type']=='image/png'
+            assert response.headers['cache-control']=='private, no-store'
+            img=Image.open(BytesIO(response.content))
+            assert img.size==size
+        rendered=client.get(root+'card?format=pdf')
+        assert rendered.status_code==200,rendered.text[:150]
+        assert rendered.content.startswith(b'%PDF')
+        pages=PdfReader(BytesIO(rendered.content)).pages
+        assert len(pages)==2
+        from reportlab.lib.units import mm
+        assert abs(float(pages[0].mediabox.width)-96*mm)<0.1
+        assert abs(float(pages[0].mediabox.height)-56*mm)<0.1
+        html=client.get(root+'signature?format=html')
+        assert html.status_code==200
+        assert 'Júnior Andrade' in html.text
+        assert 'https://wa.me/5534996621546' in html.text
+        assert 'https://nexonlabs.onrender.com' in html.text
+        assert 'data:image/png;base64,' in html.text
+        assert client.get(root+'card?format=png').status_code==422
+        assert client.get(root+'signature?format=pdf').status_code==422
+        assert client.get('/api/members/999999/brand/card?format=pdf').status_code==404
+        updated=client.put(f'/api/members/{mid}',json={
+            **payload,'name':'Júnior Atualizado','whatsapp':'','city':'Uberlândia - MG',
+            'site':'https://exemplo.com','email':'junior@example.com'
+        })
+        assert updated.status_code==200,updated.text
+        assert updated.json()['whatsapp']==''
+        assert updated.json()['site']=='https://exemplo.com'
+        assert updated.json()['city']=='Uberlândia - MG'
+        saved=next(x for x in client.get('/api/state').json()['members'] if x['id']==mid)
+        assert saved['name']=='Júnior Atualizado'
+        assert saved['email']=='junior@example.com'
+        generated=client.get(root+'signature?format=html').text
+        assert 'https://exemplo.com' in generated
+        assert 'wa.me/' not in generated
+        assert client.delete(f'/api/members/{mid}').status_code==200
+        assert client.get(root+'card?format=pdf').status_code==404
