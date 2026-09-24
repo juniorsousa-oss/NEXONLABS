@@ -548,3 +548,27 @@ def test_meeting_completion_and_reopening():
         assert canceled.json()['closure_note'].startswith('Reunião cancelada')
         assert client.delete(f'/api/meetings/{mid}').status_code==200
         assert not any(item['id']==mid for item in client.get('/api/state').json()['meetings'])
+
+
+def test_quote_approve_reject_actions():
+    with TestClient(app) as client:
+        assert client.post('/api/login',json={'password':'test-password'}).status_code==200
+        payload={
+            'client_name':'Empresa Beta','project_name':'Sistema de controle',
+            'scope':'Desenvolvimento de uma aplicação de controle interno.',
+            'items':[{'title':'Etapa de desenvolvimento','quantity':1,'hours_per_unit':10}],
+            'hourly_cost':'65.00','status':'rascunho'
+        }
+        created=client.post('/api/quotes',json=payload)
+        assert created.status_code==201,created.text
+        quote=created.json()
+        # Mesmo corpo que a tabela de orçamentos envia ao clicar em Recusar.
+        declined=client.put(f"/api/quotes/{quote['id']}",json={**quote,'status':'recusado'})
+        assert declined.status_code==200,declined.text
+        assert declined.json()['status']=='recusado'
+        resumed=client.put(f"/api/quotes/{quote['id']}",json={**declined.json(),'status':'rascunho'})
+        assert resumed.status_code==200,resumed.text
+        approved=client.put(f"/api/quotes/{quote['id']}",json={**resumed.json(),'status':'aprovado'})
+        assert approved.status_code==200,approved.text
+        assert approved.json()['status']=='aprovado'
+        assert client.put(f"/api/quotes/{quote['id']}",json={**approved.json(),'status':'recusado'}).status_code==409
