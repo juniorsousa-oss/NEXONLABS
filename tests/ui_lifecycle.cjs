@@ -61,7 +61,8 @@ function context(file,extras={}){
     modal:(title,body)=>{previewMarkup=body;}
   });
   readyMembers.obj.window.NexonBrandUI.page();
-  await Promise.resolve();await Promise.resolve();
+  // A consulta de disponibilidade da matriz conclui antes de abrir a prévia.
+  await new Promise(resolve=>setImmediate(resolve));
   readyMembers.handlers.click({target:{closest:()=>({
     dataset:{brandAction:'preview',id:'42'}
   })}});
