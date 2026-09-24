@@ -687,3 +687,47 @@ def test_reference_original_pixel_fidelity(monkeypatch):
         assert pdf.status_code==200,pdf.text[:120]
         assert len(PdfReader(io.BytesIO(pdf.content)).pages)==2
         assert admin.delete(f'/api/members/{mid}').status_code==200
+
+
+def test_reference_png_can_be_uploaded_after_visual_confirmation():
+    import base64
+    import io
+    from PIL import Image
+    from pypdf import PdfReader
+    with TestClient(app) as c:
+        assert c.post('/api/login',json={'password':'test-password'}).status_code==200
+        reference=Image.new('RGB',(1536,1024),(247,249,252))
+        from PIL import ImageDraw
+        draw=ImageDraw.Draw(reference)
+        draw.rectangle((795,430,1510,700),fill=(12,42,65))
+        draw.rectangle((790,105,1520,400),fill=(255,255,255))
+        draw.rectangle((790,720,1515,994),fill=(255,255,255))
+        buf=io.BytesIO();reference.save(buf,format='PNG')
+        raw=buf.getvalue()
+        value='data:image/png;base64,'+base64.b64encode(raw).decode()
+        assert c.put('/api/brand-reference',json={'image_data':value}).status_code==422
+        wrong=Image.new('RGB',(900,700),(247,249,252))
+        buf_wrong=io.BytesIO();wrong.save(buf_wrong,format='PNG')
+        wrong_value='data:image/png;base64,'+base64.b64encode(buf_wrong.getvalue()).decode()
+        resized=c.put('/api/brand-reference',json={'image_data':wrong_value,'confirmed':True})
+        assert resized.status_code==422
+        assert '1536' in resized.json()['detail']
+        saved=c.put('/api/brand-reference',json={'image_data':value,'confirmed':True})
+        assert saved.status_code==200,saved.text
+        assert saved.json()['installed'] is True
+        assert saved.json()['exact_original_file'] is False
+        assert c.get('/api/brand-reference/status').json()['installed'] is True
+        for kind,sz in (('signature',(733,292)),('front',(711,260)),('back',(718,269))):
+            response=c.get('/api/brand-reference/'+kind)
+            assert response.status_code==200
+            assert Image.open(io.BytesIO(response.content)).size==sz
+        member=c.post('/api/members',json={'name':'Colaborador PNG','role':'Técnico'})
+        assert member.status_code==201,member.text
+        mid=member.json()['id']
+        front=c.get(f'/api/members/{mid}/brand/front?format=png')
+        assert front.status_code==200,front.text[:120]
+        assert Image.open(io.BytesIO(front.content)).size==(711,260)
+        pdf=c.get(f'/api/members/{mid}/brand/card?format=pdf')
+        assert pdf.status_code==200
+        assert len(PdfReader(io.BytesIO(pdf.content)).pages)==2
+        assert c.delete(f'/api/members/{mid}').status_code==200
