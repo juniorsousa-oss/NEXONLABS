@@ -4,11 +4,26 @@
 window.NexonBrandUI=(()=>{
   const html=v=>esc(v??'');
   const site='https://nexonlabs.onrender.com';
-  let busy=false;
+  let busy=false,referenceReady=false,referenceChecked=false,referenceLoading=false;
+  async function checkReference(){
+    if(referenceLoading)return;
+    referenceLoading=true;
+    try{
+      const response=await api('/brand-reference/status');
+      referenceReady=Boolean(response.installed);referenceChecked=true;
+    }catch(e){referenceChecked=true;notice(e.message);}
+    finally{referenceLoading=false;if(route==='equipe')render();}
+  }
   function avatar(member){return html(initials(member.name))}
   function page(){
+    if(!referenceChecked&&!referenceLoading)checkReference();
     return heading('Equipe','Colaboradores, dados profissionais e materiais da Nexon Labs.',
       '<button type="button" class="primary" data-brand-action="new">'+icon('plus')+' Adicionar colaborador</button>')+
+      (!referenceChecked?'<section class="panel"><p class="muted">Verificando o modelo visual aprovado...</p></section>':
+       !referenceReady?'<section class="panel brand-template-warning"><h2>Matriz visual Opção B pendente</h2>'+
+        '<p>Para preservar a arte original, a geração é liberada apenas após a instalação da imagem aprovada.</p>'+
+        (state.user_role==='admin'?'<button type="button" class="primary" data-brand-action="install">Instalar matriz visual aprovada</button>':
+         '<p>Peça ao administrador para instalar a referência aprovada.</p>')+'</section>':'')+
       '<section class="panel"><div class="panel-head"><h2>Colaboradores</h2>'+
       '<span class="muted">'+state.members.length+' cadastrados</span></div>'+
       '<div class="list-stack member-brand-list">'+
@@ -19,11 +34,18 @@ window.NexonBrandUI=(()=>{
         '<small>'+html(m.whatsapp||'WhatsApp não informado')+' · '+html(m.city||'Cidade não informada')+'</small></div></div>'+
         '<div class="member-brand-actions">'+
         '<button type="button" class="secondary" data-brand-action="edit" data-id="'+m.id+'" aria-label="Editar cadastro de '+html(m.name)+'">'+icon('edit')+' Editar cadastro</button>'+
-        '<button type="button" class="primary" data-brand-action="preview" data-id="'+m.id+'">'+icon('file')+' Cartão e assinatura</button>'+
+        '<button type="button" class="primary" data-brand-action="preview" data-id="'+m.id+'" '+(!referenceReady?'disabled title="Aguarde a instalação da matriz aprovada"':'')+'>'+icon('file')+' Cartão e assinatura</button>'+
         '<button type="button" class="danger" data-action="delete-member" data-id="'+m.id+'">Remover</button>'+
         '</div></div>').join(''):
         empty('Equipe ainda não cadastrada','Adicione os colaboradores para gerar materiais personalizados.','new-member'))+
       '</div></section>';
+  }
+  function installDialog(){
+    modal('Instalar matriz visual Opção B',
+      '<div class="brand-template-install"><p>A imagem original aprovada será verificada antes de ativar as prévias.</p>'+
+      '<label>Imagem original com as duas opções (JPEG)<input type="file" id="brand-template-file" accept="image/jpeg" required></label>'+
+      '<p class="member-brand-hint">Use a imagem completa como foi aprovada, sem recortar, alterar ou comprimir o arquivo.</p>'+
+      '<div class="form-actions"><button type="button" class="secondary" data-action="close-modal">Cancelar</button></div></div>');
   }
   function memberForm(m){
     const item=m||{};
@@ -45,6 +67,7 @@ window.NexonBrandUI=(()=>{
   function preview(id){
     const member=state.members.find(m=>m.id===id);
     if(!member)return;
+    if(!referenceReady){notice('Instale o modelo original aprovado para liberar a geração.');return;}
     modal('Materiais de identidade — '+member.name,
       '<div class="brand-kit-preview"><p class="member-brand-hint">'+
       'Modelo Opção B aprovado: assinatura com bloco azul-marinho e diagonal turquesa; cartão escuro na frente, cartão claro no verso com QR Code e serviços à direita.</p>'+
@@ -88,10 +111,29 @@ window.NexonBrandUI=(()=>{
     const button=event.target.closest('[data-brand-action]');
     if(!button)return;
     const action=button.dataset.brandAction;
+    if(action==='install')installDialog();
     if(action==='new')memberForm();
     if(action==='edit')memberForm(state.members.find(m=>m.id===Number(button.dataset.id)));
     if(action==='preview')preview(Number(button.dataset.id));
     if(action==='download')download(button);
+  });
+  document.addEventListener('change',async event=>{
+    if(event.target.id!=='brand-template-file')return;
+    const input=event.target,file=input.files?.[0];
+    if(!file)return;
+    if(file.type!=='image/jpeg'||file.size>1_200_000){
+      notice('Use a imagem JPEG original aprovada com até 1,2 MB.');input.value='';return;
+    }
+    input.disabled=true;
+    try{
+      const image_data=await new Promise((resolve,reject)=>{
+        const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));
+        reader.onerror=()=>reject(Error('Não foi possível ler o arquivo.'));reader.readAsDataURL(file);
+      });
+      await api('/brand-reference',{method:'PUT',body:JSON.stringify({image_data})});
+      referenceReady=true;referenceChecked=true;
+      closeModal();notice('Matriz original validada e instalada. As prévias usam a arte aprovada.');render();
+    }catch(error){notice(error.message);input.value='';input.disabled=false;}
   });
   return {page,memberForm};
 })();
