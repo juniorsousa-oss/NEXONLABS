@@ -82,6 +82,9 @@ window.NexonQuotes = (() => {
       '<td><span class="quote-pill quote-'+clean(q.effective_status)+'">'+clean(statusText[q.effective_status]||q.effective_status)+'</span></td>'+
       '<td>'+curr(q.pricing.setup_price)+'</td><td>'+curr(q.pricing.monthly_price)+'</td>'+
       '<td class="quote-controls"><button class="secondary" type="button" data-quote-action="edit" data-id="'+q.id+'">Editar</button>'+
+      (!q.project_id&&q.status!=='aprovado'&&q.status!=='recusado'?'<button class="secondary" type="button" data-quote-action="decision" data-status="aprovado" data-id="'+q.id+'">Aprovar</button>'+
+      '<button class="secondary" type="button" data-quote-action="decision" data-status="recusado" data-id="'+q.id+'">Recusar</button>':'')+
+      (!q.project_id&&q.status==='recusado'?'<button class="secondary" type="button" data-quote-action="decision" data-status="rascunho" data-id="'+q.id+'">Retomar negociação</button>':'')+
       '<a class="secondary quote-pdf" href="/api/quotes/'+q.id+'/pdf" download="orcamento-'+clean(q.number)+'.pdf">'+icon('download')+' PDF</a>'+
       (q.status==='aprovado'&&!q.project_id?'<button class="secondary" type="button" data-quote-action="convert" data-id="'+q.id+'">Criar projeto</button>':'')+
       (q.project_id?'<button class="secondary" type="button" data-route="projetos">Ver projeto</button>':'')+
@@ -155,6 +158,25 @@ window.NexonQuotes = (() => {
     }
     if(action==='delete' && confirm('Excluir este orçamento em elaboração?')){
       try{await api('/quotes/'+id,{method:'DELETE'});notice('Orçamento excluído.');await load();}catch(err){notice(err.message);}
+      return;
+    }
+    if(action==='decision'){
+      const quote=quotes.find(q=>q.id===id);
+      const status=button.dataset.status;
+      if(!quote||!['aprovado','recusado','rascunho'].includes(status))return;
+      if(quote.project_id){notice('Orçamento já convertido em projeto.');return;}
+      const label={aprovado:'Aprovar',recusado:'Recusar',rascunho:'Retomar negociação'}[status];
+      if(!confirm(label+' a proposta '+quote.number+'?'))return;
+      button.disabled=true;
+      try{
+        const updated=await api('/quotes/'+id,{
+          method:'PUT',body:JSON.stringify({...quote,status})
+        });
+        await load();
+        notice(updated.status==='aprovado'?'Proposta aprovada. Você já pode criar o projeto.':
+          updated.status==='recusado'?'Proposta recusada e mantida no histórico.':'Negociação retomada.');
+      }catch(err){notice(err.message);}
+      finally{button.disabled=false;}
       return;
     }
     if(action==='convert' && confirm('Criar um projeto a partir deste orçamento aprovado?')){
