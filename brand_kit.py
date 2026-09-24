@@ -364,7 +364,7 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
         data=member_data(db,member)
         # Nunca mostrar a reconstrução aproximada em produção quando o layout
         # aprovado não estiver instalado. Somente a matriz original é aceita.
-        from approved_template import faces as approved_faces, draw_personalized, encode as approved_png
+        from approved_template import cached_faces as approved_faces, draw_personalized, encode as approved_png
         from approved_template import signature_html as approved_html, card_pdf as approved_pdf
         from app import ApprovedArtwork
         source=db.get(ApprovedArtwork,1)
@@ -372,8 +372,7 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
             raise HTTPException(409,'A Opção B original ainda não foi instalada. Um administrador precisa carregar a imagem aprovada em Colaboradores.')
         def generate():
             if source is not None:
-                with Image.open(io.BytesIO(source.image)) as original:
-                    parts=approved_faces(original)
+                parts=approved_faces(source.image)
                 if kind=='card':
                     front=draw_personalized(parts['front'],data,'front')
                     back=draw_personalized(parts['back'],data,'back')
