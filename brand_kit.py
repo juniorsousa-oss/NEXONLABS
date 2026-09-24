@@ -11,10 +11,14 @@ import os
 import html
 import math
 import re
+import hashlib
+import json
+import threading
+from collections import OrderedDict
 from functools import lru_cache
 from urllib.parse import quote
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import ForeignKey, String, select
@@ -273,6 +277,47 @@ def signature_html(member,png):
             '</td></tr><tr><td style="padding:7px 4px;font-size:12px;color:#0b2d4a">'+extra+
             '</td></tr></table></body></html>')
 
+# Pequeno cache de renderização em cada processo: a chave depende da imagem
+# aprovada e dos dados usados na arte. Não há gravação de imagens em disco.
+# O servidor pode reiniciar; isso não invalida a matriz persistida no PostgreSQL.
+_BRAND_CACHE = OrderedDict()
+_BRAND_CACHE_BYTES = 0
+_BRAND_CACHE_MAX_BYTES = 18_000_000
+_BRAND_CACHE_LOCK = threading.RLock()
+
+def cached_artifact(key, make):
+    global _BRAND_CACHE_BYTES
+    with _BRAND_CACHE_LOCK:
+        result=_BRAND_CACHE.get(key)
+        if result is not None:
+            _BRAND_CACHE.move_to_end(key)
+            return result
+    content,media,filename=make()
+    etag='"'+hashlib.sha256(content).hexdigest()+'"'
+    value=(content,media,filename,etag)
+    if len(content)<=_BRAND_CACHE_MAX_BYTES:
+        with _BRAND_CACHE_LOCK:
+            existing=_BRAND_CACHE.get(key)
+            if existing is not None:
+                _BRAND_CACHE.move_to_end(key)
+                return existing
+            _BRAND_CACHE[key]=value
+            _BRAND_CACHE_BYTES+=len(content)
+            while _BRAND_CACHE_BYTES>_BRAND_CACHE_MAX_BYTES:
+                _,old=_BRAND_CACHE.popitem(last=False)
+                _BRAND_CACHE_BYTES-=len(old[0])
+    return value
+
+def artifact_key(data,reference,kind,fmt):
+    # A edição de qualquer dado ou a troca da imagem-matriz altera a chave.
+    value=hashlib.sha256()
+    value.update(b'nexon-brand-b-cache-v1\\0')
+    value.update(hashlib.sha256(reference or b'').digest())
+    value.update(json.dumps(data,sort_keys=True,ensure_ascii=False).encode('utf-8'))
+    value.update(kind.encode('ascii'))
+    value.update(fmt.encode('ascii'))
+    return value.digest()
+
 def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
     class MemberBrand(Base):
         __tablename__='member_brand_profiles'
@@ -306,7 +351,7 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
         return member
 
     @app.get('/api/members/{member_id}/brand/{kind}',dependencies=[Depends(authorized)])
-    def export(member_id:int,kind:str,format:str='png',db:Session=Depends(session)):
+    def export(member_id:int,kind:str,format:str='png',request:Request=None,db:Session=Depends(session)):
         if kind not in ('front','back','card','signature'):
             raise HTTPException(404,'Material não encontrado.')
         if (kind=='card' and format!='pdf') or format not in ('png','pdf','html'):
@@ -325,36 +370,43 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
         source=db.get(ApprovedArtwork,1)
         if source is None and os.getenv('APP_ENV')=='production':
             raise HTTPException(409,'A Opção B original ainda não foi instalada. Um administrador precisa carregar a imagem aprovada em Colaboradores.')
-        if source is not None:
-            with Image.open(io.BytesIO(source.image)) as original:
-                parts=approved_faces(original)
-            front=draw_personalized(parts['front'],data,'front')
-            back=draw_personalized(parts['back'],data,'back')
-            if kind=='card':
-                content=approved_pdf(front,back);media='application/pdf';filename='cartao'
-            else:
+        def generate():
+            if source is not None:
+                with Image.open(io.BytesIO(source.image)) as original:
+                    parts=approved_faces(original)
+                if kind=='card':
+                    front=draw_personalized(parts['front'],data,'front')
+                    back=draw_personalized(parts['back'],data,'back')
+                    return approved_pdf(front,back),'application/pdf','cartao'
                 art=draw_personalized(parts[kind],data,kind)
                 png=approved_png(art)
                 if format=='html':
-                    content=approved_html(data,png).encode('utf-8')
-                    media='text/html; charset=utf-8';filename='assinatura'
-                else:
-                    content=png;media='image/png';filename=kind
-        elif kind=='card':
-            content=card_pdf(data);media='application/pdf';filename='cartao'
-        else:
-            art=render(data,kind);png=image_png(art)
+                    return approved_html(data,png).encode('utf-8'),'text/html; charset=utf-8','assinatura'
+                return png,'image/png',kind
+            if kind=='card':
+                return card_pdf(data),'application/pdf','cartao'
+            art=render(data,kind)
+            png=image_png(art)
             if format=='html':
-                content=signature_html(data,png).encode('utf-8')
-                media='text/html; charset=utf-8';filename='assinatura'
-            else:
-                content=png;media='image/png';filename=kind
+                return signature_html(data,png).encode('utf-8'),'text/html; charset=utf-8','assinatura'
+            return png,'image/png',kind
+
+        # Cachear imagens por conteúdo da matriz + informações do colaborador.
+        # Uma alteração nesses dados provoca geração nova sem exibir versão antiga.
+        key=artifact_key(data,source.image if source is not None else None,kind,format)
+        content,media,filename,etag=cached_artifact(key,generate)
+        common={'ETag':etag,'Vary':'Cookie',
+                'Cache-Control':'private, no-cache, must-revalidate',
+                'X-Content-Type-Options':'nosniff'}
+        # Na reabertura da página, o navegador reaproveita os bytes locais se
+        # o arquivo não foi alterado; a rota segue exigindo sessão autenticada.
+        if request is not None and request.headers.get('if-none-match')==etag:
+            return Response(status_code=304,headers=common)
         safe=re.sub(r'[^a-z0-9]+','-',member.name.lower()).strip('-') or 'colaborador'
         ext='pdf' if format=='pdf' else 'html' if format=='html' else 'png'
         return Response(content=content,media_type=media,headers={
-            'Content-Disposition':f'attachment; filename="nexonlabs_{safe}_{filename}.{ext}"',
-            'Cache-Control':'private, no-store',
-            'X-Content-Type-Options':'nosniff'
+            **common,
+            'Content-Disposition':f'attachment; filename="nexonlabs_{safe}_{filename}.{ext}"'
         })
 
     return MemberBrand,extra,sync
