@@ -450,7 +450,12 @@ def test_colaborador_brand_kit_aprovado():
             response=client.get(root+kind+'?format=png')
             assert response.status_code==200,(kind,response.text[:150])
             assert response.headers['content-type']=='image/png'
-            assert response.headers['cache-control']=='private, no-store'
+            assert response.headers['cache-control']=='private, no-cache, must-revalidate'
+            etag=response.headers['etag']
+            cached=client.get(root+kind+'?format=png',headers={'If-None-Match':etag})
+            assert cached.status_code==304
+            assert cached.content==b''
+            assert cached.headers['etag']==etag
             img=Image.open(BytesIO(response.content))
             assert img.size==size
         rendered=client.get(root+'card?format=pdf')
@@ -470,6 +475,7 @@ def test_colaborador_brand_kit_aprovado():
         assert client.get(root+'card?format=png').status_code==422
         assert client.get(root+'signature?format=pdf').status_code==422
         assert client.get('/api/members/999999/brand/card?format=pdf').status_code==404
+        previous_etag=client.get(root+'signature?format=png').headers['etag']
         updated=client.put(f'/api/members/{mid}',json={
             **payload,'name':'Júnior Atualizado','whatsapp':'','city':'Uberlândia - MG',
             'site':'https://exemplo.com','email':'junior@example.com'
@@ -481,6 +487,15 @@ def test_colaborador_brand_kit_aprovado():
         saved=next(x for x in client.get('/api/state').json()['members'] if x['id']==mid)
         assert saved['name']=='Júnior Atualizado'
         assert saved['email']=='junior@example.com'
+        changed_image=client.get(root+'signature?format=png')
+        assert changed_image.status_code==200
+        # ETag antigo não pode devolver imagem com dados anteriores à edição.
+        old_image_etag=client.get(root+'signature?format=png').headers['etag']
+        assert changed_image.headers['etag']==old_image_etag
+        assert changed_image.headers['etag']!=previous_etag
+        stale=client.get(root+'signature?format=png',headers={'If-None-Match':previous_etag})
+        assert stale.status_code==200
+        assert stale.headers['etag']==changed_image.headers['etag']
         generated=client.get(root+'signature?format=html').text
         assert 'https://exemplo.com' in generated
         assert 'wa.me/' not in generated
