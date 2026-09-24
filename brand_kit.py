@@ -351,7 +351,7 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
         return member
 
     @app.get('/api/members/{member_id}/brand/{kind}',dependencies=[Depends(authorized)])
-    def export(member_id:int,kind:str,format:str='png',request:Request=None,db:Session=Depends(session)):
+    def export(member_id:int,kind:str,request:Request,format:str='png',db:Session=Depends(session)):
         if kind not in ('front','back','card','signature'):
             raise HTTPException(404,'Material não encontrado.')
         if (kind=='card' and format!='pdf') or format not in ('png','pdf','html'):
