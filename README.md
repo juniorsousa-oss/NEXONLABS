@@ -49,6 +49,19 @@ Em **Cartão e assinatura** há prévias com os dados salvos e as exportações:
 
 **Referência visual:** composição **Opção B — Tecnológica e Moderna** aprovada: assinatura escuro/branco com separação diagonal turquesa, frente azul-marinho com elemento de teclado no lado direito e chamada "DA IDEIA À OPERAÇÃO"; verso branco com QR central e faixa escura de quatro serviços. As formas, letras e efeitos são recriados digitalmente, portanto não representam uma cópia de pixels da montagem em imagem; conferir as prévias e uma prova da gráfica antes da impressão definitiva. A imagem da assinatura HTML é incorporada como data URI, que pode ser bloqueada por alguns clientes de e-mail; nesses casos, use o PNG ou hospede a imagem em HTTPS.
 
+## Ciclo de vida dos cadastros — revisão operacional
+
+Toda operação possui um caminho de atualização e, quando aplicável, de conclusão ou reabertura:
+
+- **Colaboradores:** adicionar, **Editar cadastro** (nome/cargo/contatos), gerar materiais e remover com confirmação. Os registros já existentes permanecem no banco; usuários com senha são geridos separadamente em Configurações.
+- **Chamados:** abrir, editar dados, iniciar atendimento, registrar contato, **Concluir e fechar** com relato obrigatório, consultar a data/histórico e **Reabrir** com justificativa. Fechados saem do filtro Ativos, mas permanecem nos filtros Todos/Fechados.
+- **Reuniões:** agendar e editar, **Concluir** com resultado, **Cancelar** com motivo, **Reabrir** quando necessário. Realizadas e canceladas continuam em Todas as reuniões; não são exibidas como próximas reuniões.
+- **Projetos:** cadastrar e editar; na ação do projeto, **Concluir** depois de finalizar tarefas pendentes, ou **Reabrir**. Tarefas podem ser concluídas/desmarcadas; a conclusão de projeto não apaga tarefas.
+- **Orçamentos:** elaborar, alterar a situação comercial, **Aprovar**, **Recusar**, **Retomar negociação** dos recusados e converter um aprovado em projeto quando for aplicável. Aprovados e convertidos têm restrições de edição para proteger o histórico comercial.
+- **Usuários do sistema:** cadastrados em Configurações, podem ser editados, ter o acesso desativado e a senha redefinida. Desativação revoga sessões antigas.
+
+Esta revisão inclui testes de API e de ligação das ações visíveis da interface; ainda é necessário conferir o resultado no ambiente Render após cada deploy. A alteração de status de um chamado ou reunião registra uma justificativa; a exclusão definitiva continua sendo uma ação distinta de conclusão ou cancelamento.
+
 ## Identidade visual
 
 - `static/style.css`: layout e paleta com **DESIGN LOCK v1**;
