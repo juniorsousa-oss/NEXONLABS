@@ -7,7 +7,7 @@ import json
 from datetime import date, datetime, timezone
 from typing import Literal
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
@@ -40,6 +40,19 @@ class TicketInput(BaseModel):
         if not self.title or not self.client or not self.description:
             raise ValueError("Informe título, cliente e descrição.")
         return self
+
+
+class TicketTransitionIn(BaseModel):
+    status: Literal["aberto", "em_atendimento", "aguardando_cliente", "resolvido", "fechado"]
+    message: str = Field(min_length=5, max_length=4000)
+
+    @field_validator("message")
+    @classmethod
+    def tidy_reason(cls, value: str):
+        value = value.strip()
+        if len(value) < 5:
+            raise ValueError("Descreva o atendimento, a solução ou o motivo em pelo menos 5 caracteres.")
+        return value
 
 
 class TicketCommentInput(BaseModel):
@@ -115,6 +128,8 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
 
     @app.post("/api/tickets", dependencies=[Depends(authorized)], status_code=201)
     def add_ticket(data: TicketInput, db: Session = Depends(session)):
+        if data.status != "aberto":
+            raise HTTPException(422, "Novos chamados começam abertos; atualize o andamento depois do cadastro.")
         verify_project(db, data.project_id)
         record = Ticket(payload=data.model_dump_json(), project_id=data.project_id)
         db.add(record)
@@ -132,6 +147,10 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
             raise HTTPException(404, "Chamado não encontrado.")
         verify_project(db, data.project_id)
         previous = TicketInput.model_validate_json(record.payload)
+        if data.status != previous.status and (
+            data.status in ("resolvido", "fechado") or previous.status in ("resolvido", "fechado")
+        ):
+            raise HTTPException(422, "Para concluir, fechar ou reabrir um chamado, utilize a ação específica e registre o motivo.")
         changed = []
         labels = {
             "status": "Situação",
@@ -171,6 +190,43 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
                 audit.append(entry[:360])
         db.add(TicketEvent(ticket_id=record.id, kind="alteracao", message="; ".join(audit)[:1800]))
         log(db, f"Chamado {record.id} atualizado.")
+        db.commit()
+        db.refresh(record)
+        return to_dict(record, db)
+
+    @app.post("/api/tickets/{ticket_id}/transition", dependencies=[Depends(authorized)])
+    def transition_ticket(ticket_id: int, data: TicketTransitionIn, request: Request,
+                          db: Session = Depends(session)):
+        record = db.get(Ticket, ticket_id)
+        if record is None:
+            raise HTTPException(404, "Chamado não encontrado.")
+        previous = TicketInput.model_validate_json(record.payload)
+        before, after = previous.status, data.status
+        if before == after:
+            raise HTTPException(409, "O chamado já está nessa situação.")
+        # Um chamado fechado ou resolvido só volta a operar mediante reabertura registrada.
+        if before in ("fechado", "resolvido") and after not in ("aberto", "em_atendimento", "fechado"):
+            raise HTTPException(409, "Reabra o chamado antes de atualizar o andamento.")
+        if before == "fechado" and after == "fechado":
+            raise HTTPException(409, "O chamado já está fechado.")
+        # Um chamado resolvido pode ser fechado ou reaberto; um fechado pode apenas ser reaberto.
+        if before == "fechado" and after not in ("aberto", "em_atendimento"):
+            raise HTTPException(409, "Reabra o chamado antes de alterar a situação.")
+        if before == "resolvido" and after == "fechado":
+            pass
+        elif before == "resolvido" and after not in ("aberto", "em_atendimento"):
+            raise HTTPException(409, "Reabra o chamado ou finalize o fechamento.")
+        previous.status = after
+        record.payload = previous.model_dump_json()
+        record.updated_at = datetime.now(timezone.utc)
+        record.closed_at = record.updated_at if after == "fechado" else None
+        labels = {"aberto": "Aberto", "em_atendimento": "Em atendimento",
+                  "aguardando_cliente": "Aguardando cliente", "resolvido": "Resolvido",
+                  "fechado": "Fechado"}
+        current = authorized(request)
+        message = f"{labels[before]} → {labels[after]} por {current['name']}. {data.message}"
+        db.add(TicketEvent(ticket_id=record.id, kind="situacao", message=message))
+        log(db, f"Chamado {record.id}: {labels[before]} → {labels[after]} por {current['name']}.")
         db.commit()
         db.refresh(record)
         return to_dict(record, db)
