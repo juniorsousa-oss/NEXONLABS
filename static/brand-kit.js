@@ -80,6 +80,28 @@ window.NexonBrandUI=(()=>{
   function artUrl(id,kind,format='png'){
     return '/api/members/'+encodeURIComponent(String(id))+'/brand/'+encodeURIComponent(kind)+'?format='+encodeURIComponent(format);
   }
+  function previewImage(id,kind,alt){
+    const url=artUrl(id,kind);
+    return '<div class="brand-preview-media" data-brand-media="'+kind+'">'+
+      '<p class="brand-image-progress" role="status">Carregando prévia...</p>'+
+      '<img loading="eager" decoding="async" data-brand-image="'+kind+'" src="'+url+'" alt="'+html(alt)+'">'+
+      '<div class="brand-image-error" hidden><p>Não foi possível carregar esta imagem. Tente novamente sem sair da tela.</p>'+
+      '<button type="button" class="secondary" data-brand-action="retry-image">Tentar novamente</button></div></div>';
+  }
+  function retryImage(image){
+    const media=image?.closest('[data-brand-media]');
+    if(!media)return;
+    const progress=media.querySelector('.brand-image-progress');
+    const error=media.querySelector('.brand-image-error');
+    if(progress){progress.hidden=false;progress.textContent='Recarregando prévia...';}
+    if(error)error.hidden=true;
+    image.classList.remove('brand-image-loaded');
+    image.dataset.retryCount=String(Number(image.dataset.retryCount||0)+1);
+    // Apenas falhas usam URL única; tentativas normais continuam usando o cache.
+    const url=new URL(image.getAttribute('src'),location.href);
+    url.searchParams.set('retry',String(Date.now()));
+    image.src=url.pathname+url.search;
+  }
   function preview(id){
     const member=state.members.find(m=>m.id===id);
     if(!member)return;
@@ -88,13 +110,13 @@ window.NexonBrandUI=(()=>{
       '<div class="brand-kit-preview"><p class="member-brand-hint">'+
       'Modelo Opção B aprovado: assinatura com bloco azul-marinho e diagonal turquesa; cartão escuro na frente, cartão claro no verso com QR Code e serviços à direita.</p>'+
       '<div class="brand-kit-block"><h3>Assinatura de e-mail</h3>'+
-      '<img loading="lazy" src="'+artUrl(id,'signature')+'" alt="Prévia da assinatura de '+html(member.name)+'">'+
+      previewImage(id,'signature','Prévia da assinatura de '+member.name)+
       '<div class="brand-kit-downloads"><button class="secondary" type="button" data-brand-action="download" data-id="'+id+'" data-kind="signature" data-format="png">Baixar PNG</button>'+
       '<button class="secondary" type="button" data-brand-action="download" data-id="'+id+'" data-kind="signature" data-format="html">Baixar HTML</button></div></div>'+
       '<div class="brand-kit-block"><h3>Cartão de visita · frente</h3>'+
-      '<img loading="lazy" src="'+artUrl(id,'front')+'" alt="Prévia da frente do cartão">'+
+      previewImage(id,'front','Prévia da frente do cartão de '+member.name)+
       '</div><div class="brand-kit-block"><h3>Cartão de visita · verso</h3>'+
-      '<img loading="lazy" src="'+artUrl(id,'back')+'" alt="Prévia do verso personalizado do cartão">'+
+      previewImage(id,'back','Prévia do verso do cartão de '+member.name)+
       '</div><div class="brand-kit-downloads">'+
       '<button class="primary" type="button" data-brand-action="download" data-id="'+id+'" data-kind="card" data-format="pdf">'+icon('download')+' Cartão PDF para gráfica</button>'+
       '<button class="secondary" type="button" data-brand-action="download" data-id="'+id+'" data-kind="front" data-format="png">Frente PNG</button>'+
@@ -103,6 +125,30 @@ window.NexonBrandUI=(()=>{
       '<p class="member-brand-hint">O QR Code aponta para o site cadastrado. Se o endereço for o do app Nexon Labs, visitantes verão a tela de login, não uma página pública de apresentação.</p>'+
       '</div>');
   }
+  // load e error de <img> não borbulham; o terceiro argumento captura ambos.
+  document.addEventListener('load',event=>{
+    const image=event.target;
+    if(image?.dataset?.brandImage===undefined)return;
+    const media=image.closest('[data-brand-media]');
+    if(!media)return;
+    image.classList.add('brand-image-loaded');
+    const progress=media.querySelector('.brand-image-progress');
+    const error=media.querySelector('.brand-image-error');
+    if(progress)progress.hidden=true;
+    if(error)error.hidden=true;
+  },true);
+  document.addEventListener('error',event=>{
+    const image=event.target;
+    if(image?.dataset?.brandImage===undefined)return;
+    const media=image.closest('[data-brand-media]');
+    if(!media)return;
+    // Uma falha transitória do Render ou da rede recebe uma tentativa automática.
+    if(Number(image.dataset.retryCount||0)<1){retryImage(image);return;}
+    const progress=media.querySelector('.brand-image-progress');
+    const error=media.querySelector('.brand-image-error');
+    if(progress)progress.hidden=true;
+    if(error)error.hidden=false;
+  },true);
   async function download(button){
     if(busy)return;
     busy=true;button.disabled=true;
@@ -127,6 +173,11 @@ window.NexonBrandUI=(()=>{
     const button=event.target.closest('[data-brand-action]');
     if(!button)return;
     const action=button.dataset.brandAction;
+    if(action==='retry-image'){
+      const image=button.closest('[data-brand-media]')?.querySelector('[data-brand-image]');
+      if(image)retryImage(image);
+      return;
+    }
     if(action==='install')installDialog();
     if(action==='new')memberForm();
     if(action==='edit')memberForm(state.members.find(m=>m.id===Number(button.dataset.id)));
