@@ -9,7 +9,18 @@ window.NexonMeetings = (() => {
   const display = d => new Date(d+'T12:00:00').toLocaleDateString('pt-BR');
   const label = d => d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
   const all = () => state.meetings || [];
-  const row = m => '<div class="meeting-entry"><div class="date-box"><b>'+display(m.meeting_date).slice(0,2)+'</b><small>'+new Date(m.meeting_date+'T12:00:00').toLocaleDateString('pt-BR',{month:'short'}).replace('.','').toUpperCase()+'</small></div><div class="meeting-copy"><strong>'+text(m.title)+'</strong><small>'+text(m.start_time+'–'+m.end_time)+' · '+text(m.client||'Cliente não informado')+(m.location?' · '+text(m.location):'')+'</small></div><button class="secondary" type="button" data-meeting-action="edit" data-id="'+m.id+'">Editar</button></div>';
+  const statusLabels={agendada:'Agendada',realizada:'Realizada',cancelada:'Cancelada'};
+  const row = m => '<div class="meeting-entry"><div class="date-box"><b>'+display(m.meeting_date).slice(0,2)+
+    '</b><small>'+new Date(m.meeting_date+'T12:00:00').toLocaleDateString('pt-BR',{month:'short'}).replace('.','').toUpperCase()+
+    '</small></div><div class="meeting-copy"><strong>'+text(m.title)+'</strong><small>'+text(m.start_time+'–'+m.end_time)+
+    ' · '+text(m.client||'Cliente não informado')+(m.location?' · '+text(m.location):'')+'</small>'+
+    '<small class="meeting-status meeting-status-'+m.status+'">'+text(statusLabels[m.status]||'Agendada')+
+    (m.closure_note?' · '+text(m.closure_note):'')+'</small></div>'+
+    '<div class="meeting-actions"><button class="secondary" type="button" data-meeting-action="edit" data-id="'+m.id+'">Editar</button>'+
+    (m.status==='agendada'?'<button class="primary" type="button" data-meeting-action="outcome" data-status="realizada" data-id="'+m.id+'">Concluir</button>'+
+      '<button class="secondary" type="button" data-meeting-action="outcome" data-status="cancelada" data-id="'+m.id+'">Cancelar</button>':
+      '<button class="secondary" type="button" data-meeting-action="outcome" data-status="agendada" data-id="'+m.id+'">Reabrir</button>')+
+    '</div></div>';
   function page(){
     const yyyy=month.getFullYear(),mm=month.getMonth(),first=new Date(yyyy,mm,1),offset=(first.getDay()+6)%7,length=new Date(yyyy,mm+1,0).getDate(),today=iso(new Date());
     const meetings=all().slice().sort((a,b)=>(a.meeting_date+a.start_time).localeCompare(b.meeting_date+b.start_time));
@@ -20,7 +31,7 @@ window.NexonMeetings = (() => {
       calendar+='<button type="button" class="meeting-day'+(d===today?' today':'')+'" data-meeting-action="new" data-date="'+d+'" aria-label="Agendar reunião para '+display(d)+'"><span class="meeting-number">'+day+'</span>'+items.slice(0,2).map(m=>'<span class="meeting-dot" title="'+text(m.title)+'">'+text(m.start_time+' '+m.title)+'</span>').join('')+(items.length>2?'<span class="meeting-more">+'+(items.length-2)+' reuniões</span>':'')+'</button>';
     }
     calendar+='</div>';
-    const upcoming=meetings.filter(m=>m.meeting_date>=today).slice(0,8);
+    const upcoming=meetings.filter(m=>m.meeting_date>=today&&m.status==='agendada').slice(0,8);
     return heading('Reuniões','Agenda de encontros com clientes, separada do cronograma de projetos.','<button class="primary" data-meeting-action="new">'+icon('plus')+' Nova reunião</button>')+
       '<div class="meeting-layout"><section class="panel"><div class="meeting-toolbar"><div><h2>Calendário de reuniões</h2><p class="muted">Selecione um dia para agendar um compromisso.</p></div><div class="meeting-month"><button type="button" class="secondary" data-meeting-action="prev" aria-label="Mês anterior">'+icon('chevron-left')+'</button><strong>'+text(label(month))+'</strong><button type="button" class="secondary" data-meeting-action="next" aria-label="Próximo mês">'+icon('chevron-right')+'</button></div></div>'+calendar+'</section><section class="panel"><div class="panel-head"><h2>Próximas reuniões</h2><span class="muted">'+upcoming.length+' agendadas</span></div><div class="meeting-agenda">'+(upcoming.length?upcoming.map(row).join(''):empty('Nenhuma reunião agendada','Clique em Nova reunião ou selecione uma data no calendário.'))+'</div></section></div>'+
       '<section class="panel meeting-all"><div class="panel-head"><h2>Todas as reuniões</h2><span class="muted">'+meetings.length+' registros</span></div><div class="meeting-agenda">'+(meetings.length?meetings.map(row).join(''):empty('Agenda vazia','Cadastre reuniões com clientes para visualizá-las aqui.'))+'</div></section>';
@@ -46,6 +57,18 @@ window.NexonMeetings = (() => {
     if(!control)return;
     const action=control.dataset.meetingAction;
     if(action==='prev'||action==='next'){month=new Date(month.getFullYear(),month.getMonth()+(action==='next'?1:-1),1);render();return;}
+    if(action==='outcome'){
+      const m=all().find(item=>item.id===Number(control.dataset.id));
+      if(!m){notice('Reunião não encontrada. Atualize a página.');return;}
+      const target=control.dataset.status,labels={agendada:'Reabrir reunião',realizada:'Concluir reunião',cancelada:'Cancelar reunião'};
+      modal(labels[target],
+        '<form id="meeting-outcome-form" data-id="'+m.id+'" data-status="'+target+'">'+
+        '<p class="muted">Registre o resultado ou o motivo. A reunião continuará no histórico.</p>'+
+        '<label>Resultado / justificativa *<textarea name="note" required minlength="5" maxlength="2000" placeholder="Descreva o resultado ou o motivo da alteração..."></textarea></label>'+
+        '<div class="form-actions"><span></span><div class="right"><button class="secondary" type="button" data-action="close-modal">Voltar</button>'+
+        '<button class="primary" type="submit">'+labels[target]+'</button></div></div></form>');
+      return;
+    }
     if(action==='new'){form(null,control.dataset.date);return;}
     if(action==='edit'){form(all().find(m=>m.id===Number(control.dataset.id)));return;}
     if(action==='delete' && confirm('Excluir este agendamento de reunião?')) {
@@ -54,6 +77,20 @@ window.NexonMeetings = (() => {
     }
   });
   document.addEventListener('submit',async e=>{
+    if(e.target.id==='meeting-outcome-form'){
+      e.preventDefault();
+      const form=e.target,button=form.querySelector('button[type="submit"]');
+      if(button)button.disabled=true;
+      try{
+        await api('/meetings/'+Number(form.dataset.id)+'/outcome',{
+          method:'POST',body:JSON.stringify({status:form.dataset.status,note:form.elements.note.value})
+        });
+        closeModal();await refresh();
+        notice(form.dataset.status==='realizada'?'Reunião concluída.':
+          form.dataset.status==='cancelada'?'Reunião cancelada e mantida no histórico.':'Reunião reaberta.');
+      }catch(error){notice(error.message);if(button)button.disabled=false;}
+      return;
+    }
     if(e.target.id!=='meeting-form')return;
     e.preventDefault();
     const values=Object.fromEntries(new FormData(e.target).entries()),id=selected;
