@@ -22,6 +22,16 @@ document.querySelector('#login-form').addEventListener('submit',async e=>{
       body:JSON.stringify({password:passwordInput.value})
     });
     if(response.ok){
+      // Detecta navegadores embutidos que recebem login 200, mas não mantêm o cookie.
+      const sessionCheck=await fetch('/api/state',{credentials:'same-origin',cache:'no-store'});
+      if(sessionCheck.status===401){
+        errorLabel.textContent='A senha foi aceita, mas este navegador não manteve a sessão. Abra o aplicativo diretamente no Safari ou Chrome, pelo endereço completo.';
+        return;
+      }
+      if(!sessionCheck.ok){
+        errorLabel.textContent='A senha foi aceita, mas não foi possível abrir o sistema (erro '+sessionCheck.status+'). Tente novamente em instantes.';
+        return;
+      }
       passwordInput.value='';
       location.replace('/');
       return;
