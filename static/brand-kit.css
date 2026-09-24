@@ -1,0 +1,21 @@
+/* Materiais institucionais exclusivamente em Equipe > Colaboradores.
+   Controles usam a linguagem do app; a arte exportada mantém Opção B. */
+.member-brand-list{gap:10px}
+.member-brand-item{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 3px;border-bottom:1px solid #edf1f6;min-width:0}
+.member-brand-identity{display:flex;align-items:center;gap:13px;min-width:0;flex:1}
+.member-brand-copy{min-width:0}
+.member-brand-copy h3{font-size:14px;margin:0 0 4px;overflow-wrap:anywhere}
+.member-brand-copy p{font-size:12px;color:#627693;margin:0 0 5px;overflow-wrap:anywhere}
+.member-brand-copy small{display:block;font-size:11px;color:#71819e;overflow-wrap:anywhere}
+.member-brand-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.member-brand-actions button{font-size:11px;min-height:35px;white-space:nowrap}
+.member-brand-hint{color:#627693;font-size:12px;line-height:1.55;margin:12px 0}
+.brand-kit-preview{display:flex;flex-direction:column;gap:15px}
+.brand-kit-block{min-width:0;background:#f6f9fd;border:1px solid #dfe8f3;padding:12px;border-radius:11px}
+.brand-kit-block h3{margin:0 0 10px;font-size:14px;color:#142b4a}
+.brand-kit-block img{display:block;width:100%;height:auto;object-fit:contain;border-radius:9px;border:1px solid #dfe8f3;background:#fff}
+.brand-kit-downloads{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:9px 0}
+.brand-kit-downloads button{font-size:12px}
+.brand-kit-downloads svg{width:17px;height:17px}
+@media(max-width:850px){.member-brand-item{align-items:flex-start;flex-wrap:wrap}.member-brand-actions{width:100%;justify-content:flex-start;padding-left:1px}}
+@media(max-width:480px){.member-brand-actions button{white-space:normal}.brand-kit-downloads button{flex:1}}
