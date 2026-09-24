@@ -65,3 +65,15 @@
   .slogan-card .molecule-art{width:49%;opacity:.82}
   .slogan-card .round-next{right:8px;bottom:9px}
 }
+
+
+/* Ciclo de vida de reuniões: concluída/cancelada seguem visíveis, sem confundir a agenda futura. */
+.meeting-actions{display:flex;justify-content:flex-end;align-items:center;gap:7px;flex-wrap:wrap}
+.meeting-actions button{font-size:11px;min-height:34px}
+.meeting-status{display:block;font-size:11px;line-height:1.4;margin-top:5px;color:#637691;overflow-wrap:anywhere}
+.meeting-status-realizada{color:#13856f}.meeting-status-cancelada{color:#9c6843}
+#meeting-outcome-form{display:flex;flex-direction:column;gap:12px}
+#meeting-outcome-form p{font-size:12px;line-height:1.5;margin:0}
+#meeting-outcome-form label{display:flex;flex-direction:column;gap:8px;font-weight:600;font-size:12px}
+#meeting-outcome-form textarea{min-height:105px;border:1px solid #dce5f1;border-radius:9px;padding:11px 12px;resize:vertical}
+@media(max-width:760px){.meeting-actions{justify-content:flex-start}}
