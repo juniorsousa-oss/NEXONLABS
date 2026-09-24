@@ -503,3 +503,48 @@ def test_ticket_closure_requires_auth_and_valid_lifecycle():
         assert client.post('/api/tickets/999999/transition',json={
             'status':'fechado','message':'Este chamado não existe.'
         }).status_code==404
+
+
+def test_meeting_completion_and_reopening():
+    with TestClient(app) as anonymous:
+        assert anonymous.post('/api/meetings/1/outcome',json={
+            'status':'realizada','note':'Cliente aprovou o encaminhamento.'
+        }).status_code==401
+    with TestClient(app) as client:
+        assert client.post('/api/login',json={'password':'test-password'}).status_code==200
+        m=client.post('/api/meetings',json={
+            'title':'Reunião de validação','client':'Cliente teste','meeting_date':'2027-01-01',
+            'start_time':'09:00','end_time':'10:00'
+        })
+        assert m.status_code==201,m.text
+        mid=m.json()['id']
+        assert m.json()['status']=='agendada'
+        assert client.post(f'/api/meetings/{mid}/outcome',json={
+            'status':'realizada','note':' '
+        }).status_code==422
+        done=client.post(f'/api/meetings/{mid}/outcome',json={
+            'status':'realizada','note':'Encontro concluído, escopo validado pelo cliente.'
+        })
+        assert done.status_code==200,done.text
+        assert done.json()['status']=='realizada'
+        assert done.json()['closure_note'].startswith('Encontro concluído')
+        assert done.json()['closure_by']
+        assert done.json()['closure_at']
+        assert client.post(f'/api/meetings/{mid}/outcome',json={
+            'status':'realizada','note':'Tentar repetir estado'
+        }).status_code==409
+        saved=next(m for m in client.get('/api/state').json()['meetings'] if m['id']==mid)
+        assert saved['status']=='realizada'
+        reopened=client.post(f'/api/meetings/{mid}/outcome',json={
+            'status':'agendada','note':'Cliente solicitou nova data para alinhar ajustes.'
+        })
+        assert reopened.status_code==200,reopened.text
+        assert reopened.json()['status']=='agendada'
+        canceled=client.post(f'/api/meetings/{mid}/outcome',json={
+            'status':'cancelada','note':'Reunião cancelada após orientação do cliente.'
+        })
+        assert canceled.status_code==200,canceled.text
+        assert canceled.json()['status']=='cancelada'
+        assert canceled.json()['closure_note'].startswith('Reunião cancelada')
+        assert client.delete(f'/api/meetings/{mid}').status_code==200
+        assert not any(item['id']==mid for item in client.get('/api/state').json()['meetings'])
