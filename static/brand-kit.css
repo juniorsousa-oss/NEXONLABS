@@ -19,3 +19,13 @@
 .brand-kit-downloads svg{width:17px;height:17px}
 @media(max-width:850px){.member-brand-item{align-items:flex-start;flex-wrap:wrap}.member-brand-actions{width:100%;justify-content:flex-start;padding-left:1px}}
 @media(max-width:480px){.member-brand-actions button{white-space:normal}.brand-kit-downloads button{flex:1}}
+
+/* Instalação da matriz: seleção, ação e resultado visíveis no celular. */
+.brand-template-install{display:flex;flex-direction:column;gap:12px;min-width:0}
+.brand-template-install>p{margin:0;line-height:1.5}
+.brand-template-install label{display:flex;flex-direction:column;gap:9px;min-width:0;font-weight:600;color:var(--navy);font-size:13px}
+.brand-template-install input[type=file]{display:block;max-width:100%;width:100%;padding:12px;border:1px dashed #a6bdcf;border-radius:9px;background:#f7fafd;font-size:12px;color:var(--navy)}
+.brand-template-install .brand-template-feedback{margin:0;padding:10px 12px;background:#eff9f7;border:1px solid #a6ddd6;border-radius:9px;color:#135951;overflow-wrap:anywhere}
+.brand-template-install .brand-template-error{background:#fff5f3;border-color:#f0b2a7;color:#983d34}
+.brand-template-install .form-actions{justify-content:flex-end;gap:9px;flex-wrap:wrap;margin-top:4px}
+.brand-template-install button[disabled]{opacity:.58;cursor:not-allowed}
