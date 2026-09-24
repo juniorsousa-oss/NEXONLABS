@@ -8,6 +8,7 @@ on:
       - 'tickets_module.py'
       - 'accounts_module.py'
       - 'brand_kit.py'
+      - 'approved_template.py'
       - 'static/**'
       - 'tests/**'
       - 'requirements.txt'
@@ -38,5 +39,5 @@ jobs:
       - name: Verificar Python e testes de integração
         run: |
           python -m pip install -r requirements.txt pytest httpx pypdf
-          python -m py_compile app.py quotes_module.py tickets_module.py accounts_module.py brand_kit.py
+          python -m py_compile app.py quotes_module.py tickets_module.py accounts_module.py brand_kit.py approved_template.py
           python -m pytest -q
