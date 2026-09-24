@@ -9,6 +9,7 @@ import binascii
 import hashlib
 import io
 import re
+from functools import lru_cache
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import Response
@@ -111,6 +112,16 @@ def encode(image):
 
 def faces(image):
     return {name:image.crop(bounds).convert('RGB') for name,bounds in BOXES.items()}
+
+@lru_cache(maxsize=3)
+def cached_faces(reference_bytes: bytes):
+    """Recorta a matriz uma vez por versão, compartilhada entre os colaboradores.
+
+    A personalização trabalha sobre cópias e não modifica os recortes em cache.
+    Uma nova imagem tem bytes diferentes e portanto uma entrada de cache distinta.
+    """
+    with Image.open(io.BytesIO(reference_bytes)) as original:
+        return faces(original)
 
 def font(size,bold=False):
     import reportlab
