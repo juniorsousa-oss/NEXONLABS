@@ -1,7 +1,7 @@
 /* Central de chamados internos Nexon Labs. Atendimento e histórico sem portal externo. */
 'use strict';
 window.NexonTickets = (() => {
-  let tickets=[], loaded=false, loading=false, error='', filter='ativos', editing=null, detail=null, showEditor=false;
+  let tickets=[], loaded=false, loading=false, error='', filter='ativos', editing=null, detail=null, showEditor=false, transition=null, submitting=false;
   const statusLabels={aberto:'Aberto',em_atendimento:'Em atendimento',aguardando_cliente:'Aguardando cliente',resolvido:'Resolvido',fechado:'Fechado'};
   const typeLabels={suporte:'Suporte',erro:'Erro / incidente',melhoria:'Melhoria',solicitacao:'Solicitação'};
   const priorityLabels={baixa:'Baixa',normal:'Normal',alta:'Alta',critica:'Crítica'};
@@ -35,13 +35,18 @@ window.NexonTickets = (() => {
   }
   function ticketRow(t){
     const project=state.projects.find(p=>p.id===t.project_id);
-    return '<button type="button" class="ticket-row" data-ticket-action="open" data-id="'+t.id+'">'+
+    return '<div class="ticket-row-wrap"><button type="button" class="ticket-row" data-ticket-action="open" data-id="'+t.id+'">'+
       '<div class="ticket-row-main"><strong>'+escape(t.title)+'</strong><small>'+escape(t.number)+' · '+escape(t.client)+(project?' · '+escape(project.name):'')+'</small>'+
       '<span class="ticket-row-descr">'+escape(t.description)+'</span></div>'+
       '<div class="ticket-row-meta"><span class="ticket-status status-'+t.status+'">'+escape(statusLabels[t.status])+'</span>'+
       '<span class="ticket-priority priority-'+t.priority+'">'+escape(priorityLabels[t.priority])+'</span>'+
       '<small>Responsável: '+escape(t.assignee||'Não atribuído')+'</small>'+
-      '<small>Prazo: '+localDate(t.due_at)+'</small></div></button>';
+      '<small>Prazo: '+localDate(t.due_at)+'</small></div></button>'+
+      '<div class="ticket-row-actions">'+
+      (t.status==='fechado'?'<button type="button" class="secondary" data-ticket-action="transition" data-id="'+t.id+'" data-status="aberto">Reabrir</button>':
+       t.status==='resolvido'?'<button type="button" class="secondary" data-ticket-action="transition" data-id="'+t.id+'" data-status="fechado">Fechar chamado</button>':
+       '<button type="button" class="secondary" data-ticket-action="transition" data-id="'+t.id+'" data-status="fechado">Concluir e fechar</button>')+
+      '</div></div>';
   }
   function listing(){
     let visible=tickets.slice();
@@ -77,7 +82,11 @@ window.NexonTickets = (() => {
     const events=t.events||[];
     return '<section class="panel ticket-detail"><div class="ticket-detail-top"><div><span class="muted">'+escape(t.number)+' · '+escape(typeLabels[t.type])+'</span>'+
       '<h2>'+escape(t.title)+'</h2></div><div class="ticket-detail-actions"><button type="button" class="secondary" data-ticket-action="back">Voltar</button>'+
-      '<button type="button" class="primary" data-ticket-action="edit" data-id="'+t.id+'">'+icon('edit')+' Editar</button></div></div>'+
+      '<button type="button" class="secondary" data-ticket-action="edit" data-id="'+t.id+'">'+icon('edit')+' Editar</button>'+
+      (t.status==='fechado'?'<button type="button" class="primary" data-ticket-action="transition" data-id="'+t.id+'" data-status="aberto">Reabrir chamado</button>':
+       t.status==='resolvido'?'<button type="button" class="primary" data-ticket-action="transition" data-id="'+t.id+'" data-status="fechado">Fechar chamado</button>'+
+          '<button type="button" class="secondary" data-ticket-action="transition" data-id="'+t.id+'" data-status="aberto">Reabrir</button>':
+       '<button type="button" class="primary" data-ticket-action="transition" data-id="'+t.id+'" data-status="fechado">Concluir e fechar</button>')+'</div></div>'+
       '<div class="ticket-detail-tags"><span class="ticket-status status-'+t.status+'">'+escape(statusLabels[t.status])+'</span>'+
       '<span class="ticket-priority priority-'+t.priority+'">'+escape(priorityLabels[t.priority])+'</span></div>'+
       '<div class="ticket-details-grid"><div><small>Cliente</small><strong>'+escape(t.client)+'</strong></div>'+
