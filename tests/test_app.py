@@ -357,7 +357,7 @@ def test_same_password_on_independent_devices_and_session_cookie():
                 assert state.status_code==200, state.text
                 assert state.json()['user_id']==uid
                 assert state.json()['user']=='Acesso multiplataforma'
-                assert 'NEXON LABS' in browser.get('/').text
+                assert '<main class="main" id="main"' in browser.get('/').text
             # Alterar a senha encerra as sessões anteriores de todos os dispositivos.
             updated=admin.put(f'/api/accounts/{uid}',json={
                 'name':'Acesso multiplataforma','role':'usuario','active':True,
