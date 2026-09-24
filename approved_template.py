@@ -28,26 +28,46 @@ INK='#112c4b'
 TEAL='#119f9d'
 
 class ReferenceUpload(BaseModel):
-    image_data: str = Field(min_length=500,max_length=1_800_000)
+    image_data: str = Field(min_length=500,max_length=9_000_000)
+    # A confirmação explícita permite PNG e JPEG salvos pelo celular sem afirmar
+    # que seus bytes são idênticos ao JPEG histórico. A validação visual é do admin.
+    confirmed: bool = False
 
-def raw_image(value: str):
-    if not value.startswith('data:image/jpeg;base64,'):
-        raise HTTPException(422,'Use a imagem JPEG original da Opção B aprovada.')
+MAX_IMAGE_BYTES=6_000_000
+EXPECTED_SIZE=(1536,1024)
+FORMATS={'image/png':'PNG','image/jpeg':'JPEG'}
+
+def raw_image(value: str,confirmed: bool=False):
     try:
-        raw=base64.b64decode(value.partition(',')[2],validate=True)
+        header,encoded=value.split(',',1)
+    except ValueError:
+        raise HTTPException(422,'Selecione a imagem em PNG ou JPEG.') from None
+    if not header.startswith('data:') or ';base64' not in header:
+        raise HTTPException(422,'Selecione um arquivo PNG ou JPEG válido.')
+    declared=header[5:].split(';',1)[0].lower()
+    if declared not in FORMATS:
+        raise HTTPException(422,'Formato não aceito: selecione PNG ou JPEG.')
+    if len(encoded)>8_000_000:
+        raise HTTPException(413,'Imagem maior que 6 MB.')
+    try:
+        raw=base64.b64decode(encoded,validate=True)
     except (ValueError,binascii.Error) as exc:
         raise HTTPException(422,'Não foi possível ler a imagem.') from exc
-    if len(raw)>1_200_000:
-        raise HTTPException(413,'Imagem de referência maior que 1,2 MB.')
-    if hashlib.sha256(raw).hexdigest()!=APPROVED_SHA256:
-        raise HTTPException(422,'A imagem não corresponde à referência exata aprovada. Use a imagem original disponibilizada neste chat, sem recortar ou comprimir.')
+    if len(raw)>MAX_IMAGE_BYTES:
+        raise HTTPException(413,'A imagem deve ter no máximo 6 MB.')
+    is_original=hashlib.sha256(raw).hexdigest()==APPROVED_SHA256
+    if not is_original and not confirmed:
+        raise HTTPException(422,'Confira a prévia e marque a confirmação da Opção B antes de instalar.')
     try:
         with Image.open(io.BytesIO(raw)) as picture:
-            if picture.size!=(1536,1024) or picture.format!='JPEG':
-                raise HTTPException(422,'Dimensão incorreta da referência.')
+            if picture.size!=EXPECTED_SIZE:
+                raise HTTPException(422,
+                    f'A imagem possui {picture.width} × {picture.height} pixels; a referência completa deve ter 1536 × 1024 pixels. Envie a arte completa, sem recortar.')
+            if picture.format!=FORMATS[declared]:
+                raise HTTPException(422,'A extensão e o conteúdo da imagem não correspondem. Escolha PNG ou JPEG original.')
             picture.verify()
-    except (OSError,ValueError) as exc:
-        raise HTTPException(422,'Imagem inválida.') from exc
+    except (OSError,ValueError,Image.DecompressionBombError) as exc:
+        raise HTTPException(422,'Imagem inválida. Selecione a arte completa em PNG ou JPEG.') from exc
     return raw
 
 def install_reference(app,Base,DB,engine,authorized,admin_only):
@@ -65,13 +85,15 @@ def install_reference(app,Base,DB,engine,authorized,admin_only):
 
     @app.put('/api/brand-reference',dependencies=[Depends(admin_only)])
     def save_reference(data:ReferenceUpload,db:Session=Depends(session)):
-        # A arte só pode ser atualizada com os MESMOS bytes aprovados; nada de outra opção.
-        original=raw_image(data.image_data)
+        # PNG/JPEG podem ter codificações diferentes: a prévia e a confirmação
+        # explícita evitam confundir igualdade de arquivos com igualdade visual.
+        original=raw_image(data.image_data,data.confirmed)
         row=db.get(ApprovedArtwork,1)
         if row:row.image=original
         else:db.add(ApprovedArtwork(id=1,image=original))
         db.commit()
-        return {'ok':True,'installed':True,'sha256':APPROVED_SHA256}
+        return {'ok':True,'installed':True,'sha256':hashlib.sha256(original).hexdigest(),
+                'exact_original_file':hashlib.sha256(original).hexdigest()==APPROVED_SHA256}
 
     @app.get('/api/brand-reference/{kind}',dependencies=[Depends(authorized)])
     def reference_preview(kind:str,db:Session=Depends(session)):
