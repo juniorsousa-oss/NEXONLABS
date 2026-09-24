@@ -58,6 +58,11 @@ def font(size, bold=False, italic=False):
         ['/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'] if bold else
         ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']
     )
+    # ReportLab inclui fontes Vera, úteis em hospedagens com fontes de SO reduzidas.
+    import reportlab
+    from pathlib import Path
+    font_dir=Path(reportlab.__file__).resolve().parent/'fonts'
+    names+= [str(font_dir/('VeraBI.ttf' if bold and italic else 'VeraBd.ttf' if bold else 'VeraIt.ttf' if italic else 'Vera.ttf'))]
     for path in names:
         try:return ImageFont.truetype(path,int(size))
         except OSError:pass
@@ -221,7 +226,7 @@ def signature(member,w=1180,h=455):
     d.line((54,337,112,337),fill=CYAN,width=4)
     lines(d,['Tecnologia que','simplifica necessidades.'],54,351,WHITE,17,leading=1.45,maxwidth=400)
     role_line(d,member,547,69,580,size=31,dark=True)
-    contact(d,member,551,210,570,size=22,spacing=53,dark=True)
+    contact(d,member,551,199,570,size=21,spacing=46,dark=True)
     d.line((550,h-58,w-34,h-58),fill=LINE,width=2)
     d.text((551,h-48),'APLICATIVOS   |   AUTOMAÇÃO   |   INTEGRAÇÃO   |   RESULTADOS',
            font=textfit(d,'APLICATIVOS   |   AUTOMAÇÃO   |   INTEGRAÇÃO   |   RESULTADOS',585,13,minsize=9),fill=MUTED)
