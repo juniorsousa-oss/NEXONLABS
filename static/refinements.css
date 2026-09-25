@@ -265,3 +265,41 @@
     font-size:11px!important;
   }
 }
+
+
+/* Reuniões v5 — corrige quebra de Data/Início no Safari iOS. */
+#meeting-form .meeting-schedule{min-width:0}
+#meeting-form .meeting-schedule label{min-width:0}
+#meeting-form .meeting-schedule input[type="date"],
+#meeting-form .meeting-schedule input[type="time"],
+#meeting-form .meeting-schedule select{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+@media(max-width:620px){
+  #meeting-form .meeting-schedule{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    overflow:hidden;
+  }
+  #meeting-form .meeting-schedule input[type="date"],
+  #meeting-form .meeting-schedule input[type="time"]{
+    font-size:14px!important;
+    padding-left:8px!important;
+    padding-right:8px!important;
+  }
+  #meeting-form .meeting-schedule label:nth-child(3){
+    grid-column:1/-1!important;
+  }
+}
+@media(max-width:390px){
+  #meeting-form .meeting-schedule{
+    grid-template-columns:1fr!important;
+  }
+  #meeting-form .meeting-schedule label:nth-child(3),
+  #meeting-form .meeting-end-preview{
+    grid-column:1!important;
+  }
+}
