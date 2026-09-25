@@ -82,18 +82,21 @@ function context(file,extras={}){
     entries(){return Object.entries({
       title:'Reunião com cliente',client:'Cliente A',project_id:'',
       meeting_date:'2026-10-10',start_time:'09:00',end_time:'10:00',
-      location:'Online',meeting_url:'',notes:'Pauta'
+      location:'Online',meeting_url:'',notes:'Pauta',attendee_ids:'42'
     });}
+    getAll(name){return name==='attendee_ids'?['42']:[];}
   }
   const meetings=context('static/meetings.js',{
-    state:{projects:[],meetings:[]},route:'reunioes',
+    state:{projects:[],meetings:[],members:[member]},route:'reunioes',
     FormData:MeetingFormData,
     api:async (url,opt)=>{
       assert.equal(url,'/meetings');
       assert.equal(opt.method,'POST');
       meetingCalls++;
       await pendingMeeting;
-      return {id:91};
+      const body=JSON.parse(opt.body);
+      assert.deepEqual(body.attendee_ids,[42]);
+      return {id:91,has_conflict:false,conflicts:[],attendee_ids:[42],attendee_names:['Júnior Andrade']};
     },
     closeModal:()=>{meetingClosed++;},
     refresh:async()=>{meetingRefreshes++;},
@@ -102,7 +105,11 @@ function context(file,extras={}){
   let meetingPrevented=0;
   const meetingForm={
     id:'meeting-form',
-    querySelector:selector=>selector==='button[type="submit"]'?submitButton:null
+    querySelector:selector=>selector==='button[type="submit"]'?submitButton:null,
+    querySelectorAll:()=>[],
+    elements:{
+      meeting_date:{value:'2026-10-10'},start_time:{value:'09:00'},end_time:{value:'10:00'}
+    }
   };
   const meetingEvent={target:meetingForm,preventDefault(){meetingPrevented++;}};
   const saveOne=meetings.handlers.submit(meetingEvent);
@@ -163,5 +170,5 @@ function context(file,extras={}){
   assert.equal(prevented,true);
   assert.equal(transitionCalls,1);
   assert.match(displayed,/Reabrir chamado/);
-  process.stdout.write('UI OK: editar colaborador, reunião sem duplicidade de clique, fechar e reabrir chamado.\n');
+  process.stdout.write('UI OK: colaborador, reunião com participante/conflito e chamado com ciclo completo.\n');
 })().catch(error=>{console.error(error);process.exitCode=1;});
