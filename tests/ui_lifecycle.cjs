@@ -73,6 +73,50 @@ function context(file,extras={}){
   assert.match(previewMarkup,/data-brand-image="front"/);
   assert.match(previewMarkup,/data-brand-image="back"/);
 
+  // Reunião: um toque em salvar deve gerar uma única requisição e fechar o modal
+  // assim que a gravação for confirmada, sem depender do refresh da tela.
+  let meetingCalls=0,meetingClosed=0,meetingRefreshes=0,releaseMeeting;
+  const pendingMeeting=new Promise(resolve=>{releaseMeeting=resolve;});
+  const submitButton={disabled:false,textContent:'Salvar reunião'};
+  class MeetingFormData{
+    entries(){return Object.entries({
+      title:'Reunião com cliente',client:'Cliente A',project_id:'',
+      meeting_date:'2026-10-10',start_time:'09:00',end_time:'10:00',
+      location:'Online',meeting_url:'',notes:'Pauta'
+    });}
+  }
+  const meetings=context('static/meetings.js',{
+    state:{projects:[],meetings:[]},route:'reunioes',
+    FormData:MeetingFormData,
+    api:async (url,opt)=>{
+      assert.equal(url,'/meetings');
+      assert.equal(opt.method,'POST');
+      meetingCalls++;
+      await pendingMeeting;
+      return {id:91};
+    },
+    closeModal:()=>{meetingClosed++;},
+    refresh:async()=>{meetingRefreshes++;},
+    notice:()=>{}
+  });
+  let meetingPrevented=0;
+  const meetingForm={
+    id:'meeting-form',
+    querySelector:selector=>selector==='button[type="submit"]'?submitButton:null
+  };
+  const meetingEvent={target:meetingForm,preventDefault(){meetingPrevented++;}};
+  const saveOne=meetings.handlers.submit(meetingEvent);
+  const saveTwo=meetings.handlers.submit(meetingEvent);
+  assert.equal(meetingCalls,1);
+  assert.equal(submitButton.disabled,true);
+  assert.equal(submitButton.textContent,'Salvando...');
+  releaseMeeting();
+  await saveOne;await saveTwo;
+  assert.equal(meetingPrevented,2);
+  assert.equal(meetingClosed,1);
+  assert.equal(meetingRefreshes,1);
+  assert.equal(meetingCalls,1);
+
   let ticket={id:8,number:'CH-2026-00008',title:'Erro no sistema',
     client:'Cliente A',description:'Relatório com divergência',status:'aberto',priority:'normal',
     events:[],project_id:null,assignee:'',due_at:null,requester:'',contact:'',type:'erro'};
@@ -119,5 +163,5 @@ function context(file,extras={}){
   assert.equal(prevented,true);
   assert.equal(transitionCalls,1);
   assert.match(displayed,/Reabrir chamado/);
-  process.stdout.write('UI OK: editar colaborador, preencher cadastro, fechar e reabrir chamado.\n');
+  process.stdout.write('UI OK: editar colaborador, reunião sem duplicidade de clique, fechar e reabrir chamado.\n');
 })().catch(error=>{console.error(error);process.exitCode=1;});
