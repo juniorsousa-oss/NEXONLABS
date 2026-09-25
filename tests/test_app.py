@@ -46,12 +46,15 @@ def test_meetings_calendar_and_client_agenda():
         }).status_code == 401
         assert c.post('/api/login',json={'password':'test-password'}).status_code == 200
         project = c.post('/api/projects',json={'name':'Cliente piloto'}).json()
+        junior=c.post('/api/members',json={'name':'Júnior Reuniões','role':'CEO'}).json()
+        washington=c.post('/api/members',json={'name':'Washington Reuniões','role':'Diretor Comercial'}).json()
         data = {
             'title':'Diagnóstico com cliente','client':'Indústria Alfa',
             'project_id':project['id'],'meeting_date':'2026-10-01',
             'start_time':'09:00','end_time':'10:00',
             'location':'Online','meeting_url':'https://meet.example.com/teste',
-            'notes':'Levantamento inicial das necessidades'
+            'notes':'Levantamento inicial das necessidades',
+            'attendee_ids':[junior['id']]
         }
         created = c.post('/api/meetings',json=data)
         assert created.status_code == 201, created.text
@@ -73,6 +76,36 @@ def test_meetings_calendar_and_client_agenda():
         # Salvar a própria reunião sem alterar os dados não é duplicidade.
         self_edit=c.put(f'/api/meetings/{mid}',json=data)
         assert self_edit.status_code==200,self_edit.text
+
+        missing_attendee=c.post('/api/meetings',json={
+            **data,'title':'Sem participante','start_time':'13:00','end_time':'14:00','attendee_ids':[]
+        })
+        assert missing_attendee.status_code==422
+
+        # Sobreposição é permitida, mas deve retornar conflito pelo colaborador compartilhado.
+        conflict=c.post('/api/meetings',json={
+            **data,'title':'Reunião concorrente','client':'Cliente Beta',
+            'start_time':'09:30','end_time':'10:30',
+            'attendee_ids':[junior['id'],washington['id']]
+        })
+        assert conflict.status_code==201,conflict.text
+        conflict_data=conflict.json()
+        assert conflict_data['has_conflict'] is True
+        assert any(item['meeting_id']==mid for item in conflict_data['conflicts'])
+        assert 'Júnior Reuniões' in conflict_data['conflicts'][0]['attendee_names']
+        first=next(item for item in c.get('/api/state').json()['meetings'] if item['id']==mid)
+        assert first['has_conflict'] is True
+        assert 'Júnior Reuniões' in first['attendee_names']
+
+        # Um segundo colaborador também é verificado individualmente contra sua própria agenda.
+        free=c.post('/api/meetings',json={
+            **data,'title':'Reunião sem choque','client':'Cliente Gama',
+            'start_time':'09:15','end_time':'09:45','attendee_ids':[washington['id']]
+        })
+        assert free.status_code==201,free.text
+        assert free.json()['has_conflict'] is True  # Washington já está na reunião concorrente.
+        c.delete(f"/api/meetings/{free.json()['id']}")
+        c.delete(f"/api/meetings/{conflict_data['id']}")
         invalid=c.post('/api/meetings',json={**data,'start_time':'11:00','end_time':'10:00'})
         assert invalid.status_code == 422
         bad_link=c.post('/api/meetings',json={**data,'meeting_url':'javascript:alert(1)'})
@@ -542,9 +575,10 @@ def test_meeting_completion_and_reopening():
         }).status_code==401
     with TestClient(app) as client:
         assert client.post('/api/login',json={'password':'test-password'}).status_code==200
+        attendee=client.post('/api/members',json={'name':'Participante da validação','role':'Consultor'}).json()
         m=client.post('/api/meetings',json={
             'title':'Reunião de validação','client':'Cliente teste','meeting_date':'2027-01-01',
-            'start_time':'09:00','end_time':'10:00'
+            'start_time':'09:00','end_time':'10:00','attendee_ids':[attendee['id']]
         })
         assert m.status_code==201,m.text
         mid=m.json()['id']
