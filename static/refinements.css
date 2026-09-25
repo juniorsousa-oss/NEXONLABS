@@ -113,3 +113,49 @@
   .meeting-attendee-grid{grid-template-columns:1fr}
   .meeting-day-alert{font-size:7px}
 }
+
+
+/* Reuniões v3 — formulário compacto, rápido e responsivo. */
+#meeting-form .meeting-form-grid{gap:12px}
+.meeting-schedule{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(105px,.8fr) minmax(120px,.9fr);gap:10px;align-items:end;padding:12px;border:1px solid #dce7f0;border-radius:10px;background:#fbfdff}
+.meeting-schedule label{margin:0}
+.meeting-end-preview{grid-column:1/-1;color:#667b95;font-size:10px;font-weight:650;margin-top:-3px}
+.meeting-mode{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.meeting-field-title{font-size:12px;font-weight:700;color:var(--navy)}
+.meeting-mode-options{display:flex;gap:7px}
+.meeting-mode-options label{margin:0;cursor:pointer}
+.meeting-mode-options input{position:absolute;opacity:0;pointer-events:none}
+.meeting-mode-options span{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 16px;border:1px solid #dbe6ef;border-radius:9px;background:#fff;color:#536a85;font-size:12px;font-weight:700}
+.meeting-mode-options input:checked+span{border-color:#14b8a6;background:#eefaf8;color:#087a70;box-shadow:inset 0 0 0 1px rgba(20,184,166,.12)}
+[data-meeting-local][hidden],[data-meeting-link][hidden]{display:none!important}
+.meeting-attendees{padding:11px 12px}
+.meeting-attendees legend{font-size:12px}
+.meeting-attendee-grid{gap:7px}
+.meeting-attendee-option{position:relative;min-height:58px;padding:8px 10px;gap:9px}
+.meeting-attendee-option input{position:absolute;opacity:0;pointer-events:none}
+.meeting-check{display:grid!important;place-items:center;width:25px;height:25px;border:1px solid #cbd9e6;border-radius:7px;background:#fff;color:transparent;font-size:15px;font-weight:800;flex:none}
+.meeting-attendee-option:has(input:checked) .meeting-check{background:#14b8a6;border-color:#14b8a6;color:#fff}
+.meeting-person{display:block!important;min-width:0}
+.meeting-person b{font-size:11px}
+.meeting-person small{font-size:9px}
+.meeting-conflict-preview.is-clear{padding:8px 10px;border:0;background:#f2fbf9}
+#meeting-form textarea[name="notes"]{min-height:82px}
+@media(max-width:620px){
+  #modal-root .modal{width:min(94vw,720px)}
+  #meeting-form .fields.meeting-form-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .meeting-schedule{grid-template-columns:minmax(0,1.2fr) minmax(92px,.8fr);padding:10px}
+  .meeting-schedule label:nth-child(3){grid-column:1/-1}
+  .meeting-end-preview{grid-column:1/-1}
+  .meeting-mode{align-items:flex-start;flex-direction:column}
+  .meeting-mode-options{width:100%}
+  .meeting-mode-options label{flex:1}
+  .meeting-mode-options span{width:100%}
+  .meeting-attendee-grid{grid-template-columns:1fr 1fr}
+  .meeting-attendee-option{min-height:54px;padding:7px 8px}
+  #meeting-form .form-actions{position:sticky;bottom:0;background:#fff;padding-top:10px;z-index:2}
+}
+@media(max-width:430px){
+  #meeting-form .fields.meeting-form-grid{grid-template-columns:1fr}
+  .meeting-schedule{grid-template-columns:1fr 1fr}
+  .meeting-attendee-grid{grid-template-columns:1fr}
+}
