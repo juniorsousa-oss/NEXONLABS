@@ -159,3 +159,109 @@
   .meeting-schedule{grid-template-columns:1fr 1fr}
   .meeting-attendee-grid{grid-template-columns:1fr}
 }
+
+
+/* Reuniões v4 — compactação mobile e alinhamento dos participantes. */
+@media(max-width:620px){
+  #meeting-form .meeting-schedule{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:8px;
+    padding:9px;
+  }
+  #meeting-form .meeting-schedule label:nth-child(3){
+    grid-column:1/-1;
+  }
+  #meeting-form .meeting-schedule input,
+  #meeting-form .meeting-schedule select{
+    min-height:46px;
+    padding:8px 10px;
+  }
+  #meeting-form .meeting-end-preview{
+    margin-top:-2px;
+    font-size:10px;
+  }
+  #meeting-form .meeting-attendees{
+    padding:9px;
+  }
+  #meeting-form .meeting-attendee-grid{
+    grid-template-columns:1fr;
+    gap:6px;
+  }
+  #meeting-form .meeting-attendee-option{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    text-align:left!important;
+    min-height:52px!important;
+    padding:7px 10px!important;
+    gap:10px!important;
+  }
+  #meeting-form .meeting-attendee-option .meeting-check{
+    display:grid!important;
+    width:26px!important;
+    height:26px!important;
+    min-width:26px!important;
+    margin:0!important;
+    flex:0 0 26px!important;
+  }
+  #meeting-form .meeting-attendee-option .meeting-person{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    text-align:left!important;
+    gap:1px!important;
+    flex:1!important;
+  }
+  #meeting-form .meeting-attendee-option .meeting-person b{
+    font-size:11px!important;
+    line-height:1.2!important;
+  }
+  #meeting-form .meeting-attendee-option .meeting-person small{
+    font-size:9px!important;
+    line-height:1.2!important;
+  }
+  #meeting-form .meeting-conflict-preview{
+    padding:7px 9px!important;
+    font-size:10px!important;
+    line-height:1.35!important;
+  }
+  #meeting-form .form-actions{
+    position:sticky!important;
+    bottom:0!important;
+    margin:0 -2px!important;
+    padding:10px 2px 4px!important;
+    background:rgba(255,255,255,.98)!important;
+    box-shadow:0 -8px 18px rgba(18,49,76,.06)!important;
+    z-index:5!important;
+  }
+  #meeting-form .form-actions button{
+    min-height:42px!important;
+    padding:8px 12px!important;
+  }
+}
+@media(max-width:430px){
+  #meeting-form .meeting-schedule{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  }
+  #meeting-form .meeting-schedule label:nth-child(3){
+    grid-column:1/-1!important;
+  }
+  #meeting-form .meeting-mode{
+    gap:7px!important;
+  }
+  #meeting-form .meeting-mode-options span{
+    min-height:42px!important;
+    padding:7px 10px!important;
+  }
+  #meeting-form .form-actions{
+    gap:7px!important;
+  }
+  #meeting-form .form-actions .right{
+    gap:7px!important;
+  }
+  #meeting-form .form-actions button{
+    font-size:11px!important;
+  }
+}
