@@ -174,7 +174,12 @@ class MeetingIn(BaseModel):
     client: str = Field(default='', max_length=160)
     project_id: int | None = Field(default=None, gt=0)
     meeting_date: date
-    start_time: str = Field(pattern=r'^([01][0-9]|2[0-3]):[0-5][0-9]
+    start_time: str = Field(pattern=r'^([01][0-9]|2[0-3]):[0-5][0-9]$')
+    end_time: str = Field(pattern=r'^([01][0-9]|2[0-3]):[0-5][0-9]$')
+    location: str = Field(default='', max_length=250)
+    meeting_url: str = Field(default='', max_length=500)
+    notes: str = Field(default='', max_length=4000)
+    attendee_ids: list[int] = Field(min_length=1, max_length=50)
 
     @field_validator('title', 'client', 'location', 'meeting_url', 'notes')
     @classmethod
