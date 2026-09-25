@@ -1,7 +1,7 @@
 /* Calendário de reuniões Nexon Labs — módulo funcional, independente do cronograma. */
 'use strict';
 window.NexonMeetings = (() => {
-  let month = new Date(), selected = null;
+  let month = new Date(), selected = null, saving = false;
   month = new Date(month.getFullYear(), month.getMonth(), 1);
   const text = value => esc(value ?? '');
   const pad = n => String(n).padStart(2,'0');
@@ -37,6 +37,7 @@ window.NexonMeetings = (() => {
       '<section class="panel meeting-all"><div class="panel-head"><h2>Todas as reuniões</h2><span class="muted">'+meetings.length+' registros</span></div><div class="meeting-agenda">'+(meetings.length?meetings.map(row).join(''):empty('Agenda vazia','Cadastre reuniões com clientes para visualizá-las aqui.'))+'</div></section>';
   }
   function form(existing,date){
+    saving=false;
     selected=existing?.id||null;
     const d=date||existing?.meeting_date||iso(new Date()), options=[['','Sem projeto vinculado']].concat(state.projects.map(p=>[String(p.id),p.name]));
     modal(existing?'Editar reunião':'Agendar reunião','<form id="meeting-form"><div class="fields">'+
@@ -79,27 +80,49 @@ window.NexonMeetings = (() => {
   document.addEventListener('submit',async e=>{
     if(e.target.id==='meeting-outcome-form'){
       e.preventDefault();
+      if(saving)return;
       const form=e.target,button=form.querySelector('button[type="submit"]');
-      if(button)button.disabled=true;
+      const originalLabel=button?.textContent||'Salvar';
+      saving=true;
+      if(button){button.disabled=true;button.textContent='Salvando...';}
       try{
         await api('/meetings/'+Number(form.dataset.id)+'/outcome',{
           method:'POST',body:JSON.stringify({status:form.dataset.status,note:form.elements.note.value})
         });
-        closeModal();await refresh();
+        closeModal();
+        saving=false;
         notice(form.dataset.status==='realizada'?'Reunião concluída.':
           form.dataset.status==='cancelada'?'Reunião cancelada e mantida no histórico.':'Reunião reaberta.');
-      }catch(error){notice(error.message);if(button)button.disabled=false;}
+        await refresh();
+      }catch(error){
+        saving=false;
+        notice(error.message);
+        if(button){button.disabled=false;button.textContent=originalLabel;}
+      }
       return;
     }
     if(e.target.id!=='meeting-form')return;
     e.preventDefault();
-    const values=Object.fromEntries(new FormData(e.target).entries()),id=selected;
+    if(saving)return;
+    const form=e.target,button=form.querySelector('button[type="submit"]');
+    const values=Object.fromEntries(new FormData(form).entries()),id=selected;
     values.project_id=values.project_id?Number(values.project_id):null;
     if(values.end_time<=values.start_time){notice('O horário de término deve ser posterior ao de início.');return;}
+    const originalLabel=button?.textContent||'Salvar reunião';
+    saving=true;
+    if(button){button.disabled=true;button.textContent='Salvando...';}
     try {
       await api('/meetings'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify(values)});
-      closeModal();await refresh();notice(id?'Reunião atualizada.':'Reunião agendada.');
-    }catch(error){notice(error.message);}
+      selected=null;
+      closeModal();
+      saving=false;
+      notice(id?'Reunião atualizada.':'Reunião agendada.');
+      await refresh();
+    }catch(error){
+      saving=false;
+      notice(error.message);
+      if(button){button.disabled=false;button.textContent=originalLabel;}
+    }
   });
   return {page};
 })();
