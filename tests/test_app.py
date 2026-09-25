@@ -58,6 +58,21 @@ def test_meetings_calendar_and_client_agenda():
         mid=created.json()['id']
         meetings=c.get('/api/state').json()['meetings']
         assert any(m['id']==mid and m['client']=='Indústria Alfa' for m in meetings)
+
+        # Mesmo compromisso não pode ser gravado novamente por duplo clique,
+        # rede lenta ou nova tentativa do formulário.
+        duplicated=c.post('/api/meetings',json=data)
+        assert duplicated.status_code==409,duplicated.text
+        assert 'já está cadastrada' in duplicated.json()['detail']
+        same_slot=[m for m in c.get('/api/state').json()['meetings']
+                   if m['title']=='Diagnóstico com cliente'
+                   and m['meeting_date']=='2026-10-01'
+                   and m['start_time']=='09:00']
+        assert len(same_slot)==1
+
+        # Salvar a própria reunião sem alterar os dados não é duplicidade.
+        self_edit=c.put(f'/api/meetings/{mid}',json=data)
+        assert self_edit.status_code==200,self_edit.text
         invalid=c.post('/api/meetings',json={**data,'start_time':'11:00','end_time':'10:00'})
         assert invalid.status_code == 422
         bad_link=c.post('/api/meetings',json={**data,'meeting_url':'javascript:alert(1)'})
