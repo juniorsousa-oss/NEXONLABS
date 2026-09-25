@@ -77,3 +77,39 @@
 #meeting-outcome-form label{display:flex;flex-direction:column;gap:8px;font-weight:600;font-size:12px}
 #meeting-outcome-form textarea{min-height:105px;border:1px solid #dce5f1;border-radius:9px;padding:11px 12px;resize:vertical}
 @media(max-width:760px){.meeting-actions{justify-content:flex-start}}
+
+
+/* Reuniões — participantes internos e conflitos de agenda.
+   Conflito não bloqueia o agendamento, mas deve ficar impossível de ignorar. */
+.meeting-day.has-conflict{border-color:#d94b4b;background:#fff7f7;box-shadow:inset 0 0 0 1px rgba(217,75,75,.22)}
+.meeting-day.has-conflict:hover,.meeting-day.has-conflict:focus-visible{border-color:#c43f3f;background:#fff1f1}
+.meeting-day-alert{display:inline-flex;align-self:flex-start;padding:2px 5px;border-radius:4px;background:#c93f3f;color:#fff;font-size:8px;font-weight:800;letter-spacing:.5px}
+.meeting-dot.has-conflict{background:#fde5e5;color:#9b2f2f;border-left:3px solid #d94b4b}
+.meeting-entry.has-conflict{border-color:#e3aaaa;background:#fffafa}
+.meeting-title-line{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.meeting-title-line>strong{margin:0}
+.meeting-conflict-badge{display:inline-flex;padding:3px 6px;border-radius:5px;background:#c93f3f;color:#fff;font-size:8px;font-weight:800;letter-spacing:.55px}
+.meeting-conflict-copy{color:#a63232!important;font-weight:650}
+.meeting-attendees{margin:0;padding:13px;border:1px solid #dce7f0;border-radius:10px;min-width:0}
+.meeting-attendees legend{padding:0 6px;color:var(--navy);font-size:12px;font-weight:700}
+.meeting-attendees>p{margin:0 0 10px;font-size:11px;line-height:1.45}
+.meeting-attendee-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.meeting-attendee-option{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid #dbe6ef;border-radius:8px;background:#fff;cursor:pointer;min-width:0}
+.meeting-attendee-option:has(input:checked){border-color:#14b8a6;background:#f0fbf9}
+.meeting-attendee-option input{width:17px;height:17px;flex:none;accent-color:#14b8a6}
+.meeting-attendee-option span{min-width:0}
+.meeting-attendee-option b,.meeting-attendee-option small{display:block;overflow-wrap:anywhere}
+.meeting-attendee-option b{font-size:11px;color:var(--navy)}
+.meeting-attendee-option small{font-size:9px;color:var(--muted);margin-top:2px}
+.meeting-attendees-empty{padding:12px;border:1px solid #e3aaaa;border-radius:9px;background:#fff5f5;color:#9b2f2f;font-size:12px}
+.meeting-conflict-preview{padding:11px 12px;border-radius:9px;font-size:11px;line-height:1.45}
+.meeting-conflict-preview:empty{display:none}
+.meeting-conflict-preview.is-clear{border:1px solid #a7ded6;background:#f2fbf9;color:#166b64}
+.meeting-conflict-preview.is-required,.meeting-conflict-preview.has-conflict{border:1px solid #e3aaaa;background:#fff3f3;color:#982f2f}
+.meeting-conflict-preview.has-conflict strong,.meeting-conflict-preview.has-conflict span,.meeting-conflict-preview.has-conflict small{display:block}
+.meeting-conflict-preview.has-conflict span{margin-top:4px}
+.meeting-conflict-preview.has-conflict small{margin-top:7px;font-weight:650}
+@media(max-width:520px){
+  .meeting-attendee-grid{grid-template-columns:1fr}
+  .meeting-day-alert{font-size:7px}
+}
