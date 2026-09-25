@@ -551,7 +551,7 @@ def meeting_dict(m: Meeting, db: Session):
                 closure_at=stamp(lifecycle.updated_at) if lifecycle else None,
                 closure_by=lifecycle.updated_by if lifecycle else '')
 
-def validate_meeting(data: MeetingIn, db: Session):
+def validate_meeting(data: MeetingIn, db: Session, exclude_id: int | None = None):
     if not data.title.strip():
         raise HTTPException(422, 'Informe o título da reunião.')
     if data.end_time <= data.start_time:
@@ -560,6 +560,28 @@ def validate_meeting(data: MeetingIn, db: Session):
         raise HTTPException(422, 'O projeto selecionado não existe.')
     if data.meeting_url and not data.meeting_url.startswith(('https://', 'http://')):
         raise HTTPException(422, 'O link deve começar com https:// ou http://.')
+
+    # Impede o mesmo compromisso de ser criado duas vezes por clique repetido,
+    # retorno lento da rede ou nova tentativa do usuário. A edição da própria
+    # reunião é excluída dessa comparação.
+    duplicate = select(Meeting).where(
+        Meeting.meeting_date == data.meeting_date,
+        Meeting.start_time == data.start_time,
+        Meeting.end_time == data.end_time,
+        func.lower(func.trim(Meeting.title)) == data.title.strip().lower(),
+        func.lower(func.trim(Meeting.client)) == data.client.strip().lower(),
+    )
+    if data.project_id is None:
+        duplicate = duplicate.where(Meeting.project_id.is_(None))
+    else:
+        duplicate = duplicate.where(Meeting.project_id == data.project_id)
+    if exclude_id is not None:
+        duplicate = duplicate.where(Meeting.id != exclude_id)
+    if db.scalar(duplicate.limit(1)) is not None:
+        raise HTTPException(
+            409,
+            'Esta reunião já está cadastrada com o mesmo título, cliente, projeto, data e horário.'
+        )
 
 @app.post('/api/meetings', dependencies=[Depends(authorized)], status_code=201)
 def add_meeting(data: MeetingIn, db: Session = Depends(session)):
@@ -576,7 +598,7 @@ def edit_meeting(meeting_id: int, data: MeetingIn, db: Session = Depends(session
     meeting = db.get(Meeting, meeting_id)
     if meeting is None:
         raise HTTPException(404, 'Reunião não encontrada.')
-    validate_meeting(data, db)
+    validate_meeting(data, db, exclude_id=meeting_id)
     for key, value in data.model_dump().items():
         setattr(meeting, key, value)
     log(db, f'Reunião {meeting.title} atualizada.')
