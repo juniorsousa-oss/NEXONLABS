@@ -111,6 +111,12 @@ class MeetingAttendee(Base):
     meeting_id: Mapped[int]=mapped_column(ForeignKey('meetings.id',ondelete='CASCADE'),primary_key=True)
     member_id: Mapped[int]=mapped_column(ForeignKey('members.id',ondelete='CASCADE'),primary_key=True)
 
+class ProjectClientSite(Base):
+    """URL pública do cliente sem alterar a tabela histórica de projetos."""
+    __tablename__='project_client_sites'
+    project_id: Mapped[int]=mapped_column(ForeignKey('projects.id',ondelete='CASCADE'),primary_key=True)
+    url: Mapped[str]=mapped_column(String(500),nullable=False,default='')
+
 
 Base.metadata.create_all(engine)
 from accounts_module import setup_accounts, public, session_user, find_by_password, password_in_use, hash_password, verify_password, MAX_ACCOUNTS
@@ -130,16 +136,24 @@ class ProjectIn(BaseModel):
     name: str = Field(min_length=2, max_length=160)
     description: str = Field(default='', max_length=2000)
     client: str = Field(default='', max_length=160)
+    client_site: str = Field(default='', max_length=500)
     owner: str = Field(default='', max_length=120)
     status: Status = 'planejamento'
     progress: int = Field(default=0, ge=0, le=100)
     started_at: date | None = None
     due_at: date | None = None
 
-    @field_validator('name', 'description', 'client', 'owner')
+    @field_validator('name', 'description', 'client', 'client_site', 'owner')
     @classmethod
     def strip_text(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator('client_site')
+    @classmethod
+    def validate_client_site(cls, value: str) -> str:
+        if value and not value.startswith(('https://','http://')):
+            raise ValueError('O site do cliente deve começar com https:// ou http://.')
+        return value
 
 class TaskIn(BaseModel):
     project_id: int = Field(gt=0)
@@ -217,8 +231,23 @@ def effective_status(p: Project):
     if p.due_at and p.due_at < datetime.now(ZoneInfo('America/Sao_Paulo')).date(): return 'atrasado'
     return p.status
 
-def project_dict(p: Project):
-    return dict(id=p.id, name=p.name, description=p.description, client=p.client, owner=p.owner,
+def project_site(db: Session, project_id: int):
+    row=db.get(ProjectClientSite,project_id)
+    return row.url if row else ''
+
+def sync_project_site(db: Session, project_id: int, url: str):
+    row=db.get(ProjectClientSite,project_id)
+    if url:
+        if row is None:
+            row=ProjectClientSite(project_id=project_id,url=url);db.add(row)
+        else:
+            row.url=url
+    elif row is not None:
+        db.delete(row)
+
+def project_dict(p: Project, db: Session):
+    return dict(id=p.id, name=p.name, description=p.description, client=p.client,
+                client_site=project_site(db,p.id), owner=p.owner,
                 status=effective_status(p), saved_status=p.status, progress=p.progress,
                 started_at=p.started_at.isoformat() if p.started_at else None,
                 due_at=p.due_at.isoformat() if p.due_at else None,
@@ -447,7 +476,7 @@ def state(request: Request, db: Session = Depends(session)):
     members = db.scalars(select(Member).order_by(Member.name)).all()
     activities = db.scalars(select(Activity).order_by(Activity.id.desc()).limit(30)).all()
     meetings = db.scalars(select(Meeting).order_by(Meeting.meeting_date, Meeting.start_time, Meeting.id)).all()
-    return dict(projects=[project_dict(p) for p in projects], tasks=[task_dict(t) for t in tasks],
+    return dict(projects=[project_dict(p,db) for p in projects], tasks=[task_dict(t) for t in tasks],
                 meetings=[meeting_dict(m,db) for m in meetings],
                 members=[member_dict(m,db) for m in members],
                 activities=[dict(id=a.id, message=a.message, created_at=stamp(a.created_at)) for a in activities],
@@ -461,11 +490,12 @@ def state(request: Request, db: Session = Depends(session)):
 def add_project(data: ProjectIn, db: Session = Depends(session)):
     if not data.name: raise HTTPException(422, 'Informe o nome do projeto.')
     if data.started_at and data.due_at and data.due_at < data.started_at: raise HTTPException(422, 'O prazo deve ser posterior ao início.')
-    p = Project(**data.model_dump())
-    db.add(p)
+    p = Project(**data.model_dump(exclude={'client_site'}))
+    db.add(p);db.flush()
+    sync_project_site(db,p.id,data.client_site)
     log(db, f'Projeto {p.name} cadastrado.')
     db.commit(); db.refresh(p)
-    return project_dict(p)
+    return project_dict(p,db)
 
 @app.put('/api/projects/{project_id}', dependencies=[Depends(authorized)])
 def edit_project(project_id: int, data: ProjectIn, db: Session = Depends(session)):
@@ -473,17 +503,20 @@ def edit_project(project_id: int, data: ProjectIn, db: Session = Depends(session
     if p is None: raise HTTPException(404, 'Projeto não encontrado.')
     if not data.name: raise HTTPException(422, 'Informe o nome do projeto.')
     if data.started_at and data.due_at and data.due_at < data.started_at: raise HTTPException(422, 'O prazo deve ser posterior ao início.')
-    for key, val in data.model_dump().items(): setattr(p, key, val)
+    for key, val in data.model_dump(exclude={'client_site'}).items(): setattr(p, key, val)
+    sync_project_site(db,p.id,data.client_site)
     p.updated_at = datetime.now(timezone.utc)
     log(db, f'Projeto {p.name} atualizado.')
     db.commit(); db.refresh(p)
-    return project_dict(p)
+    return project_dict(p,db)
 
 @app.delete('/api/projects/{project_id}', dependencies=[Depends(authorized)])
 def remove_project(project_id: int, db: Session = Depends(session)):
     p = db.get(Project, project_id)
     if p is None: raise HTTPException(404, 'Projeto não encontrado.')
     log(db, f'Projeto {p.name} excluído.')
+    site=db.get(ProjectClientSite,project_id)
+    if site:db.delete(site)
     db.delete(p); db.commit()
     return {'ok': True}
 
@@ -725,9 +758,9 @@ def remove_meeting(meeting_id: int, db: Session = Depends(session)):
 @app.get('/api/export/projects.csv', dependencies=[Depends(authorized)])
 def export_projects(db: Session = Depends(session)):
     buffer = io.StringIO(); out = csv.writer(buffer, delimiter=';')
-    out.writerow(['ID', 'Projeto', 'Descrição', 'Cliente', 'Responsável', 'Status', 'Progresso (%)', 'Início', 'Prazo'])
+    out.writerow(['ID', 'Projeto', 'Descrição', 'Cliente', 'Site do cliente', 'Responsável', 'Status', 'Progresso (%)', 'Início', 'Prazo'])
     for p in db.scalars(select(Project).order_by(Project.id)):
-        out.writerow([p.id, p.name, p.description, p.client, p.owner, effective_status(p), p.progress,
+        out.writerow([p.id, p.name, p.description, p.client, project_site(db,p.id), p.owner, effective_status(p), p.progress,
                       p.started_at.isoformat() if p.started_at else '', p.due_at.isoformat() if p.due_at else ''])
     buffer.seek(0)
     return StreamingResponse(iter(['\ufeff' + buffer.getvalue()]), media_type='text/csv; charset=utf-8',
