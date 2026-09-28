@@ -17,16 +17,24 @@ def test_health_and_protected_routes():
 def test_project_task_member_lifecycle():
     with TestClient(app) as c:
         c.post('/api/login',json={'password':'test-password'})
-        p=c.post('/api/projects',json={'name':'App gestão','client':'Cliente 1','owner':'Júnior','status':'planejamento','progress':30,'due_at':'2027-12-31'})
+        p=c.post('/api/projects',json={
+            'name':'App gestão','client':'Cliente 1','client_site':'https://cliente.example.com',
+            'owner':'Júnior','status':'planejamento','progress':30,'due_at':'2027-12-31'
+        })
         assert p.status_code==201,p.text
         p=p.json(); pid=p['id']
-        assert c.get('/api/state').json()['projects'][0]['name']=='App gestão'
+        assert p['client_site']=='https://cliente.example.com'
+        saved_project=c.get('/api/state').json()['projects'][0]
+        assert saved_project['name']=='App gestão'
+        assert saved_project['client_site']=='https://cliente.example.com'
         t=c.post('/api/tasks',json={'project_id':pid,'title':'Criar tela','hours':2.5})
         assert t.status_code==201,t.text
         tid=t.json()['id']
         assert c.put(f'/api/tasks/{tid}',json={'project_id':pid,'title':'Criar tela','hours':3,'completed':True}).json()['completed']
         assert c.post('/api/members',json={'name':'Júnior'}).status_code==201
-        assert 'App gestão' in c.get('/api/export/projects.csv').text
+        exported=c.get('/api/export/projects.csv').text
+        assert 'App gestão' in exported
+        assert 'https://cliente.example.com' in exported
         assert c.delete(f'/api/projects/{pid}').status_code==200
         assert c.get('/api/state').json()['tasks']==[]
 
@@ -35,6 +43,14 @@ def test_validation_and_markup():
         c.post('/api/login',json={'password':'test-password'})
         assert c.post('/api/projects',json={'name':'x','progress':101}).status_code==422
         assert c.post('/api/projects',json={'name':'Teste','started_at':'2027-10-02','due_at':'2027-10-01'}).status_code==422
+        assert c.post('/api/projects',json={'name':'Site inválido','client_site':'javascript:alert(1)'}).status_code==422
+        valid_site=c.post('/api/projects',json={'name':'Projeto com site','client_site':'https://cliente.example.com/app'})
+        assert valid_site.status_code==201,valid_site.text
+        assert valid_site.json()['client_site']=='https://cliente.example.com/app'
+        cleared=c.put(f"/api/projects/{valid_site.json()['id']}",json={'name':'Projeto com site','client_site':''})
+        assert cleared.status_code==200,cleared.text
+        assert cleared.json()['client_site']==''
+        assert c.delete(f"/api/projects/{valid_site.json()['id']}").status_code==200
         assert 'NEXON' in c.get('/').text
         assert 'DESIGN LOCK v1' in c.get('/static/style.css').text
 
