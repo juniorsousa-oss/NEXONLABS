@@ -303,3 +303,15 @@
     grid-column:1!important;
   }
 }
+
+
+/* Projetos — acesso rápido ao site público do cliente. */
+.project-client-cell{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0}
+.project-client-cell>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.project-site-link,.project-site-current a,.project-menu-site{color:#087f78;text-decoration:none;font-weight:700}
+.project-site-link{font-size:10px;white-space:nowrap}
+.project-site-link:hover,.project-site-link:focus-visible,.project-site-current a:hover,.project-menu-site:hover{text-decoration:underline}
+.project-site-current{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #cce9e5;border-radius:9px;background:#f3fbfa;font-size:11px}
+.project-site-current span{color:var(--muted)}
+.project-menu-site{display:block;width:100%;padding:9px 11px;font-size:12px}
+@media(max-width:650px){.project-site-current{align-items:flex-start;flex-direction:column;gap:5px}}
