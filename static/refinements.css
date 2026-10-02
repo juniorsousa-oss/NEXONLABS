@@ -322,9 +322,7 @@
 :root{--shell-divider:rgba(142,163,188,.24)}
 html{background:#e9eef4}
 body{
-  background:
-    radial-gradient(circle at 14% 8%,rgba(20,184,166,.045),transparent 28%),
-    linear-gradient(135deg,#edf1f5 0%,#e6ecf3 100%);
+  background:#e9eef4;
   min-height:100vh;
   min-height:100dvh;
 }
