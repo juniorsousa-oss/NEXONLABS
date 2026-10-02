@@ -1656,3 +1656,12 @@
     margin-right:0!important;
   }
 }
+
+
+/* PADRONIZAÇÃO II.9 — COR LATERAL UNIFICADA
+   Usa o mesmo navy principal da identidade no menu lateral para evitar
+   diferença perceptível de tonalidade com os elementos do topo. */
+.sidebar,
+.shell>.sidebar{
+  background:#0B2D4A!important;
+}
