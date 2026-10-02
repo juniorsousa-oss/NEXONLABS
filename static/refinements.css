@@ -359,7 +359,8 @@ body{
   background:var(--base);
 }
 .shell .topbar{
-  top:18px;
+  position:relative;
+  top:0;
   border-radius:0 24px 0 0;
   border-bottom-color:var(--shell-divider);
 }
@@ -367,7 +368,7 @@ body{
   .shell{width:calc(100% - 24px);min-height:calc(100dvh - 24px);height:auto;margin:12px auto;border-radius:20px}
   .shell>.sidebar{position:relative;top:0;align-self:stretch;height:auto;min-height:100%;border-radius:20px 0 0 20px}
   .shell>.workspace{min-height:calc(100dvh - 24px);height:auto;border-radius:0 20px 20px 0}
-  .shell .topbar{top:12px;border-radius:0 20px 0 0}
+  .shell .topbar{position:relative;top:0;border-radius:0 20px 0 0}
 }
 @media(max-width:850px){
   html,body{background:var(--base)}
@@ -384,5 +385,5 @@ body{
   }
   .shell>.workspace{height:auto;min-height:100vh;min-height:100dvh;overflow:visible;border-radius:0}
   .shell>.sidebar{position:fixed;top:0;height:100vh;height:100dvh;border-radius:0 18px 18px 0}
-  .shell .topbar{top:0;border-radius:0}
+  .shell .topbar{position:relative;top:0;border-radius:0}
 }
