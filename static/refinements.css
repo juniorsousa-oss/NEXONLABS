@@ -328,9 +328,9 @@ body{
 }
 .shell{
   width:min(96vw,1780px);
-  height:calc(100vh - 36px);
-  height:calc(100dvh - 36px);
-  min-height:0;
+  min-height:calc(100vh - 36px);
+  min-height:calc(100dvh - 36px);
+  height:auto;
   margin:18px auto;
   border:1px solid var(--shell-divider);
   border-radius:24px;
@@ -339,36 +339,34 @@ body{
     0 22px 58px rgba(19,43,72,.12),
     0 4px 14px rgba(19,43,72,.055);
   isolation:isolate;
-  overflow:hidden;
+  overflow:clip;
 }
 .shell>.sidebar{
-  position:relative;
-  top:0;
-  align-self:stretch;
-  height:100%;
+  top:18px;
+  align-self:flex-start;
+  height:calc(100vh - 36px);
+  height:calc(100dvh - 36px);
   border-radius:24px 0 0 24px;
   border-right:1px solid var(--shell-divider);
 }
 .shell>.workspace{
-  height:100%;
-  min-height:0;
-  overflow-y:auto;
-  overflow-x:hidden;
-  overscroll-behavior:contain;
-  scrollbar-gutter:stable;
+  min-height:calc(100vh - 36px);
+  min-height:calc(100dvh - 36px);
+  height:auto;
+  overflow:visible;
   border-radius:0 24px 24px 0;
   background:var(--base);
 }
 .shell .topbar{
-  top:0;
+  top:18px;
   border-radius:0 24px 0 0;
   border-bottom-color:var(--shell-divider);
 }
 @media(max-width:1180px) and (min-width:851px){
-  .shell{width:calc(100% - 24px);height:calc(100dvh - 24px);margin:12px auto;border-radius:20px}
-  .shell>.sidebar{top:0;height:100%;border-radius:20px 0 0 20px}
-  .shell>.workspace{height:100%;min-height:0;border-radius:0 20px 20px 0}
-  .shell .topbar{top:0;border-radius:0 20px 0 0}
+  .shell{width:calc(100% - 24px);min-height:calc(100dvh - 24px);height:auto;margin:12px auto;border-radius:20px}
+  .shell>.sidebar{top:12px;height:calc(100dvh - 24px);border-radius:20px 0 0 20px}
+  .shell>.workspace{min-height:calc(100dvh - 24px);height:auto;border-radius:0 20px 20px 0}
+  .shell .topbar{top:12px;border-radius:0 20px 0 0}
 }
 @media(max-width:850px){
   html,body{background:var(--base)}
