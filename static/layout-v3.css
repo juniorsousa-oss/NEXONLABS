@@ -1605,3 +1605,54 @@
     max-width:100%!important;
   }
 }
+
+
+/* PADRONIZAÇÃO II.8 — ESPAÇAMENTO OPERAHUB 1:1
+   Referência oficial adotada:
+   - margem externa: 18px
+   - gutter interno lateral: 22px
+   - largura máxima da moldura: 1680px
+   Aplicado somente em desktop/notebook; mobile permanece independente. */
+@media(min-width:851px){
+  html,body{
+    margin:0!important;
+    padding:0!important;
+  }
+
+  .shell{
+    width:calc(100% - 36px)!important;
+    max-width:1680px!important;
+    min-height:calc(100dvh - 36px)!important;
+    margin:18px auto!important;
+    border-radius:24px!important;
+  }
+
+  .shell>.workspace{
+    min-height:calc(100dvh - 36px)!important;
+  }
+
+  .shell .topbar,
+  .topbar{
+    padding-left:22px!important;
+    padding-right:22px!important;
+  }
+
+  .main{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding-left:22px!important;
+    padding-right:22px!important;
+    padding-bottom:18px!important;
+  }
+
+  .hero,
+  .home-metrics,
+  .home-grid,
+  .projects-view,
+  .report-tiles{
+    max-width:100%!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+}
