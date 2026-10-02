@@ -1665,3 +1665,19 @@
 .shell>.sidebar{
   background:#0B2D4A!important;
 }
+
+
+/* PADRONIZAÇÃO II.10 — FUNDO EXTERNO UNIFORME
+   O desvio visual estava no entorno da moldura: a sombra vertical deixava
+   a lateral mais azulada/escura que a faixa superior. Mantém o mesmo fundo
+   externo em todos os lados e usa sombra simétrica. */
+@media(min-width:851px){
+  html,
+  body{
+    background:#EEF3F8!important;
+  }
+
+  .shell{
+    box-shadow:0 0 24px rgba(19,43,72,.075)!important;
+  }
+}
