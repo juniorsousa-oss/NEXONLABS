@@ -808,3 +808,324 @@
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
+
+
+/* PADRONIZAÇÃO II.2 — NOTEBOOK COMPACTO
+   Aplicado quando a tela tem largura de notebook e altura útil reduzida.
+   Não usa zoom/transform: reduz dimensões reais para manter nitidez e responsividade. */
+@media(min-width:851px) and (max-width:1750px) and (max-height:980px){
+  .shell{
+    width:calc(100% - 12px);
+    min-height:calc(100dvh - 12px);
+    margin:6px auto;
+    border-radius:18px;
+  }
+  .shell>.workspace{
+    min-height:calc(100dvh - 12px);
+  }
+
+  .sidebar{
+    flex:0 0 210px;
+    width:210px;
+    padding:12px 9px 10px;
+  }
+  .workspace{width:calc(100% - 210px)}
+
+  .sidebar .brand{
+    min-height:56px;
+    padding:0 6px 8px;
+    gap:6px;
+  }
+  .sidebar .brand-mark{
+    width:40px;
+    height:40px;
+  }
+  .sidebar .brand-word strong{
+    font-size:15px;
+    letter-spacing:-.55px;
+  }
+  .sidebar .brand-word small{
+    font-size:5.3px;
+    letter-spacing:1.55px;
+  }
+  .sidebar .nav-section{
+    padding:7px 10px 3px;
+    font-size:7.5px;
+    letter-spacing:1.55px;
+  }
+  .sidebar .menu{gap:1px}
+  .sidebar .nav-link{
+    min-height:36px;
+    padding:6px 9px;
+    gap:9px;
+    border-radius:8px;
+    font-size:11.5px;
+  }
+  .sidebar .nav-link svg{
+    width:20px;
+    height:20px;
+  }
+  .sidebar .sidebar-footer{
+    flex-basis:82px;
+    min-height:82px;
+    height:82px;
+    margin-top:5px;
+    padding:7px 6px 2px 8px;
+  }
+  .sidebar-footer p{
+    max-width:112px;
+    font-size:7.5px;
+    line-height:1.45;
+    letter-spacing:.75px;
+  }
+  .sidebar-footer .footer-molecule{
+    width:66px;
+    height:63px;
+    right:-7px;
+    bottom:0;
+  }
+
+  .topbar{
+    height:58px;
+    padding:0 20px;
+    gap:12px;
+  }
+  .topbar .search-wrap{
+    height:36px;
+    max-width:460px;
+    padding:0 14px;
+  }
+  .topbar .search-wrap input{font-size:12px}
+  .topbar .icon-button{padding:6px}
+  .topbar .icon-button svg{width:23px;height:23px}
+  .topbar .profile{gap:8px}
+  .topbar .profile .avatar{width:36px;height:36px}
+  .topbar .profile-label b{font-size:11px}
+  .topbar .profile-label small{font-size:9px}
+  .topbar .top-actions{gap:14px}
+
+  .main{
+    max-width:none;
+    padding:12px 14px 18px;
+  }
+
+  .hero{
+    grid-template-columns:minmax(0,1fr) minmax(280px,31%);
+    min-height:116px;
+    height:116px;
+    gap:12px;
+    margin-bottom:10px;
+  }
+  .hero .hero-text{
+    padding:8px 8px 0;
+    align-self:center;
+  }
+  .hero h1{
+    font-size:29px;
+    line-height:1.08;
+    letter-spacing:-1px;
+    margin:0 0 5px;
+  }
+  .hero p{
+    font-size:13px;
+    line-height:1.35;
+  }
+  .hero .slogan-card{
+    height:116px;
+    min-height:116px;
+    padding:13px 16px;
+  }
+  .slogan-card h2{
+    font-size:18px;
+    line-height:1.15;
+    margin-bottom:5px;
+  }
+  .slogan-card p{
+    font-size:10px;
+    line-height:1.35;
+  }
+  .slogan-card .molecule-art{
+    right:30px;
+    width:34%;
+    top:5px;
+    height:calc(100% - 10px);
+  }
+  .slogan-card .round-next{
+    right:7px;
+    bottom:7px;
+    width:29px;
+    height:29px;
+  }
+  .slogan-card .round-next svg{width:15px;height:15px}
+
+  .home-metrics{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:9px;
+    margin-bottom:10px;
+  }
+  .home-metrics .metric{
+    min-height:96px;
+    padding:11px 12px 9px;
+    border-radius:10px;
+  }
+  .home-metrics .metric-heading{gap:9px}
+  .home-metrics .metric-heading .micon svg{
+    width:26px;
+    height:26px;
+  }
+  .home-metrics .metric-heading .num{
+    font-size:21px;
+    line-height:1;
+  }
+  .home-metrics .metric-heading .mlabel{
+    margin-top:3px;
+    font-size:9.5px;
+    line-height:1.25;
+  }
+  .home-metrics .metric-foot{
+    min-height:0;
+    margin-top:8px;
+    font-size:8.5px;
+    line-height:1.3;
+  }
+
+  .home-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.62fr) minmax(270px,.72fr);
+    gap:10px;
+    align-items:start;
+  }
+  .home-grid .right-stack,
+  .home-grid .right-stack.right-stack{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding-top:0;
+  }
+  .home-grid .panel{
+    padding:12px;
+    border-radius:11px;
+  }
+  .home-section-head{margin-bottom:10px}
+  .home-section-head h2,
+  .home-grid .panel-head h2{
+    font-size:14px;
+    letter-spacing:-.25px;
+  }
+  .home-grid .small-link{
+    font-size:9px;
+  }
+
+  .home-priority-cards{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+  }
+  .home-project-card{
+    gap:8px;
+    padding:10px;
+    border-radius:9px;
+  }
+  .home-project-card .home-project-name{
+    font-size:11px;
+    line-height:1.25;
+  }
+  .home-project-card .home-client{
+    font-size:9px;
+  }
+  .home-project-card .pill{
+    padding:5px 7px;
+    font-size:8px;
+  }
+  .home-project-card .home-project-meta{
+    font-size:8.5px;
+  }
+  .home-project-card .progress-track{height:5px}
+
+  .home-quick-links{
+    gap:8px;
+    margin-top:10px;
+  }
+  .home-quick-links button{
+    gap:9px;
+    padding:10px 12px;
+    border-radius:9px;
+  }
+  .home-quick-links svg{width:19px;height:19px}
+  .home-quick-links strong{font-size:10px}
+  .home-quick-links small{font-size:8.5px;margin-top:2px}
+
+  .home-grid .right-stack .panel{
+    padding:11px;
+  }
+  .home-grid .right-stack .delivery-list,
+  .home-grid .right-stack .activity-list{
+    margin-top:8px;
+    gap:5px;
+  }
+  .home-grid .right-stack .delivery,
+  .home-grid .right-stack .activity{
+    min-height:47px;
+    padding:4px 6px;
+    gap:8px;
+  }
+  .home-grid .right-stack .date-box{
+    width:40px;
+    min-height:40px;
+  }
+  .home-grid .right-stack .date-box b{font-size:13px}
+  .home-grid .right-stack .date-box small{font-size:8px}
+  .home-grid .right-stack .delivery-body strong,
+  .home-grid .right-stack .activity-body strong{
+    font-size:9.5px;
+  }
+  .home-grid .right-stack .delivery-body small,
+  .home-grid .right-stack .activity-body small{
+    font-size:8.5px;
+    margin-top:2px;
+  }
+  .home-grid .right-stack .activity .mini-avatar{
+    width:30px;
+    height:30px;
+    font-size:8px;
+  }
+
+  .home-mini-agenda{margin-top:8px}
+  .home-empty{padding:12px 9px}
+  .home-empty strong{font-size:10px}
+  .home-empty p{font-size:9px;margin:4px 0 8px}
+  .home-empty .secondary{font-size:9px;padding:7px 9px}
+
+  /* Demais páginas também ficam proporcionais no notebook. */
+  .simple-head{margin:8px 0 13px}
+  .simple-head h1{font-size:24px}
+  .simple-head p{font-size:11px;margin-top:4px}
+  .panel{padding:14px 13px}
+  .panel-head h2{font-size:16px}
+  .projects-summary{gap:7px}
+  .projects-summary span{padding:7px 10px;font-size:10px}
+  .tabs{margin:10px 0 12px;gap:6px}
+  .tab{padding:7px 11px;font-size:10px}
+  .project-table th{height:31px;font-size:8.5px}
+  .project-table td{height:51px;font-size:9px}
+  .project-cell strong{font-size:10.5px}
+  .project-cell small{font-size:8.5px}
+  .project-symbol{width:31px;height:31px}
+  .project-symbol svg{width:18px}
+  .mini-avatar{width:25px;height:25px;font-size:8px}
+  .pill{font-size:8px;padding:6px 8px}
+  .panel-bottom{padding-top:11px;font-size:9.5px}
+  .primary{min-height:33px;padding:8px 13px;font-size:10px}
+  .secondary{padding:7px 10px;font-size:10px}
+}
+
+/* Em notebooks ainda mais baixos, comprime só a Home um pouco mais. */
+@media(min-width:851px) and (max-width:1750px) and (max-height:820px){
+  .topbar{height:54px}
+  .main{padding-top:9px}
+  .hero{height:104px;min-height:104px;margin-bottom:8px}
+  .hero .slogan-card{height:104px;min-height:104px}
+  .hero h1{font-size:27px}
+  .home-metrics .metric{min-height:88px}
+  .home-grid{gap:8px}
+  .home-grid .right-stack,.home-grid .right-stack.right-stack{gap:8px}
+}
