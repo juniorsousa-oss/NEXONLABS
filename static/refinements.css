@@ -315,3 +315,65 @@
 .project-site-current span{color:var(--muted)}
 .project-menu-site{display:block;width:100%;padding:9px 11px;font-size:12px}
 @media(max-width:650px){.project-site-current{align-items:flex-start;flex-direction:column;gap:5px}}
+
+
+/* Moldura externa do aplicativo — referência visual OperaHub.
+   Altera somente o enquadramento da aplicação; componentes internos permanecem intactos. */
+html{background:#e9eef4}
+body{
+  background:
+    radial-gradient(circle at 14% 8%,rgba(20,184,166,.045),transparent 28%),
+    linear-gradient(135deg,#edf1f5 0%,#e6ecf3 100%);
+  min-height:100vh;
+  min-height:100dvh;
+}
+.shell{
+  width:min(96vw,1780px);
+  min-height:calc(100vh - 36px);
+  min-height:calc(100dvh - 36px);
+  margin:18px auto;
+  border:1px solid rgba(142,163,188,.24);
+  border-radius:24px;
+  background:var(--base);
+  box-shadow:
+    0 22px 58px rgba(19,43,72,.12),
+    0 4px 14px rgba(19,43,72,.055);
+  isolation:isolate;
+}
+.shell>.sidebar{
+  top:18px;
+  height:calc(100vh - 36px);
+  height:calc(100dvh - 36px);
+  border-radius:24px 0 0 24px;
+}
+.shell>.workspace{
+  min-height:calc(100vh - 36px);
+  min-height:calc(100dvh - 36px);
+  border-radius:0 24px 24px 0;
+  background:var(--base);
+}
+.shell .topbar{
+  top:18px;
+  border-radius:0 24px 0 0;
+}
+@media(max-width:1180px) and (min-width:851px){
+  .shell{width:calc(100% - 24px);margin:12px auto;min-height:calc(100dvh - 24px);border-radius:20px}
+  .shell>.sidebar{top:12px;height:calc(100dvh - 24px);border-radius:20px 0 0 20px}
+  .shell>.workspace{min-height:calc(100dvh - 24px);border-radius:0 20px 20px 0}
+  .shell .topbar{top:12px;border-radius:0 20px 0 0}
+}
+@media(max-width:850px){
+  html,body{background:var(--base)}
+  .shell{
+    width:100%;
+    min-height:100vh;
+    min-height:100dvh;
+    margin:0;
+    border:0;
+    border-radius:0;
+    box-shadow:none;
+  }
+  .shell>.workspace{min-height:100vh;min-height:100dvh;border-radius:0}
+  .shell>.sidebar{top:0;height:100vh;height:100dvh;border-radius:0 18px 18px 0}
+  .shell .topbar{top:0;border-radius:0}
+}
