@@ -674,3 +674,137 @@
   .meeting-entry .meeting-actions{flex-wrap:wrap}
   .meeting-entry .meeting-actions button{flex:1 1 calc(50% - 4px)}
 }
+
+
+/* PADRONIZAÇÃO II.1 — NOTEBOOK
+   Corrige a distribuição entre 1101px e 1450px sem afetar desktop amplo
+   nem os breakpoints mobile da Padronização II. */
+@media(min-width:1101px) and (max-width:1450px){
+  .shell{
+    width:calc(100% - 24px);
+    margin:12px auto;
+  }
+
+  .sidebar{
+    flex:0 0 238px;
+    width:238px;
+    padding-left:11px;
+    padding-right:11px;
+  }
+  .workspace{width:calc(100% - 238px)}
+
+  .sidebar .brand{
+    gap:7px;
+    padding-left:7px;
+    padding-right:2px;
+  }
+  .sidebar .brand-mark{
+    width:47px;
+    height:47px;
+  }
+  .sidebar .brand-word strong{font-size:17px}
+  .sidebar .brand-word small{
+    font-size:6px;
+    letter-spacing:1.9px;
+  }
+  .sidebar .nav-link{
+    gap:12px;
+    padding-left:11px;
+    padding-right:11px;
+    font-size:13px;
+  }
+  .sidebar .nav-link svg{
+    width:23px;
+    height:23px;
+  }
+
+  .main{
+    max-width:none;
+    padding-left:17px;
+    padding-right:17px;
+  }
+
+  .hero{
+    grid-template-columns:minmax(0,1fr) minmax(315px,34%);
+    gap:14px;
+  }
+
+  .home-metrics{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
+  }
+  .home-metrics .metric{
+    min-height:126px;
+    padding:15px 13px 13px;
+  }
+
+  /* Em notebook, a Home volta a usar duas colunas:
+     conteúdo principal à esquerda e informações de apoio à direita. */
+  .home-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.55fr) minmax(300px,.78fr);
+    gap:14px;
+    align-items:start;
+  }
+  .home-grid>.home-main{min-width:0}
+  .home-grid .right-stack,
+  .home-grid .right-stack.right-stack{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:14px;
+    min-width:0;
+    padding-top:0;
+  }
+  .home-grid .right-stack>.panel{
+    width:100%;
+    min-width:0;
+    margin:0;
+  }
+
+  .home-priority-cards{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+  }
+  .home-project-card{padding:13px 12px}
+  .home-project-card .home-project-meta{
+    gap:6px;
+    font-size:10px;
+  }
+
+  .home-quick-links{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+    margin-top:14px;
+  }
+
+  .home-grid .right-stack .panel{
+    padding:15px 14px;
+  }
+  .home-grid .right-stack .panel-head h2{
+    font-size:16px;
+  }
+  .home-grid .right-stack .delivery{
+    gap:9px;
+  }
+}
+
+/* Notebook compacto: ainda mantém duas colunas, mas com a lateral de apoio
+   um pouco menor antes da transição para tablet. */
+@media(min-width:1001px) and (max-width:1100px){
+  .home-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.42fr) minmax(285px,.78fr);
+    gap:13px;
+    align-items:start;
+  }
+  .home-grid .right-stack,
+  .home-grid .right-stack.right-stack{
+    display:flex;
+    flex-direction:column;
+    gap:13px;
+  }
+  .home-priority-cards{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
