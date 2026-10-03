@@ -1,22 +1,22 @@
 services:
-  nexonhub:
+  atria:
     build:
       context: https://github.com/juniorsousa-oss/NEXONLABS.git#main
     restart: unless-stopped
     environment:
       APP_ENV: production
       COOKIE_SECURE: "1"
-      APP_DISPLAY_NAME: "Equipe Nexon Labs"
+      APP_DISPLAY_NAME: "ATRIA by Nexon Labs"
       DATABASE_URL: ${DATABASE_URL}
       APP_PASSWORD: ${APP_PASSWORD}
       SESSION_SECRET: ${SESSION_SECRET}
     labels:
       - traefik.enable=true
-      - "traefik.http.routers.nexonhub.rule=Host(`nexonhub.nexonlabs.com.br`)"
-      - traefik.http.routers.nexonhub.entrypoints=websecure
-      - traefik.http.routers.nexonhub.tls=true
-      - traefik.http.routers.nexonhub.tls.certresolver=letsencrypt
-      - traefik.http.services.nexonhub.loadbalancer.server.port=8000
+      - "traefik.http.routers.atria.rule=Host(`atria.nexonlabs.com.br`)"
+      - traefik.http.routers.atria.entrypoints=websecure
+      - traefik.http.routers.atria.tls=true
+      - traefik.http.routers.atria.tls.certresolver=letsencrypt
+      - traefik.http.services.atria.loadbalancer.server.port=8000
     healthcheck:
       test:
         - CMD-SHELL
