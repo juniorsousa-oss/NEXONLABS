@@ -31,7 +31,7 @@ from reportlab.lib.utils import ImageReader
 NAVY=(11,35,61); NAVY2=(14,49,78); TEAL=(18,174,174)
 CYAN=(24,192,207); INK=(15,40,65); MUTED=(81,104,125)
 WHITE=(255,255,255); LINE=(222,232,242)
-SITE='https://nexonlabs.onrender.com'
+SITE='https://atria.nexonlabs.com.br'
 CITY='Patos de Minas - MG'
 SLOGAN='Tecnologia que simplifica necessidades.'
 LABELS=('APLICATIVOS', 'INTEGRAÇÃO', 'AUTOMAÇÃO', 'RESULTADOS')
@@ -100,12 +100,20 @@ def brand_mark(image,center,size,navy_core=False):
     r=max(3,int(16*scale))
     draw.ellipse((cx-r,cy-r,cx+r,cy+r),fill=NAVY if navy_core else WHITE)
 
-def wordmark(draw,x,y,large=42,dark=False):
+def wordmark(draw,x,y,large=42,dark=False,brand_name='Nexon Labs'):
     col=INK if dark else WHITE
-    draw.text((x,y),'NEXON',font=font(large,True),fill=col)
-    off=int(draw.textlength('NEXON',font=font(large,True)))
-    draw.text((x+off+8,y),'LABS',font=font(large),fill=col)
-    draw.text((x+2,y+large+8),'S O L U Ç Õ E S   D I G I T A I S',
+    name=str(brand_name or 'ATRIA').strip()
+    if name.lower()=='nexon labs':
+        draw.text((x,y),'NEXON',font=font(large,True),fill=col)
+        off=int(draw.textlength('NEXON',font=font(large,True)))
+        draw.text((x+off+8,y),'LABS',font=font(large),fill=col)
+        subtitle='S O L U Ç Õ E S   D I G I T A I S'
+    else:
+        upper=name.upper()
+        fitted=textfit(draw,upper,420,large,True,minsize=20)
+        draw.text((x,y),upper,font=fitted,fill=col)
+        subtitle='P O W E R E D   B Y   A T R I A'
+    draw.text((x+2,y+large+8),subtitle,
               font=font(max(11,int(large*.27)),True),fill=TEAL if dark else WHITE)
 
 def gradient(w,h,dark=True):
@@ -173,7 +181,7 @@ def role_line(draw,member,x,y,maxwidth,size=24,dark=False):
     draw.text((x,y+44),member.get('role') or 'Colaborador',
               font=textfit(draw,member.get('role') or 'Colaborador',maxwidth,18,minsize=11),
               fill=INK if dark else WHITE)
-    draw.text((x,y+77),'Nexon Labs',font=font(20,True),fill=TEAL)
+    draw.text((x,y+77),str(member.get('_brand_name') or 'ATRIA'),font=font(20,True),fill=TEAL)
 
 def front(member,w=1134,h=661):
     im=gradient(w,h,True);d=ImageDraw.Draw(im)
@@ -190,7 +198,7 @@ def front(member,w=1134,h=661):
     d.rounded_rectangle((0,0,w-1,h-1),radius=17,outline=(39,113,139),width=2)
     brand_mark(im,(116,180),135)
     d=ImageDraw.Draw(im)
-    wordmark(d,206,139,49)
+    wordmark(d,206,139,49,brand_name=member.get('_brand_name') or 'Nexon Labs')
     d.line((100,390,169,390),fill=CYAN,width=5)
     lines(d,[SLOGAN],100,415,WHITE,20,maxwidth=int(w*.51))
     # A frase no mesmo lado/posição do layout aprovado, sem inventar outra chamada.
@@ -227,7 +235,7 @@ def signature(member,w=1180,h=455):
     d.polygon([(433,3),(456,3),(520,h-3),(499,h-3)],fill=TEAL)
     brand_mark(im,(164,143),131)
     d=ImageDraw.Draw(im)
-    wordmark(d,54,226,39)
+    wordmark(d,54,226,39,brand_name=member.get('_brand_name') or 'Nexon Labs')
     d.line((54,337,112,337),fill=CYAN,width=4)
     lines(d,['Tecnologia que','simplifica necessidades.'],54,351,WHITE,17,leading=1.45,maxwidth=400)
     role_line(d,member,547,69,580,size=31,dark=True)
@@ -251,7 +259,7 @@ def card_pdf(member):
     from reportlab.lib.units import mm
     buffer=io.BytesIO()
     c=canvas.Canvas(buffer,pagesize=(96*mm,56*mm),pageCompression=1)
-    c.setTitle('Nexon Labs — cartão de visita · Opção B')
+    c.setTitle(f"{member.get('_brand_name') or 'ATRIA'} — cartão de visita")
     # Página inteira 96×56 mm: formato de corte 90×50 mm + sangria de 3 mm por lado.
     for art in (front(member),back(member)):
         c.drawImage(ImageReader(art),0,0,width=96*mm,height=56*mm,mask='auto')
@@ -318,7 +326,7 @@ def artifact_key(data,reference,kind,fmt):
     value.update(fmt.encode('ascii'))
     return value.digest()
 
-def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
+def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organization=None):
     class MemberBrand(Base):
         __tablename__='member_brand_profiles'
         member_id: Mapped[int]=mapped_column(ForeignKey('members.id',ondelete='CASCADE'),primary_key=True)
@@ -341,7 +349,13 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
         return dict(whatsapp=profile.whatsapp,city=profile.city,site=profile.site) if profile else dict(whatsapp='',city=CITY,site=SITE)
 
     def member_data(db,member):
-        return dict(name=member.name,role=member.role,email=member.email,**extra(db,member))
+        brand_name='ATRIA'
+        if Organization is not None:
+            organization=db.get(Organization,org_id(db))
+            if organization is not None:
+                brand_name=organization.name
+        return dict(name=member.name,role=member.role,email=member.email,
+                    _brand_name=brand_name,**extra(db,member))
 
     def sync(db,member,data):
         saved=db.get(MemberBrand,member.id)
@@ -376,9 +390,10 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
         from approved_template import cached_faces as approved_faces, draw_personalized, encode as approved_png
         from approved_template import signature_html as approved_html, card_pdf as approved_pdf
         from app import ApprovedArtwork
-        source=db.get(ApprovedArtwork,1)
-        if source is None and os.getenv('APP_ENV')=='production':
-            raise HTTPException(409,'A Opção B original ainda não foi instalada. Um administrador precisa carregar a imagem aprovada em Colaboradores.')
+        from tenant_module import NEXON_LABS_ORG_ID
+        # A matriz histórica é exclusiva da Nexon Labs. Outras organizações usam
+        # o layout padrão até a fase de branding por cliente.
+        source=db.get(ApprovedArtwork,1) if org_id(db)==NEXON_LABS_ORG_ID else None
         def generate():
             if source is not None:
                 parts=approved_faces(source.image)

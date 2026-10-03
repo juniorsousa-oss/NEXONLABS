@@ -156,7 +156,7 @@ window.NexonQuotes = (() => {
       [...host.children].forEach((line,i)=>line.querySelector('.quote-step').textContent='Etapa '+(i+1));
       totals();return;
     }
-    if(action==='delete' && confirm('Excluir este orçamento em elaboração?')){
+    if(action==='delete' && await confirmAction('Excluir este orçamento em elaboração?','Excluir orçamento','Excluir')){
       try{await api('/quotes/'+id,{method:'DELETE'});notice('Orçamento excluído.');await load();}catch(err){notice(err.message);}
       return;
     }
@@ -166,7 +166,7 @@ window.NexonQuotes = (() => {
       if(!quote||!['aprovado','recusado','rascunho'].includes(status))return;
       if(quote.project_id){notice('Orçamento já convertido em projeto.');return;}
       const label={aprovado:'Aprovar',recusado:'Recusar',rascunho:'Retomar negociação'}[status];
-      if(!confirm(label+' a proposta '+quote.number+'?'))return;
+      if(!await confirmAction(label+' a proposta '+quote.number+'?',label+' proposta',label))return;
       button.disabled=true;
       try{
         const updated=await api('/quotes/'+id,{
@@ -179,7 +179,7 @@ window.NexonQuotes = (() => {
       finally{button.disabled=false;}
       return;
     }
-    if(action==='convert' && confirm('Criar um projeto a partir deste orçamento aprovado?')){
+    if(action==='convert' && await confirmAction('Criar um projeto a partir deste orçamento aprovado?','Criar projeto','Criar projeto')){
       try{await api('/quotes/'+id+'/project',{method:'POST'});notice('Projeto criado.');await refresh();await load();}catch(err){notice(err.message);}
       return;
     }

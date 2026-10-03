@@ -1014,7 +1014,7 @@ install_tickets(app, Base, DB, engine, authorized, log, Project)
 # Identidade visual Opção B por colaborador; dados em tabela separada para preservar cadastros.
 from brand_kit import install_brand_kit
 MemberBrand, member_brand_extra, member_brand_sync = install_brand_kit(
-    app, Base, DB, engine, authorized, log, Member, member_dict
+    app, Base, DB, engine, authorized, log, Member, member_dict, Organization
 )
 
 # A referência visual original fica persistida no PostgreSQL e só é instalada pelo administrador.

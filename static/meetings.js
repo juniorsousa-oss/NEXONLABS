@@ -171,7 +171,7 @@ window.NexonMeetings = (() => {
     }
     if(action==='new'){form(null,control.dataset.date);return;}
     if(action==='edit'){form(all().find(m=>m.id===Number(control.dataset.id)));return;}
-    if(action==='delete' && confirm('Excluir este agendamento de reunião?')) {
+    if(action==='delete' && await confirmAction('Excluir este agendamento de reunião?','Excluir reunião','Excluir')) {
       try {await api('/meetings/'+Number(control.dataset.id),{method:'DELETE'});closeModal();await refresh();notice('Reunião excluída.');}
       catch(error){notice(error.message);}
     }
