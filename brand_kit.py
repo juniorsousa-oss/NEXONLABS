@@ -327,8 +327,14 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
         site: Mapped[str]=mapped_column(String(250),default=SITE,nullable=False)
     Base.metadata.create_all(engine,tables=[MemberBrand.__table__])
 
-    def session():
-        with DB() as db:yield db
+    def session(request: Request):
+        current=authorized(request)
+        with DB() as db:
+            db.info['organization_id']=current['organization_id']
+            yield db
+
+    def org_id(db: Session):
+        return int(db.info['organization_id'])
 
     def extra(db,member):
         profile=db.get(MemberBrand,member.id)
@@ -346,7 +352,10 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict):
         saved.site=data.site
 
     def member_or_404(db,member_id):
-        member=db.get(Member,member_id)
+        member=db.scalar(select(Member).where(
+            Member.id==member_id,
+            Member.organization_id==org_id(db)
+        ).limit(1))
         if not member:raise HTTPException(404,'Colaborador não encontrado.')
         return member
 
