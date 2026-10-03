@@ -168,7 +168,7 @@ O cliente pode personalizar sua marca, mas não remover a autoria Nexon Labs.
 3. ✅ Vincular todos os dados existentes à organização `nexon-labs`.
 4. ✅ Vincular contas atuais à organização `nexon-labs`.
 5. ✅ Adicionar filtros de organização aos endpoints existentes.
-6. ⏳ Criar ambiente de demonstração com usuário e dados próprios.
+6. ✅ Criar ambiente de demonstração com usuário e dados próprios.
 7. ⏳ Adicionar branding por organização.
 8. ⏳ Adicionar storage por organização.
 9. ✅ Criar testes de isolamento.
@@ -185,7 +185,25 @@ acessar diretamente um ID de outra organização retornam recurso não encontrad
 
 A matriz visual interna da Nexon Labs também foi restringida à organização Nexon Labs.
 
-Validação automatizada atual: **19 testes aprovados**.
+Validação automatizada atual: **20 testes aprovados**.
+
+### ATRIA Demo
+
+O ambiente `atria-demo` já possui seed idempotente com dados fictícios de apresentação:
+
+- 4 projetos
+- 7 tarefas
+- 4 integrantes
+- 3 reuniões
+- 2 orçamentos
+- 3 chamados
+- atividades recentes e configuração comercial própria
+
+O usuário de demonstração só é criado quando a variável de ambiente
+`ATRIA_DEMO_PASSWORD` estiver configurada. A senha não fica no código nem no GitHub.
+
+O seed não sobrescreve alterações feitas durante uma demonstração depois que a organização
+já possui projetos.
 
 ## Regra de segurança para migração
 
