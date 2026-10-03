@@ -97,7 +97,8 @@ def test_atria_demo_has_professional_seed_data():
         assert len(data['tasks'])>=7
         assert len(data['members'])>=4
         assert len(data['meetings'])>=3
-        assert all('Demo' not in p['name'] for p in data['projects'])
+        names={p['name'] for p in data['projects']}
+        assert {'Portal de Operações','Automação de Compras','Dashboard Executivo','Integração de Atendimento'}.issubset(names)
 
         quotes=c.get('/api/quotes')
         assert quotes.status_code==200,quotes.text
