@@ -141,9 +141,11 @@ Account = setup_accounts(Base, engine, DB, NEXON_LABS_ORG_ID)
 class AccountPhoto(Base):
     __tablename__ = 'app_account_photos'
     account_id: Mapped[int] = mapped_column(ForeignKey('app_accounts.id', ondelete='CASCADE'), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey('organizations.id'), nullable=False, default=NEXON_LABS_ORG_ID, index=True)
     image: Mapped[bytes] = mapped_column(nullable=False)
 
 Base.metadata.create_all(engine, tables=[AccountPhoto.__table__])
+ensure_organization_columns(engine, ['app_account_photos'], NEXON_LABS_ORG_ID)
 
 Status = Literal['planejamento', 'em_andamento', 'concluido']
 
@@ -305,6 +307,7 @@ def login(data: LoginIn, request: Request):
             raise HTTPException(status_code=401, detail='Senha incorreta.')
         request.session.clear()
         request.session['account_id'] = account.id
+        request.session['organization_id'] = account.organization_id
         request.session['account_version'] = account.session_version
         _LOGIN_FAILURES.pop(origin, None)
         return {'ok': True, 'user': public(account)}
@@ -350,14 +353,15 @@ def list_accounts(db: Session = Depends(session)):
     return [public(a) for a in db.scalars(select(Account).order_by(Account.id)).all()]
 
 @app.post('/api/accounts', dependencies=[Depends(admin_only)], status_code=201)
-def create_account(data: AccountCreate, db: Session = Depends(session)):
+def create_account(data: AccountCreate, request: Request, db: Session = Depends(session)):
     if not data.name:
         raise HTTPException(422, 'Informe o nome do usuário.')
     if db.scalar(select(func.count()).select_from(Account)) >= MAX_ACCOUNTS:
         raise HTTPException(422, 'Limite de contas atingido.')
     if password_in_use(db, Account, data.password):
         raise HTTPException(409, 'Essa senha já está vinculada a outro usuário. Defina uma senha exclusiva.')
-    account=Account(name=data.name, password_hash=hash_password(data.password), role=data.role)
+    current = authorized(request)
+    account=Account(organization_id=current['organization_id'], name=data.name, password_hash=hash_password(data.password), role=data.role)
     db.add(account)
     log(db, f'Conta de acesso criada para {account.name}.')
     db.commit()
