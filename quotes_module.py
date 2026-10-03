@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from html import escape as xml_escape
 
-from fastapi import Depends, HTTPException, Response
+from fastapi import Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator, model_validator
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
@@ -179,12 +179,31 @@ def install_quotes(app, Base, DB, engine, authorized, log, Project):
     ensure_organization_columns(engine, ["commercial_quotes", "commercial_company"], NEXON_LABS_ORG_ID)
     app.state.Quote = Quote
 
-    def session():
+    def session(request: Request):
+        current = authorized(request)
         with DB() as db:
+            db.info["organization_id"] = current["organization_id"]
             yield db
 
+    def org_id(db: Session):
+        return int(db.info["organization_id"])
+
+    def quote_or_404(db: Session, quote_id: int):
+        record = db.scalar(select(Quote).where(
+            Quote.id == quote_id,
+            Quote.organization_id == org_id(db)
+        ).limit(1))
+        if record is None:
+            raise HTTPException(404, "Orçamento não encontrado.")
+        return record
+
+    def company_record(db: Session):
+        return db.scalar(select(Company).where(
+            Company.organization_id == org_id(db)
+        ).order_by(Company.id).limit(1))
+
     def company_dict(db):
-        record = db.get(Company, 1)
+        record = company_record(db)
         return CompanyIn.model_validate_json(record.payload).model_dump() if record else CompanyIn().model_dump()
 
     def quote_dict(record):
@@ -208,11 +227,13 @@ def install_quotes(app, Base, DB, engine, authorized, log, Project):
 
     @app.get("/api/quotes", dependencies=[Depends(authorized)])
     def list_quotes(db: Session = Depends(session)):
-        return [quote_dict(q) for q in db.scalars(select(Quote).order_by(Quote.id.desc())).all()]
+        return [quote_dict(q) for q in db.scalars(select(Quote).where(
+            Quote.organization_id == org_id(db)
+        ).order_by(Quote.id.desc())).all()]
 
     @app.post("/api/quotes", dependencies=[Depends(authorized)], status_code=201)
     def add_quote(data: QuoteIn, db: Session = Depends(session)):
-        record = Quote(payload=data.model_dump_json())
+        record = Quote(organization_id=org_id(db), payload=data.model_dump_json())
         db.add(record)
         log(db, f"Orçamento de {data.project_name} criado.")
         db.commit()
@@ -221,9 +242,7 @@ def install_quotes(app, Base, DB, engine, authorized, log, Project):
 
     @app.put("/api/quotes/{quote_id}", dependencies=[Depends(authorized)])
     def update_quote(quote_id: int, data: QuoteIn, db: Session = Depends(session)):
-        record = db.get(Quote, quote_id)
-        if not record:
-            raise HTTPException(404, "Orçamento não encontrado.")
+        record = quote_or_404(db, quote_id)
         old = QuoteIn.model_validate_json(record.payload)
         if record.project_id is not None:
             raise HTTPException(409, "O orçamento já foi convertido em projeto. Crie uma nova proposta para alterações.")
@@ -238,9 +257,7 @@ def install_quotes(app, Base, DB, engine, authorized, log, Project):
 
     @app.delete("/api/quotes/{quote_id}", dependencies=[Depends(authorized)])
     def delete_quote(quote_id: int, db: Session = Depends(session)):
-        record = db.get(Quote, quote_id)
-        if not record:
-            raise HTTPException(404, "Orçamento não encontrado.")
+        record = quote_or_404(db, quote_id)
         if record.project_id is not None or QuoteIn.model_validate_json(record.payload).status == "aprovado":
             raise HTTPException(409, "Orçamentos aprovados ou vinculados a projetos não podem ser excluídos.")
         db.delete(record)
@@ -254,25 +271,23 @@ def install_quotes(app, Base, DB, engine, authorized, log, Project):
 
     @app.put("/api/quotes/settings/company", dependencies=[Depends(authorized)])
     def put_company(data: CompanyIn, db: Session = Depends(session)):
-        record = db.get(Company, 1)
+        record = company_record(db)
         if record:
             record.payload = data.model_dump_json()
         else:
-            db.add(Company(id=1, payload=data.model_dump_json()))
+            db.add(Company(organization_id=org_id(db), payload=data.model_dump_json()))
         db.commit()
         return data.model_dump()
 
     @app.post("/api/quotes/{quote_id}/project", dependencies=[Depends(authorized)], status_code=201)
     def convert_to_project(quote_id: int, db: Session = Depends(session)):
-        record = db.get(Quote, quote_id)
-        if record is None:
-            raise HTTPException(404, "Orçamento não encontrado.")
+        record = quote_or_404(db, quote_id)
         if record.project_id:
             raise HTTPException(409, "Orçamento já convertido em projeto.")
         data = QuoteIn.model_validate_json(record.payload)
         if data.status != "aprovado":
             raise HTTPException(409, "Aprove o orçamento antes de criar o projeto.")
-        project = Project(name=data.project_name[:160], description=data.scope[:2000], client=data.client_name[:160],
+        project = Project(organization_id=org_id(db), name=data.project_name[:160], description=data.scope[:2000], client=data.client_name[:160],
                           status="planejamento", progress=0,
                           started_at=date.today(), due_at=date.today() + timedelta(days=data.delivery_days))
         db.add(project)
@@ -284,9 +299,7 @@ def install_quotes(app, Base, DB, engine, authorized, log, Project):
 
     @app.get("/api/quotes/{quote_id}/pdf", dependencies=[Depends(authorized)])
     def quote_pdf(quote_id: int, db: Session = Depends(session)):
-        record = db.get(Quote, quote_id)
-        if record is None:
-            raise HTTPException(404, "Orçamento não encontrado.")
+        record = quote_or_404(db, quote_id)
         data = QuoteIn.model_validate_json(record.payload)
         calc = calculate(data)
         company = CompanyIn.model_validate(company_dict(db))
