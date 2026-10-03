@@ -41,6 +41,15 @@ DB = sessionmaker(bind=engine, expire_on_commit=False)
 class Base(DeclarativeBase):
     pass
 
+from tenant_module import (
+    NEXON_LABS_ORG_ID,
+    ATRIA_DEMO_ORG_ID,
+    ensure_organization_columns,
+    organization_public,
+    setup_organizations,
+)
+Organization = setup_organizations(Base, engine, DB)
+
 class Member(Base):
     __tablename__ = 'members'
     id: Mapped[int] = mapped_column(primary_key=True)
