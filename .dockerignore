@@ -1,0 +1,12 @@
+.git
+.github
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+tests
+nexonlabs.db
+*.db
+.env
+.env.*
