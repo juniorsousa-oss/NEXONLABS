@@ -35,7 +35,7 @@ function applyOrganizationBrand(){
   document.documentElement.style.setProperty('--brand-on-primary',contrastText(primary));
   const defaultBrand=$('#default-brand-lockup');
   const customLogo=$('#organization-brand-image');
-  const logo=custom?(brandAssetUrl('logo_dark')||brandAssetUrl('logo')):'';
+  const logo=custom?brandAssetUrl('logo_dark'):'';
   if(defaultBrand&&customLogo){
     defaultBrand.hidden=Boolean(logo);
     customLogo.hidden=!logo;
@@ -161,7 +161,7 @@ function settingsPage(){
     '</form>')+
     '<div class="brand-assets-grid">'+
       brandAssetCard('logo','Logo principal','Uso em fundos claros e documentos.')+
-      brandAssetCard('logo_dark','Logo para fundo escuro','Uso preferencial na barra lateral.')+
+      brandAssetCard('logo_dark','Logo para fundo escuro','Usada na barra lateral. Se não houver, o ATRIA mantém sua marca oficial para preservar o contraste.')+
       brandAssetCard('favicon','Favicon','Ícone quadrado do navegador e atalhos.')+
       brandAssetCard('watermark','Marca d’água','Reservada para PDFs, relatórios e documentos.')+
     '</div>'+
