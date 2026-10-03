@@ -236,9 +236,23 @@ def admin_only(request: Request):
         raise HTTPException(status_code=403, detail='Somente administradores podem gerenciar acessos.')
     return current
 
-def session():
+def session(request: Request):
+    current = authorized(request)
     with DB() as db:
+        db.info['organization_id'] = current['organization_id']
         yield db
+
+def organization_id(db: Session) -> int:
+    value = db.info.get('organization_id')
+    if value is None:
+        raise RuntimeError('Sessão de banco sem organização ativa.')
+    return int(value)
+
+def tenant_get(db: Session, model, record_id: int):
+    return db.scalar(select(model).where(
+        model.id == record_id,
+        model.organization_id == organization_id(db)
+    ).limit(1))
 
 def stamp(dt: datetime | None):
     return dt.replace(tzinfo=timezone.utc).isoformat() if dt and dt.tzinfo is None else dt.isoformat() if dt else None
@@ -276,7 +290,7 @@ def task_dict(t: Task):
                 completed=t.completed, hours=t.hours, created_at=stamp(t.created_at))
 
 def log(db: Session, msg: str):
-    db.add(Activity(message=msg[:350]))
+    db.add(Activity(organization_id=organization_id(db), message=msg[:350]))
 
 def member_dict(member: Member, db: Session):
     return dict(id=member.id, name=member.name, role=member.role,
@@ -350,18 +364,22 @@ class ProfileUpdate(BaseModel):
 
 @app.get('/api/accounts', dependencies=[Depends(admin_only)])
 def list_accounts(db: Session = Depends(session)):
-    return [public(a) for a in db.scalars(select(Account).order_by(Account.id)).all()]
+    org_id = organization_id(db)
+    return [public(a) for a in db.scalars(
+        select(Account).where(Account.organization_id == org_id).order_by(Account.id)
+    ).all()]
 
 @app.post('/api/accounts', dependencies=[Depends(admin_only)], status_code=201)
 def create_account(data: AccountCreate, request: Request, db: Session = Depends(session)):
     if not data.name:
         raise HTTPException(422, 'Informe o nome do usuário.')
-    if db.scalar(select(func.count()).select_from(Account)) >= MAX_ACCOUNTS:
+    org_id = organization_id(db)
+    if db.scalar(select(func.count()).select_from(Account).where(Account.organization_id == org_id)) >= MAX_ACCOUNTS:
         raise HTTPException(422, 'Limite de contas atingido.')
     if password_in_use(db, Account, data.password):
         raise HTTPException(409, 'Essa senha já está vinculada a outro usuário. Defina uma senha exclusiva.')
     current = authorized(request)
-    account=Account(organization_id=current['organization_id'], name=data.name, password_hash=hash_password(data.password), role=data.role)
+    account=Account(organization_id=org_id, name=data.name, password_hash=hash_password(data.password), role=data.role)
     db.add(account)
     log(db, f'Conta de acesso criada para {account.name}.')
     db.commit()
@@ -370,16 +388,20 @@ def create_account(data: AccountCreate, request: Request, db: Session = Depends(
 
 @app.put('/api/accounts/{account_id}', dependencies=[Depends(admin_only)])
 def update_account(account_id: int, data: AccountUpdate, request: Request, db: Session = Depends(session)):
-    account=db.get(Account, account_id)
+    current=authorized(request)
+    account=db.scalar(select(Account).where(
+        Account.id == account_id,
+        Account.organization_id == current['organization_id']
+    ).limit(1))
     if account is None:
         raise HTTPException(404, 'Usuário não encontrado.')
     if not data.name:
         raise HTTPException(422, 'Informe o nome do usuário.')
-    current=authorized(request)
     if account.id == current['id'] and (not data.active or data.role != 'admin'):
         raise HTTPException(409, 'Não é permitido desativar ou remover sua própria função administrativa.')
     if account.role == 'admin' and (data.role != 'admin' or not data.active):
         remaining=db.scalar(select(func.count()).select_from(Account).where(
+            Account.organization_id == current['organization_id'],
             Account.role == 'admin', Account.active.is_(True), Account.id != account_id))
         if not remaining:
             raise HTTPException(409, 'Mantenha pelo menos um administrador ativo.')
@@ -427,7 +449,10 @@ class ProfilePhotoIn(BaseModel):
 @app.get('/api/profile/avatar', dependencies=[Depends(authorized)])
 def get_my_avatar(request: Request, db: Session = Depends(session)):
     current = authorized(request)
-    photo = db.get(AccountPhoto, current['id'])
+    photo = db.scalar(select(AccountPhoto).where(
+        AccountPhoto.account_id == current['id'],
+        AccountPhoto.organization_id == current['organization_id']
+    ).limit(1))
     if photo is None:
         raise HTTPException(404, 'Foto de perfil não cadastrada.')
     return Response(
@@ -473,7 +498,10 @@ def save_my_avatar(data: ProfilePhotoIn, request: Request, db: Session = Depends
     except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
         raise HTTPException(422, 'Arquivo inválido. Envie uma foto PNG, JPEG ou WebP.') from error
     current = authorized(request)
-    photo = db.get(AccountPhoto, current['id'])
+    photo = db.scalar(select(AccountPhoto).where(
+        AccountPhoto.account_id == current['id'],
+        AccountPhoto.organization_id == current['organization_id']
+    ).limit(1))
     if photo:
         photo.image = safe_image
     else:
@@ -483,7 +511,11 @@ def save_my_avatar(data: ProfilePhotoIn, request: Request, db: Session = Depends
 
 @app.delete('/api/profile/avatar', dependencies=[Depends(authorized)])
 def delete_my_avatar(request: Request, db: Session = Depends(session)):
-    photo = db.get(AccountPhoto, authorized(request)['id'])
+    current = authorized(request)
+    photo = db.scalar(select(AccountPhoto).where(
+        AccountPhoto.account_id == current['id'],
+        AccountPhoto.organization_id == current['organization_id']
+    ).limit(1))
     if photo:
         db.delete(photo)
         db.commit()
@@ -491,11 +523,12 @@ def delete_my_avatar(request: Request, db: Session = Depends(session)):
 
 @app.get('/api/state', dependencies=[Depends(authorized)])
 def state(request: Request, db: Session = Depends(session)):
-    projects = db.scalars(select(Project).order_by(Project.created_at.desc(), Project.id.desc())).all()
-    tasks = db.scalars(select(Task).order_by(Task.id.desc())).all()
-    members = db.scalars(select(Member).order_by(Member.name)).all()
-    activities = db.scalars(select(Activity).order_by(Activity.id.desc()).limit(30)).all()
-    meetings = db.scalars(select(Meeting).order_by(Meeting.meeting_date, Meeting.start_time, Meeting.id)).all()
+    org_id = organization_id(db)
+    projects = db.scalars(select(Project).where(Project.organization_id == org_id).order_by(Project.created_at.desc(), Project.id.desc())).all()
+    tasks = db.scalars(select(Task).where(Task.organization_id == org_id).order_by(Task.id.desc())).all()
+    members = db.scalars(select(Member).where(Member.organization_id == org_id).order_by(Member.name)).all()
+    activities = db.scalars(select(Activity).where(Activity.organization_id == org_id).order_by(Activity.id.desc()).limit(30)).all()
+    meetings = db.scalars(select(Meeting).where(Meeting.organization_id == org_id).order_by(Meeting.meeting_date, Meeting.start_time, Meeting.id)).all()
     current = authorized(request)
     organization = db.get(Organization, current['organization_id'])
     return dict(projects=[project_dict(p,db) for p in projects], tasks=[task_dict(t) for t in tasks],
@@ -513,7 +546,7 @@ def state(request: Request, db: Session = Depends(session)):
 def add_project(data: ProjectIn, db: Session = Depends(session)):
     if not data.name: raise HTTPException(422, 'Informe o nome do projeto.')
     if data.started_at and data.due_at and data.due_at < data.started_at: raise HTTPException(422, 'O prazo deve ser posterior ao início.')
-    p = Project(**data.model_dump(exclude={'client_site'}))
+    p = Project(organization_id=organization_id(db), **data.model_dump(exclude={'client_site'}))
     db.add(p);db.flush()
     sync_project_site(db,p.id,data.client_site)
     log(db, f'Projeto {p.name} cadastrado.')
@@ -522,7 +555,7 @@ def add_project(data: ProjectIn, db: Session = Depends(session)):
 
 @app.put('/api/projects/{project_id}', dependencies=[Depends(authorized)])
 def edit_project(project_id: int, data: ProjectIn, db: Session = Depends(session)):
-    p = db.get(Project, project_id)
+    p = tenant_get(db, Project, project_id)
     if p is None: raise HTTPException(404, 'Projeto não encontrado.')
     if not data.name: raise HTTPException(422, 'Informe o nome do projeto.')
     if data.started_at and data.due_at and data.due_at < data.started_at: raise HTTPException(422, 'O prazo deve ser posterior ao início.')
@@ -535,7 +568,7 @@ def edit_project(project_id: int, data: ProjectIn, db: Session = Depends(session
 
 @app.delete('/api/projects/{project_id}', dependencies=[Depends(authorized)])
 def remove_project(project_id: int, db: Session = Depends(session)):
-    p = db.get(Project, project_id)
+    p = tenant_get(db, Project, project_id)
     if p is None: raise HTTPException(404, 'Projeto não encontrado.')
     log(db, f'Projeto {p.name} excluído.')
     site=db.get(ProjectClientSite,project_id)
@@ -545,18 +578,18 @@ def remove_project(project_id: int, db: Session = Depends(session)):
 
 @app.post('/api/tasks', dependencies=[Depends(authorized)], status_code=201)
 def add_task(data: TaskIn, db: Session = Depends(session)):
-    if db.get(Project, data.project_id) is None: raise HTTPException(404, 'Projeto não encontrado.')
+    if tenant_get(db, Project, data.project_id) is None: raise HTTPException(404, 'Projeto não encontrado.')
     if not data.title.strip(): raise HTTPException(422, 'Informe a tarefa.')
-    task = Task(**data.model_dump(exclude={'title'}), title=data.title.strip())
+    task = Task(organization_id=organization_id(db), **data.model_dump(exclude={'title'}), title=data.title.strip())
     db.add(task); log(db, f'Tarefa {task.title} cadastrada.')
     db.commit(); db.refresh(task)
     return task_dict(task)
 
 @app.put('/api/tasks/{task_id}', dependencies=[Depends(authorized)])
 def edit_task(task_id: int, data: TaskIn, db: Session = Depends(session)):
-    task = db.get(Task, task_id)
+    task = tenant_get(db, Task, task_id)
     if task is None: raise HTTPException(404, 'Tarefa não encontrada.')
-    if db.get(Project, data.project_id) is None: raise HTTPException(404, 'Projeto não encontrado.')
+    if tenant_get(db, Project, data.project_id) is None: raise HTTPException(404, 'Projeto não encontrado.')
     if not data.title.strip(): raise HTTPException(422, 'Informe a tarefa.')
     for key, value in data.model_dump().items(): setattr(task, key, value)
     task.title = task.title.strip()
@@ -566,16 +599,17 @@ def edit_task(task_id: int, data: TaskIn, db: Session = Depends(session)):
 
 @app.delete('/api/tasks/{task_id}', dependencies=[Depends(authorized)])
 def remove_task(task_id: int, db: Session = Depends(session)):
-    task = db.get(Task, task_id)
+    task = tenant_get(db, Task, task_id)
     if task is None: raise HTTPException(404, 'Tarefa não encontrada.')
     db.delete(task); db.commit(); return {'ok': True}
 
 @app.post('/api/members', dependencies=[Depends(authorized)], status_code=201)
 def add_member(data: MemberIn, db: Session = Depends(session)):
     if not data.name: raise HTTPException(422, 'Informe o nome.')
-    if db.scalar(select(Member).where(func.lower(Member.name) == data.name.lower())):
+    org_id = organization_id(db)
+    if db.scalar(select(Member).where(Member.organization_id == org_id, func.lower(Member.name) == data.name.lower())):
         raise HTTPException(409, 'Já existe um integrante com esse nome.')
-    member=Member(name=data.name,role=data.role,email=data.email)
+    member=Member(organization_id=org_id,name=data.name,role=data.role,email=data.email)
     db.add(member);db.flush()
     member_brand_sync(db,member,data)
     log(db,f'{member.name} adicionado à equipe.')
@@ -584,10 +618,14 @@ def add_member(data: MemberIn, db: Session = Depends(session)):
 
 @app.put('/api/members/{member_id}', dependencies=[Depends(authorized)])
 def edit_member(member_id: int, data: MemberIn, db: Session = Depends(session)):
-    member=db.get(Member,member_id)
+    member=tenant_get(db,Member,member_id)
     if member is None:raise HTTPException(404,'Colaborador não encontrado.')
     if not data.name:raise HTTPException(422,'Informe o nome.')
-    duplicate=db.scalar(select(Member).where(func.lower(Member.name)==data.name.lower(),Member.id!=member_id))
+    duplicate=db.scalar(select(Member).where(
+        Member.organization_id==organization_id(db),
+        func.lower(Member.name)==data.name.lower(),
+        Member.id!=member_id
+    ))
     if duplicate:raise HTTPException(409,'Já existe outro colaborador com esse nome.')
     member.name,member.role,member.email=data.name,data.role,data.email
     member_brand_sync(db,member,data)
@@ -597,7 +635,7 @@ def edit_member(member_id: int, data: MemberIn, db: Session = Depends(session)):
 
 @app.delete('/api/members/{member_id}', dependencies=[Depends(authorized)])
 def remove_member(member_id: int, db: Session = Depends(session)):
-    member=db.get(Member,member_id)
+    member=tenant_get(db,Member,member_id)
     if member is None:raise HTTPException(404,'Integrante não encontrado.')
     profile=db.get(MemberBrand,member_id)
     if profile:db.delete(profile)
@@ -614,7 +652,10 @@ def meeting_attendees(m: Meeting, db: Session):
         MeetingAttendee.meeting_id==m.id
     )).all())
     if not ids:return [],[]
-    members=db.scalars(select(Member).where(Member.id.in_(ids)).order_by(Member.name)).all()
+    members=db.scalars(select(Member).where(
+        Member.organization_id==m.organization_id,
+        Member.id.in_(ids)
+    ).order_by(Member.name)).all()
     names=[member.name for member in members]
     existing={member.id for member in members}
     clean_ids=[member_id for member_id in ids if member_id in existing]
@@ -626,6 +667,7 @@ def meeting_conflicts(m: Meeting, db: Session, attendee_ids: list[int] | None=No
         attendee_ids,_=meeting_attendees(m,db)
     if not attendee_ids:return []
     candidates=db.scalars(select(Meeting).where(
+        Meeting.organization_id==m.organization_id,
         Meeting.id!=m.id,
         Meeting.meeting_date==m.meeting_date,
         Meeting.start_time < m.end_time,
@@ -640,7 +682,10 @@ def meeting_conflicts(m: Meeting, db: Session, attendee_ids: list[int] | None=No
         if not shared:continue
         shared_names=[name for mid,name in zip(other_ids,other_names) if mid in shared]
         # zip não é confiável se a ordenação de ids/names divergir; consultar nomes compartilhados.
-        shared_members=db.scalars(select(Member).where(Member.id.in_(shared)).order_by(Member.name)).all()
+        shared_members=db.scalars(select(Member).where(
+            Member.organization_id==m.organization_id,
+            Member.id.in_(shared)
+        ).order_by(Member.name)).all()
         conflicts.append(dict(
             meeting_id=other.id,title=other.title,start_time=other.start_time,end_time=other.end_time,
             attendee_ids=sorted(shared),attendee_names=[x.name for x in shared_members]
@@ -667,14 +712,18 @@ def validate_meeting(data: MeetingIn, db: Session, exclude_id: int | None = None
         raise HTTPException(422, 'Informe o título da reunião.')
     if data.end_time <= data.start_time:
         raise HTTPException(422, 'A reunião deve terminar depois do início.')
-    if data.project_id is not None and db.get(Project, data.project_id) is None:
+    org_id = organization_id(db)
+    if data.project_id is not None and tenant_get(db, Project, data.project_id) is None:
         raise HTTPException(422, 'O projeto selecionado não existe.')
     if data.meeting_url and not data.meeting_url.startswith(('https://', 'http://')):
         raise HTTPException(422, 'O link deve começar com https:// ou http://.')
     attendee_ids=list(dict.fromkeys(data.attendee_ids))
     if not attendee_ids:
         raise HTTPException(422,'Selecione pelo menos um colaborador da Nexon Labs para a reunião.')
-    valid_members=set(db.scalars(select(Member.id).where(Member.id.in_(attendee_ids))).all())
+    valid_members=set(db.scalars(select(Member.id).where(
+        Member.organization_id==org_id,
+        Member.id.in_(attendee_ids)
+    )).all())
     missing=[member_id for member_id in attendee_ids if member_id not in valid_members]
     if missing:
         raise HTTPException(422,'Um ou mais colaboradores selecionados não existem mais.')
@@ -682,6 +731,7 @@ def validate_meeting(data: MeetingIn, db: Session, exclude_id: int | None = None
     # Impede apenas duplicação literal. Sobreposição de agenda é permitida,
     # mas será sinalizada como conflito para tratativa.
     duplicate = select(Meeting).where(
+        Meeting.organization_id == org_id,
         Meeting.meeting_date == data.meeting_date,
         Meeting.start_time == data.start_time,
         Meeting.end_time == data.end_time,
@@ -710,7 +760,7 @@ def sync_meeting_attendees(db: Session, meeting_id: int, attendee_ids: list[int]
 def add_meeting(data: MeetingIn, db: Session = Depends(session)):
     validate_meeting(data, db)
     values=data.model_dump(exclude={'attendee_ids'})
-    meeting = Meeting(**values)
+    meeting = Meeting(organization_id=organization_id(db), **values)
     db.add(meeting)
     db.flush()
     sync_meeting_attendees(db,meeting.id,data.attendee_ids)
@@ -721,7 +771,7 @@ def add_meeting(data: MeetingIn, db: Session = Depends(session)):
 
 @app.put('/api/meetings/{meeting_id}', dependencies=[Depends(authorized)])
 def edit_meeting(meeting_id: int, data: MeetingIn, db: Session = Depends(session)):
-    meeting = db.get(Meeting, meeting_id)
+    meeting = tenant_get(db, Meeting, meeting_id)
     if meeting is None:
         raise HTTPException(404, 'Reunião não encontrada.')
     validate_meeting(data, db, exclude_id=meeting_id)
@@ -746,7 +796,7 @@ class MeetingOutcomeIn(BaseModel):
 
 @app.post('/api/meetings/{meeting_id}/outcome', dependencies=[Depends(authorized)])
 def set_meeting_outcome(meeting_id: int, data: MeetingOutcomeIn, request: Request, db: Session=Depends(session)):
-    meeting=db.get(Meeting,meeting_id)
+    meeting=tenant_get(db,Meeting,meeting_id)
     if meeting is None:raise HTTPException(404,'Reunião não encontrada.')
     existing=db.get(MeetingClosure,meeting_id)
     current=existing.status if existing else 'agendada'
@@ -765,7 +815,7 @@ def set_meeting_outcome(meeting_id: int, data: MeetingOutcomeIn, request: Reques
 
 @app.delete('/api/meetings/{meeting_id}', dependencies=[Depends(authorized)])
 def remove_meeting(meeting_id: int, db: Session = Depends(session)):
-    meeting = db.get(Meeting, meeting_id)
+    meeting = tenant_get(db, Meeting, meeting_id)
     if meeting is None:
         raise HTTPException(404, 'Reunião não encontrada.')
     # Exclusão é distinta do cancelamento: preserve a reunião cancelada no histórico.
@@ -782,7 +832,9 @@ def remove_meeting(meeting_id: int, db: Session = Depends(session)):
 def export_projects(db: Session = Depends(session)):
     buffer = io.StringIO(); out = csv.writer(buffer, delimiter=';')
     out.writerow(['ID', 'Projeto', 'Descrição', 'Cliente', 'Site do cliente', 'Responsável', 'Status', 'Progresso (%)', 'Início', 'Prazo'])
-    for p in db.scalars(select(Project).order_by(Project.id)):
+    for p in db.scalars(select(Project).where(
+        Project.organization_id == organization_id(db)
+    ).order_by(Project.id)):
         out.writerow([p.id, p.name, p.description, p.client, project_site(db,p.id), p.owner, effective_status(p), p.progress,
                       p.started_at.isoformat() if p.started_at else '', p.due_at.isoformat() if p.due_at else ''])
     buffer.seek(0)
