@@ -416,6 +416,7 @@ def update_my_profile(data: ProfileUpdate, request: Request, db: Session = Depen
     if data.new_password:
         request.session.clear()
         request.session['account_id']=account.id
+        request.session['organization_id']=account.organization_id
         request.session['account_version']=account.session_version
     return public(account)
 
@@ -476,7 +477,7 @@ def save_my_avatar(data: ProfilePhotoIn, request: Request, db: Session = Depends
     if photo:
         photo.image = safe_image
     else:
-        db.add(AccountPhoto(account_id=current['id'], image=safe_image))
+        db.add(AccountPhoto(account_id=current['id'], organization_id=current['organization_id'], image=safe_image))
     db.commit()
     return {'ok': True, 'has_photo': True}
 
@@ -495,14 +496,17 @@ def state(request: Request, db: Session = Depends(session)):
     members = db.scalars(select(Member).order_by(Member.name)).all()
     activities = db.scalars(select(Activity).order_by(Activity.id.desc()).limit(30)).all()
     meetings = db.scalars(select(Meeting).order_by(Meeting.meeting_date, Meeting.start_time, Meeting.id)).all()
+    current = authorized(request)
+    organization = db.get(Organization, current['organization_id'])
     return dict(projects=[project_dict(p,db) for p in projects], tasks=[task_dict(t) for t in tasks],
                 meetings=[meeting_dict(m,db) for m in meetings],
                 members=[member_dict(m,db) for m in members],
                 activities=[dict(id=a.id, message=a.message, created_at=stamp(a.created_at)) for a in activities],
-                user=authorized(request)['name'],
-                user_id=authorized(request)['id'],
-                user_role=authorized(request)['role'],
-                has_photo=db.get(AccountPhoto, authorized(request)['id']) is not None,
+                user=current['name'],
+                user_id=current['id'],
+                user_role=current['role'],
+                organization=organization_public(organization) if organization else None,
+                has_photo=db.get(AccountPhoto, current['id']) is not None,
                 auth_enabled=True)
 
 @app.post('/api/projects', dependencies=[Depends(authorized)], status_code=201)
