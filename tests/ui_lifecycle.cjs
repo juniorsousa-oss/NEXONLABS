@@ -36,7 +36,7 @@ function context(file,extras={}){
   });
   const list=members.obj.window.NexonBrandUI.page();
   members.handlers.click({target:{closest:()=>({dataset:{brandAction:'install'}})}});
-  assert.equal(captured.title,'Instalar modelo aprovado — Opção B');
+  assert.equal(captured.title,'Instalar modelo personalizado');
   assert.match(captured.body,/id="brand-template-form"/);
   assert.match(captured.body,/id="brand-install-button"/);
   assert.match(captured.body,/id="brand-template-feedback"/);
