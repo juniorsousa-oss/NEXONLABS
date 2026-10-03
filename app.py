@@ -136,7 +136,7 @@ class ProjectClientSite(Base):
 Base.metadata.create_all(engine)
 ensure_organization_columns(engine, ['members', 'projects', 'tasks', 'activities', 'meetings'], NEXON_LABS_ORG_ID)
 ensure_member_tenant_uniqueness(engine)
-from accounts_module import setup_accounts, public, session_user, find_by_password, password_in_use, hash_password, verify_password, MAX_ACCOUNTS
+from accounts_module import setup_accounts, public, session_user, find_by_password, password_in_use, hash_password, verify_password, MAX_ACCOUNTS, SESSION_IDLE_TIMEOUT_SECONDS
 Account = setup_accounts(Base, engine, DB, NEXON_LABS_ORG_ID)
 
 # Nova tabela independente: evita modificar contas já cadastradas no PostgreSQL.
@@ -223,13 +223,23 @@ class LoginIn(BaseModel):
     password: str
 
 app = FastAPI(title='ATRIA | Gestão de Projetos e Operações', docs_url=None, redoc_url=None)
-app.add_middleware(SessionMiddleware, secret_key=os.getenv('SESSION_SECRET', 'LOCAL_DEVELOPMENT_ONLY_CHANGE_ME'), same_site='lax', https_only=os.getenv('COOKIE_SECURE', '0') == '1')
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv('SESSION_SECRET', 'LOCAL_DEVELOPMENT_ONLY_CHANGE_ME'),
+    same_site='lax',
+    https_only=os.getenv('COOKIE_SECURE', '0') == '1',
+    max_age=SESSION_IDLE_TIMEOUT_SECONDS,
+)
 app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
 
 def authorized(request: Request):
+    cached = getattr(request.state, 'current_user', None)
+    if cached is not None:
+        return cached
     current = session_user(request, DB, Account)
     if current is None:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail='Sessão encerrada. Faça login novamente.')
+    request.state.current_user = current
     return current
 
 def admin_only(request: Request):
@@ -325,6 +335,7 @@ def login(data: LoginIn, request: Request):
         request.session['account_id'] = account.id
         request.session['organization_id'] = account.organization_id
         request.session['account_version'] = account.session_version
+        request.session['last_activity'] = int(__import__('time').time())
         _LOGIN_FAILURES.pop(origin, None)
         return {'ok': True, 'user': public(account)}
 
@@ -442,6 +453,7 @@ def update_my_profile(data: ProfileUpdate, request: Request, db: Session = Depen
         request.session['account_id']=account.id
         request.session['organization_id']=account.organization_id
         request.session['account_version']=account.session_version
+        request.session['last_activity']=int(__import__('time').time())
     return public(account)
 
 class ProfilePhotoIn(BaseModel):
@@ -525,24 +537,168 @@ def delete_my_avatar(request: Request, db: Session = Depends(session)):
 
 @app.get('/api/state', dependencies=[Depends(authorized)])
 def state(request: Request, db: Session = Depends(session)):
+    """Carga inicial em lote.
+
+    O banco de produção é remoto ao container do app. Evitar consultas N+1 aqui
+    reduz bastante a latência percebida no primeiro carregamento.
+    """
     org_id = organization_id(db)
     projects = db.scalars(select(Project).where(Project.organization_id == org_id).order_by(Project.created_at.desc(), Project.id.desc())).all()
     tasks = db.scalars(select(Task).where(Task.organization_id == org_id).order_by(Task.id.desc())).all()
     members = db.scalars(select(Member).where(Member.organization_id == org_id).order_by(Member.name)).all()
     activities = db.scalars(select(Activity).where(Activity.organization_id == org_id).order_by(Activity.id.desc()).limit(30)).all()
     meetings = db.scalars(select(Meeting).where(Meeting.organization_id == org_id).order_by(Meeting.meeting_date, Meeting.start_time, Meeting.id)).all()
+
+    project_ids = [p.id for p in projects]
+    member_ids = [m.id for m in members]
+    meeting_ids = [m.id for m in meetings]
+
+    sites = {}
+    if project_ids:
+        sites = {
+            row.project_id: row.url
+            for row in db.scalars(
+                select(ProjectClientSite).where(ProjectClientSite.project_id.in_(project_ids))
+            ).all()
+        }
+
+    brand_profiles = {}
+    if member_ids:
+        brand_profiles = {
+            row.member_id: row
+            for row in db.scalars(
+                select(MemberBrand).where(MemberBrand.member_id.in_(member_ids))
+            ).all()
+        }
+
+    closures = {}
+    attendee_rows = []
+    if meeting_ids:
+        closures = {
+            row.meeting_id: row
+            for row in db.scalars(
+                select(MeetingClosure).where(MeetingClosure.meeting_id.in_(meeting_ids))
+            ).all()
+        }
+        attendee_rows = db.scalars(
+            select(MeetingAttendee).where(MeetingAttendee.meeting_id.in_(meeting_ids))
+        ).all()
+
+    members_by_id = {member.id: member for member in members}
+    attendee_ids_by_meeting = {meeting_id: [] for meeting_id in meeting_ids}
+    for row in attendee_rows:
+        if row.member_id in members_by_id:
+            attendee_ids_by_meeting.setdefault(row.meeting_id, []).append(row.member_id)
+
+    def project_payload(project):
+        return dict(
+            id=project.id,
+            name=project.name,
+            description=project.description,
+            client=project.client,
+            client_site=sites.get(project.id, ''),
+            owner=project.owner,
+            status=effective_status(project),
+            saved_status=project.status,
+            progress=project.progress,
+            started_at=project.started_at.isoformat() if project.started_at else None,
+            due_at=project.due_at.isoformat() if project.due_at else None,
+            created_at=stamp(project.created_at),
+            updated_at=stamp(project.updated_at),
+        )
+
+    def member_payload(member):
+        profile = brand_profiles.get(member.id)
+        return dict(
+            id=member.id,
+            name=member.name,
+            role=member.role,
+            email=member.email,
+            whatsapp=profile.whatsapp if profile else '',
+            city=profile.city if profile else 'Patos de Minas - MG',
+            site=profile.site if profile else 'https://nexonlabs.onrender.com',
+        )
+
+    meeting_status_by_id = {
+        meeting.id: (closures[meeting.id].status if meeting.id in closures else 'agendada')
+        for meeting in meetings
+    }
+
+    def conflicts_for(meeting):
+        if meeting_status_by_id.get(meeting.id) == 'cancelada':
+            return []
+        selected = set(attendee_ids_by_meeting.get(meeting.id, []))
+        if not selected:
+            return []
+        conflicts = []
+        for other in meetings:
+            if other.id == meeting.id or other.meeting_date != meeting.meeting_date:
+                continue
+            if meeting_status_by_id.get(other.id) == 'cancelada':
+                continue
+            if not (other.start_time < meeting.end_time and other.end_time > meeting.start_time):
+                continue
+            shared = selected.intersection(attendee_ids_by_meeting.get(other.id, []))
+            if not shared:
+                continue
+            ordered = sorted(shared, key=lambda member_id: members_by_id[member_id].name.lower())
+            conflicts.append(dict(
+                meeting_id=other.id,
+                title=other.title,
+                start_time=other.start_time,
+                end_time=other.end_time,
+                attendee_ids=ordered,
+                attendee_names=[members_by_id[member_id].name for member_id in ordered],
+            ))
+        return sorted(conflicts, key=lambda item: (item['start_time'], item['meeting_id']))
+
+    def meeting_payload(meeting):
+        lifecycle = closures.get(meeting.id)
+        attendee_ids = attendee_ids_by_meeting.get(meeting.id, [])
+        ordered_ids = sorted(attendee_ids, key=lambda member_id: members_by_id[member_id].name.lower())
+        conflicts = conflicts_for(meeting)
+        return dict(
+            id=meeting.id,
+            title=meeting.title,
+            client=meeting.client,
+            project_id=meeting.project_id,
+            meeting_date=meeting.meeting_date.isoformat(),
+            start_time=meeting.start_time,
+            end_time=meeting.end_time,
+            location=meeting.location,
+            meeting_url=meeting.meeting_url,
+            notes=meeting.notes,
+            created_at=stamp(meeting.created_at),
+            status=lifecycle.status if lifecycle else 'agendada',
+            closure_note=lifecycle.note if lifecycle else '',
+            closure_at=stamp(lifecycle.updated_at) if lifecycle else None,
+            closure_by=lifecycle.updated_by if lifecycle else '',
+            attendee_ids=ordered_ids,
+            attendee_names=[members_by_id[member_id].name for member_id in ordered_ids],
+            has_conflict=bool(conflicts),
+            conflicts=conflicts,
+        )
+
     current = authorized(request)
     organization = db.get(Organization, current['organization_id'])
-    return dict(projects=[project_dict(p,db) for p in projects], tasks=[task_dict(t) for t in tasks],
-                meetings=[meeting_dict(m,db) for m in meetings],
-                members=[member_dict(m,db) for m in members],
-                activities=[dict(id=a.id, message=a.message, created_at=stamp(a.created_at)) for a in activities],
-                user=current['name'],
-                user_id=current['id'],
-                user_role=current['role'],
-                organization=organization_public(organization) if organization else None,
-                has_photo=db.get(AccountPhoto, current['id']) is not None,
-                auth_enabled=True)
+    has_photo = db.scalar(select(AccountPhoto.account_id).where(
+        AccountPhoto.account_id == current['id'],
+        AccountPhoto.organization_id == org_id
+    ).limit(1)) is not None
+
+    return dict(
+        projects=[project_payload(project) for project in projects],
+        tasks=[task_dict(task) for task in tasks],
+        meetings=[meeting_payload(meeting) for meeting in meetings],
+        members=[member_payload(member) for member in members],
+        activities=[dict(id=a.id, message=a.message, created_at=stamp(a.created_at)) for a in activities],
+        user=current['name'],
+        user_id=current['id'],
+        user_role=current['role'],
+        organization=organization_public(organization) if organization else None,
+        has_photo=has_photo,
+        auth_enabled=True,
+    )
 
 @app.post('/api/projects', dependencies=[Depends(authorized)], status_code=201)
 def add_project(data: ProjectIn, db: Session = Depends(session)):
