@@ -72,19 +72,36 @@ def raw_image(value: str,confirmed: bool=False):
     return raw
 
 def install_reference(app,Base,DB,engine,authorized,admin_only):
+    from tenant_module import NEXON_LABS_ORG_ID
+
     class ApprovedArtwork(Base):
         __tablename__='approved_brand_artwork'
         id:Mapped[int]=mapped_column(Integer,primary_key=True)
         image:Mapped[bytes]=mapped_column(nullable=False)
     Base.metadata.create_all(engine,tables=[ApprovedArtwork.__table__])
-    def session():
-        with DB() as db:yield db
+    def nexon_authorized(request: Request):
+        current=authorized(request)
+        if current['organization_id']!=NEXON_LABS_ORG_ID:
+            raise HTTPException(404,'Recurso não encontrado.')
+        return current
 
-    @app.get('/api/brand-reference/status',dependencies=[Depends(authorized)])
+    def nexon_admin_only(request: Request):
+        current=admin_only(request)
+        if current['organization_id']!=NEXON_LABS_ORG_ID:
+            raise HTTPException(404,'Recurso não encontrado.')
+        return current
+
+    def session(request: Request):
+        current=nexon_authorized(request)
+        with DB() as db:
+            db.info['organization_id']=current['organization_id']
+            yield db
+
+    @app.get('/api/brand-reference/status',dependencies=[Depends(nexon_authorized)])
     def reference_status(db:Session=Depends(session)):
         return {'installed':db.get(ApprovedArtwork,1) is not None}
 
-    @app.put('/api/brand-reference',dependencies=[Depends(admin_only)])
+    @app.put('/api/brand-reference',dependencies=[Depends(nexon_admin_only)])
     def save_reference(data:ReferenceUpload,db:Session=Depends(session)):
         # PNG/JPEG podem ter codificações diferentes: a prévia e a confirmação
         # explícita evitam confundir igualdade de arquivos com igualdade visual.
@@ -96,7 +113,7 @@ def install_reference(app,Base,DB,engine,authorized,admin_only):
         return {'ok':True,'installed':True,'sha256':hashlib.sha256(original).hexdigest(),
                 'exact_original_file':hashlib.sha256(original).hexdigest()==APPROVED_SHA256}
 
-    @app.get('/api/brand-reference/{kind}',dependencies=[Depends(authorized)])
+    @app.get('/api/brand-reference/{kind}',dependencies=[Depends(nexon_authorized)])
     def reference_preview(kind:str,db:Session=Depends(session)):
         row=db.get(ApprovedArtwork,1)
         if row is None:raise HTTPException(409,'A matriz visual aprovada ainda não foi instalada.')

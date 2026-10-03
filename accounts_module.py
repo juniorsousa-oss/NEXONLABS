@@ -12,7 +12,7 @@ import os
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, String, select, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, select, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 ITERATIONS = 310_000
@@ -36,10 +36,13 @@ def verify_password(password: str, stored: str) -> bool:
     except (ValueError, TypeError, UnicodeError):
         return False
 
-def setup_accounts(Base, engine, DB):
+def setup_accounts(Base, engine, DB, default_organization_id=1):
     class Account(Base):
         __tablename__ = "app_accounts"
         id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        organization_id: Mapped[int] = mapped_column(
+            ForeignKey("organizations.id"), nullable=False, default=default_organization_id, index=True
+        )
         name: Mapped[str] = mapped_column(String(120), nullable=False)
         password_hash: Mapped[str] = mapped_column(String(250), nullable=False)
         role: Mapped[str] = mapped_column(String(24), default="usuario", nullable=False)
@@ -48,18 +51,28 @@ def setup_accounts(Base, engine, DB):
         created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     Base.metadata.create_all(engine, tables=[Account.__table__])
+    # Bancos históricos já possuem app_accounts: create_all não adiciona colunas.
+    from tenant_module import ensure_organization_columns
+    ensure_organization_columns(engine, ["app_accounts"], default_organization_id)
+
     with DB() as db:
         if db.scalar(select(func.count()).select_from(Account)) == 0:
             first_password = os.getenv("APP_PASSWORD", "")
             if not first_password:
                 raise RuntimeError("Configure APP_PASSWORD para cadastrar o primeiro usuário administrador.")
             first_name = os.getenv("APP_DISPLAY_NAME", "Administrador").strip() or "Administrador"
-            db.add(Account(name=first_name[:120], password_hash=hash_password(first_password), role="admin"))
+            db.add(Account(
+                organization_id=default_organization_id,
+                name=first_name[:120],
+                password_hash=hash_password(first_password),
+                role="admin"
+            ))
             db.commit()
     return Account
 
 def public(account):
-    return {"id": account.id, "name": account.name, "role": account.role,
+    return {"id": account.id, "organization_id": account.organization_id,
+            "name": account.name, "role": account.role,
             "active": account.active, "created_at":account.created_at.isoformat() if account.created_at else None}
 
 def find_by_password(db, Account, password: str):

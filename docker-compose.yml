@@ -9,6 +9,7 @@ services:
       APP_DISPLAY_NAME: "ATRIA by Nexon Labs"
       DATABASE_URL: ${DATABASE_URL}
       APP_PASSWORD: ${APP_PASSWORD}
+      ATRIA_DEMO_PASSWORD: ${ATRIA_DEMO_PASSWORD}
       SESSION_SECRET: ${SESSION_SECRET}
     labels:
       - traefik.enable=true

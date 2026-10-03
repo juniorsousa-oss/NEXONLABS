@@ -2,9 +2,115 @@ import os
 import tempfile
 os.environ['DATABASE_URL'] = 'sqlite:///' + tempfile.mkstemp(prefix='nexon_test_', suffix='.db')[1]
 os.environ['APP_PASSWORD'] = 'test-password'
+os.environ['ATRIA_DEMO_PASSWORD'] = 'demo-test-password'
 os.environ['SESSION_SECRET'] = 'test-key-with-sufficient-length'
 from fastapi.testclient import TestClient
-from app import app
+from app import app, DB, Organization, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
+
+
+def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
+    with DB() as db:
+        nexon=db.get(Organization,NEXON_LABS_ORG_ID)
+        demo=db.get(Organization,ATRIA_DEMO_ORG_ID)
+        assert nexon is not None and nexon.slug=='nexon-labs'
+        assert demo is not None and demo.slug=='atria-demo'
+        first_account=db.query(Account).order_by(Account.id).first()
+        assert first_account is not None
+        assert first_account.organization_id==NEXON_LABS_ORG_ID
+
+    with TestClient(app) as c:
+        assert c.post('/api/login',json={'password':'test-password'}).status_code==200
+        state=c.get('/api/state')
+        assert state.status_code==200,state.text
+        assert state.json()['organization']['slug']=='nexon-labs'
+        created=c.post('/api/projects',json={'name':'Projeto multiempresa base'})
+        assert created.status_code==201,created.text
+        project_id=created.json()['id']
+
+    with DB() as db:
+        project=db.get(Project,project_id)
+        assert project is not None
+        assert project.organization_id==NEXON_LABS_ORG_ID
+
+def test_organization_data_isolation_in_both_directions():
+    demo_password='demo-test-password'
+    with DB() as db:
+        demo=db.query(Account).filter(Account.organization_id==ATRIA_DEMO_ORG_ID).first()
+        assert demo is not None
+        demo_account_id=demo.id
+
+    with TestClient(app) as c:
+        # Cria um dado real da Nexon Labs.
+        assert c.post('/api/login',json={'password':'test-password'}).status_code==200
+        nexon_project=c.post('/api/projects',json={'name':'Projeto privado Nexon'})
+        assert nexon_project.status_code==201,nexon_project.text
+        nexon_project_id=nexon_project.json()['id']
+        assert any(p['id']==nexon_project_id for p in c.get('/api/state').json()['projects'])
+        c.post('/api/logout')
+
+        # A conta Demo recebe somente o tenant Demo e não enxerga IDs da Nexon.
+        login=c.post('/api/login',json={'password':demo_password})
+        assert login.status_code==200,login.text
+        assert login.json()['user']['organization_id']==ATRIA_DEMO_ORG_ID
+        state=c.get('/api/state')
+        assert state.status_code==200,state.text
+        assert state.json()['organization']['slug']=='atria-demo'
+        assert all(p['id']!=nexon_project_id for p in state.json()['projects'])
+        assert c.get('/api/accounts').status_code==200
+        accounts=c.get('/api/accounts').json()
+        assert [a['id'] for a in accounts]==[demo_account_id]
+
+        blocked_update=c.put(f'/api/projects/{nexon_project_id}',json={'name':'Tentativa cruzada'})
+        assert blocked_update.status_code==404,blocked_update.text
+        blocked_task=c.post('/api/tasks',json={'project_id':nexon_project_id,'title':'Tentativa cruzada'})
+        assert blocked_task.status_code==404,blocked_task.text
+
+        demo_project=c.post('/api/projects',json={'name':'Projeto exclusivo Demo'})
+        assert demo_project.status_code==201,demo_project.text
+        demo_project_id=demo_project.json()['id']
+        assert any(p['id']==demo_project_id for p in c.get('/api/state').json()['projects'])
+        c.post('/api/logout')
+
+        # Ao retornar à Nexon Labs, o dado Demo também fica invisível.
+        assert c.post('/api/login',json={'password':'test-password'}).status_code==200
+        nexon_state=c.get('/api/state').json()
+        assert any(p['id']==nexon_project_id for p in nexon_state['projects'])
+        assert all(p['id']!=demo_project_id for p in nexon_state['projects'])
+        assert c.put(f'/api/projects/{demo_project_id}',json={'name':'Tentativa Nexon em Demo'}).status_code==404
+
+    with DB() as db:
+        assert db.get(Project,nexon_project_id).organization_id==NEXON_LABS_ORG_ID
+        assert db.get(Project,demo_project_id).organization_id==ATRIA_DEMO_ORG_ID
+
+
+def test_atria_demo_has_professional_seed_data():
+    with TestClient(app) as c:
+        login=c.post('/api/login',json={'password':'demo-test-password'})
+        assert login.status_code==200,login.text
+        assert login.json()['user']['organization_id']==ATRIA_DEMO_ORG_ID
+
+        state=c.get('/api/state')
+        assert state.status_code==200,state.text
+        data=state.json()
+        assert data['organization']['slug']=='atria-demo'
+        assert len(data['projects'])>=4
+        assert len(data['tasks'])>=7
+        assert len(data['members'])>=4
+        assert len(data['meetings'])>=3
+        names={p['name'] for p in data['projects']}
+        assert {'Portal de Operações','Automação de Compras','Dashboard Executivo','Integração de Atendimento'}.issubset(names)
+
+        quotes=c.get('/api/quotes')
+        assert quotes.status_code==200,quotes.text
+        assert len(quotes.json())>=2
+        tickets=c.get('/api/tickets')
+        assert tickets.status_code==200,tickets.text
+        assert len(tickets.json())>=3
+        company=c.get('/api/quotes/settings/company')
+        assert company.status_code==200,company.text
+        assert company.json()['name']=='ATRIA Demo'
+        assert 'Nexon Labs' in company.json()['subtitle']
+
 
 def test_health_and_protected_routes():
     c=TestClient(app)
@@ -492,7 +598,7 @@ def test_colaborador_brand_kit_aprovado():
         assert previous['whatsapp']==''
         assert previous['name']=='Colaborador pré-existente'
         assert previous['city']=='Patos de Minas - MG'
-        assert previous['site']=='https://nexonlabs.onrender.com'
+        assert previous['site']=='https://nexonlabs.com.br'
 
         invalid=client.post('/api/members',json={
             'name':'Pessoa com link inválido','site':'javascript:alert(1)'
