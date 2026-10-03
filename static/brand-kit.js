@@ -3,16 +3,20 @@
 'use strict';
 window.NexonBrandUI=(()=>{
   const html=v=>esc(v??'');
-  const site='https://nexonlabs.onrender.com';
+  const site='https://atria.nexonlabs.com.br';
   let busy=false,referenceReady=false,referenceChecked=false,referenceLoading=false;
   let selectedReference='',referenceFits=false;
   async function checkReference(){
     if(referenceLoading)return;
+    if(state.organization?.slug&&state.organization.slug!=='nexon-labs'){
+      referenceReady=false;referenceChecked=true;
+      return;
+    }
     referenceLoading=true;
     try{
       const response=await api('/brand-reference/status');
       referenceReady=Boolean(response.installed);referenceChecked=true;
-    }catch(e){referenceChecked=true;notice(e.message);}
+    }catch(e){referenceReady=false;referenceChecked=true;}
     finally{referenceLoading=false;if(typeof route!=='undefined'&&route==='equipe'&&typeof render==='function')render();}
   }
   function avatar(member){return html(initials(member.name))}
@@ -20,11 +24,15 @@ window.NexonBrandUI=(()=>{
     if(!referenceChecked&&!referenceLoading)checkReference();
     return heading('Equipe','Colaboradores, dados profissionais e materiais da Nexon Labs.',
       '<button type="button" class="primary" data-brand-action="new">'+icon('plus')+' Adicionar colaborador</button>')+
-      (!referenceChecked?'<section class="panel"><p class="muted">Verificando o modelo visual aprovado...</p></section>':
-       !referenceReady?'<section class="panel brand-template-warning"><h2>Matriz visual Opção B pendente</h2>'+
-        '<p>Para preservar a arte original, a geração é liberada apenas após a instalação da imagem aprovada.</p>'+
-        (state.user_role==='admin'?'<button type="button" class="primary" data-brand-action="install">Instalar matriz visual aprovada</button>':
-         '<p>Peça ao administrador para instalar a referência aprovada.</p>')+'</section>':'')+
+      (!referenceChecked?'<section class="panel"><p class="muted">Preparando materiais de identidade...</p></section>':
+       '<section class="panel brand-template-warning brand-standard-ready"><div class="panel-head"><h2>Cartão de visita e assinatura</h2><span class="brand-standard-badge">'+
+        (referenceReady?'Modelo personalizado ativo':'Modelo padrão ATRIA')+'</span></div>'+
+        '<p>'+(referenceReady?'A organização está usando um modelo personalizado aprovado.':
+          'O ATRIA já disponibiliza um layout padrão para cartão e assinatura. Você pode usá-lo imediatamente ou criar uma arte personalizada compatível com o aplicativo.')+'</p>'+
+        '<div class="brand-standard-actions"><button type="button" class="secondary" data-brand-action="instructions">'+icon('download')+' Baixar instruções para IA</button>'+
+        (state.user_role==='admin'&&state.organization?.slug==='nexon-labs'?'<button type="button" class="primary" data-brand-action="install">'+
+          (referenceReady?'Substituir modelo personalizado':'Instalar modelo personalizado')+'</button>':'')+
+        '</div><small class="member-brand-hint">A personalização por cliente, com logo, favicon e marca d’água próprios, será controlada pelas configurações da organização.</small></section>')+
       '<section class="panel"><div class="panel-head"><h2>Colaboradores</h2>'+
       '<span class="muted">'+state.members.length+' cadastrados</span></div>'+
       '<div class="list-stack member-brand-list">'+
@@ -35,7 +43,7 @@ window.NexonBrandUI=(()=>{
         '<small>'+html(m.whatsapp||'WhatsApp não informado')+' · '+html(m.city||'Cidade não informada')+'</small></div></div>'+
         '<div class="member-brand-actions">'+
         '<button type="button" class="secondary" data-brand-action="edit" data-id="'+m.id+'" aria-label="Editar cadastro de '+html(m.name)+'">'+icon('edit')+' Editar cadastro</button>'+
-        '<button type="button" class="primary" data-brand-action="preview" data-id="'+m.id+'" '+(!referenceReady?'disabled title="Aguarde a instalação da matriz aprovada"':'')+'>'+icon('file')+' Cartão e assinatura</button>'+
+        '<button type="button" class="primary" data-brand-action="preview" data-id="'+m.id+'">'+icon('file')+' Cartão e assinatura</button>'+
         '<button type="button" class="danger" data-action="delete-member" data-id="'+m.id+'">Remover</button>'+
         '</div></div>').join(''):
         empty('Equipe ainda não cadastrada','Adicione os colaboradores para gerar materiais personalizados.','new-member'))+
@@ -43,9 +51,9 @@ window.NexonBrandUI=(()=>{
   }
   function installDialog(){
     selectedReference='';referenceFits=false;
-    modal('Instalar modelo aprovado — Opção B',
+    modal('Instalar modelo personalizado',
       '<form id="brand-template-form" class="brand-template-install">'+
-      '<p>Selecione a <strong>imagem completa da referência aprovada</strong>, com as opções A e B lado a lado, em <strong>PNG ou JPEG</strong>. Depois confira a prévia antes de instalar.</p>'+
+      '<p>Selecione a <strong>prancha completa do modelo personalizado</strong> em PNG ou JPEG. O arquivo precisa seguir exatamente a estrutura aceita pelo ATRIA; use o botão “Baixar instruções para IA” antes de criar uma nova arte.</p>'+
       '<label for="brand-template-file">Imagem aprovada *<input type="file" id="brand-template-file" name="reference" accept=".png,.jpg,.jpeg,image/png,image/jpeg" required></label>'+
       '<p id="brand-template-feedback" class="member-brand-hint brand-template-feedback" role="status" aria-live="polite">Nenhum arquivo selecionado.</p>'+
       '<img id="brand-template-preview" class="brand-template-preview" alt="Prévia da imagem completa selecionada, incluindo a Opção B à direita" hidden>'+
@@ -105,10 +113,10 @@ window.NexonBrandUI=(()=>{
   function preview(id){
     const member=state.members.find(m=>m.id===id);
     if(!member)return;
-    if(!referenceReady){notice('Instale o modelo original aprovado para liberar a geração.');return;}
     modal('Materiais de identidade — '+member.name,
       '<div class="brand-kit-preview"><p class="member-brand-hint">'+
-      'Modelo Opção B aprovado: assinatura com bloco azul-marinho e diagonal turquesa; cartão escuro na frente, cartão claro no verso com QR Code e serviços à direita.</p>'+
+      (referenceReady?'Modelo personalizado ativo para a Nexon Labs.':
+        'Modelo padrão do ATRIA. Ele pode ser usado imediatamente e posteriormente substituído por uma identidade personalizada compatível.')+
       '<div class="brand-kit-block"><h3>Assinatura de e-mail</h3>'+
       previewImage(id,'signature','Prévia da assinatura de '+member.name)+
       '<div class="brand-kit-downloads"><button class="secondary" type="button" data-brand-action="download" data-id="'+id+'" data-kind="signature" data-format="png">Baixar PNG</button>'+
@@ -169,10 +177,44 @@ window.NexonBrandUI=(()=>{
     }catch(e){notice(e.message);}
     finally{busy=false;button.disabled=false;}
   }
+  function downloadInstructions(){
+    const content=[
+      'ATRIA — INSTRUÇÕES PARA CRIAÇÃO DE MODELO PERSONALIZADO',
+      '',
+      'Objetivo: criar uma prancha de identidade para cartão de visita e assinatura compatível com o ATRIA.',
+      '',
+      'ARQUIVO FINAL',
+      '- Formato: PNG ou JPEG',
+      '- Dimensão exata: 1536 x 1024 pixels',
+      '- Tamanho máximo: 6 MB',
+      '- Enviar a prancha completa, sem recortes.',
+      '',
+      'ÁREAS UTILIZADAS PELO APLICATIVO',
+      '- Assinatura: x=786 a 1519, y=106 a 398',
+      '- Frente do cartão: x=797 a 1508, y=436 a 696',
+      '- Verso do cartão: x=792 a 1510, y=724 a 993',
+      '',
+      'INSTRUÇÃO PARA A IA',
+      'Crie uma prancha de identidade visual profissional em 1536 x 1024 px. Preserve exatamente as três áreas de recorte descritas acima. Não coloque elementos essenciais fora dessas áreas. O cartão deve ter leitura clara em 90 x 50 mm, prever 3 mm de sangria, reservar espaço para nome, cargo, WhatsApp, e-mail, cidade, site e QR Code, e manter contraste alto. A assinatura deve funcionar em fundo claro. Evite textos pequenos, efeitos excessivos e elementos que dependam da borda da prancha.',
+      '',
+      'IMPORTANTE',
+      'A imagem enviada será usada como matriz. O ATRIA aplica os dados variáveis do colaborador sobre as áreas previstas. Antes de instalar, valide a prévia.',
+      '',
+      'Produto: ATRIA · by Nexon Labs'
+    ].join('\n');
+    const blob=new Blob([content],{type:'text/plain;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='ATRIA_instrucoes_modelo_personalizado.txt';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    notice('Instruções para criação do modelo baixadas.');
+  }
   document.addEventListener('click',event=>{
     const button=event.target.closest('[data-brand-action]');
     if(!button)return;
     const action=button.dataset.brandAction;
+    if(action==='instructions'){downloadInstructions();return;}
     if(action==='retry-image'){
       const image=button.closest('[data-brand-media]')?.querySelector('[data-brand-image]');
       if(image)retryImage(image);
