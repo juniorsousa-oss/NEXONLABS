@@ -580,7 +580,10 @@ def normalize_brand_logo(kind: str, raw: bytes, mime_type: str):
         from PIL import Image, ImageOps
         with Image.open(io.BytesIO(raw)) as source:
             image = ImageOps.exif_transpose(source).convert('RGBA')
-            bbox = image.getchannel('A').getbbox()
+            alpha = image.getchannel('A')
+            # Ignora halos/sombras quase transparentes que fazem o logo parecer minúsculo.
+            visible = alpha.point(lambda value: 255 if value >= 28 else 0)
+            bbox = visible.getbbox() or alpha.getbbox()
             if bbox is None:
                 return raw, mime_type
             cropped = image.crop(bbox)
