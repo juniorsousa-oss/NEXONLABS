@@ -178,6 +178,7 @@ def install_quotes(app, Base, DB, engine, authorized, log, Project):
     Base.metadata.create_all(engine, tables=[Quote.__table__, Company.__table__])
     ensure_organization_columns(engine, ["commercial_quotes", "commercial_company"], NEXON_LABS_ORG_ID)
     app.state.Quote = Quote
+    app.state.Company = Company
 
     def session(request: Request):
         current = authorized(request)
@@ -447,3 +448,4 @@ def build_pdf(data: QuoteIn, calc: dict, company: CompanyIn, info: dict):
         canvas.restoreState()
     doc.build(story,onFirstPage=page_footer,onLaterPages=page_footer)
     return buffer.getvalue()
+
