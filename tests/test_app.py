@@ -5,7 +5,11 @@ os.environ['APP_PASSWORD'] = 'test-password'
 os.environ['ATRIA_DEMO_PASSWORD'] = 'demo-test-password'
 os.environ['SESSION_SECRET'] = 'test-key-with-sufficient-length'
 from fastapi.testclient import TestClient
-from app import app, DB, Organization, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
+from unittest.mock import patch
+import time
+from sqlalchemy import event
+from accounts_module import SESSION_IDLE_TIMEOUT_SECONDS
+from app import app, DB, engine, Organization, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
 
 
 def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
@@ -110,6 +114,33 @@ def test_atria_demo_has_professional_seed_data():
         assert company.status_code==200,company.text
         assert company.json()['name']=='ATRIA Demo'
         assert 'Nexon Labs' in company.json()['subtitle']
+
+
+def test_session_expires_after_inactivity():
+    with TestClient(app) as c:
+        login=c.post('/api/login',json={'password':'test-password'})
+        assert login.status_code==200
+        future=time.time()+SESSION_IDLE_TIMEOUT_SECONDS+5
+        with patch('accounts_module.time.time', return_value=future):
+            expired=c.get('/api/state')
+        assert expired.status_code==401
+
+
+def test_state_load_uses_bounded_number_of_queries():
+    statements=0
+    def before_cursor_execute(*args, **kwargs):
+        nonlocal statements
+        statements+=1
+
+    with TestClient(app) as c:
+        assert c.post('/api/login',json={'password':'demo-test-password'}).status_code==200
+        event.listen(engine,'before_cursor_execute',before_cursor_execute)
+        try:
+            result=c.get('/api/state')
+        finally:
+            event.remove(engine,'before_cursor_execute',before_cursor_execute)
+        assert result.status_code==200,result.text
+        assert statements<=13, f'/api/state executou {statements} consultas; esperado no máximo 13.'
 
 
 def test_health_and_protected_routes():
