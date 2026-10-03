@@ -45,6 +45,7 @@ from tenant_module import (
     NEXON_LABS_ORG_ID,
     ATRIA_DEMO_ORG_ID,
     ensure_organization_columns,
+    ensure_member_tenant_uniqueness,
     organization_public,
     setup_organizations,
 )
@@ -54,7 +55,7 @@ class Member(Base):
     __tablename__ = 'members'
     id: Mapped[int] = mapped_column(primary_key=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey('organizations.id'), nullable=False, default=NEXON_LABS_ORG_ID, index=True)
-    name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
     role: Mapped[str] = mapped_column(String(120), default='Equipe')
     email: Mapped[str] = mapped_column(String(200), default='')
 
@@ -134,6 +135,7 @@ class ProjectClientSite(Base):
 
 Base.metadata.create_all(engine)
 ensure_organization_columns(engine, ['members', 'projects', 'tasks', 'activities', 'meetings'], NEXON_LABS_ORG_ID)
+ensure_member_tenant_uniqueness(engine)
 from accounts_module import setup_accounts, public, session_user, find_by_password, password_in_use, hash_password, verify_password, MAX_ACCOUNTS
 Account = setup_accounts(Base, engine, DB, NEXON_LABS_ORG_ID)
 
