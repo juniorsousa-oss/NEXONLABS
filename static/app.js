@@ -40,6 +40,7 @@ function applyOrganizationBrand(){
     defaultBrand.hidden=Boolean(logo);
     customLogo.hidden=!logo;
     if(logo)customLogo.src=logo;
+    document.querySelector('.sidebar .brand')?.classList.toggle('custom-brand-active',Boolean(logo));
   }
   const orgLabel=$('#profile-organization');
   if(orgLabel)orgLabel.textContent=custom?(org.name||'Organização'):'ATRIA';
