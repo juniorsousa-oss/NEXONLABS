@@ -90,6 +90,7 @@ class Task(Base):
 class Activity(Base):
     __tablename__ = 'activities'
     id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey('organizations.id'), nullable=False, default=NEXON_LABS_ORG_ID, index=True)
     message: Mapped[str] = mapped_column(String(350))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -97,6 +98,7 @@ class Meeting(Base):
     """Reunião com cliente; independente do cronograma de produção."""
     __tablename__ = 'meetings'
     id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey('organizations.id'), nullable=False, default=NEXON_LABS_ORG_ID, index=True)
     title: Mapped[str] = mapped_column(String(180), nullable=False)
     client: Mapped[str] = mapped_column(String(160), default='')
     project_id: Mapped[int | None] = mapped_column(ForeignKey('projects.id', ondelete='SET NULL'), nullable=True)
@@ -131,8 +133,9 @@ class ProjectClientSite(Base):
 
 
 Base.metadata.create_all(engine)
+ensure_organization_columns(engine, ['members', 'projects', 'tasks', 'activities', 'meetings'], NEXON_LABS_ORG_ID)
 from accounts_module import setup_accounts, public, session_user, find_by_password, password_in_use, hash_password, verify_password, MAX_ACCOUNTS
-Account = setup_accounts(Base, engine, DB)
+Account = setup_accounts(Base, engine, DB, NEXON_LABS_ORG_ID)
 
 # Nova tabela independente: evita modificar contas já cadastradas no PostgreSQL.
 class AccountPhoto(Base):
