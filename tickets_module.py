@@ -92,6 +92,8 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
 
     Base.metadata.create_all(engine, tables=[Ticket.__table__, TicketEvent.__table__])
     ensure_organization_columns(engine, ["service_tickets"], NEXON_LABS_ORG_ID)
+    app.state.Ticket = Ticket
+    app.state.TicketEvent = TicketEvent
 
     def session(request: Request):
         current = authorized(request)
