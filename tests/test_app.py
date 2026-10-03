@@ -517,7 +517,7 @@ def test_colaborador_brand_kit_aprovado():
         assert previous['whatsapp']==''
         assert previous['name']=='Colaborador pré-existente'
         assert previous['city']=='Patos de Minas - MG'
-        assert previous['site']=='https://nexonlabs.onrender.com'
+        assert previous['site']=='https://nexonlabs.com.br'
 
         invalid=client.post('/api/members',json={
             'name':'Pessoa com link inválido','site':'javascript:alert(1)'
