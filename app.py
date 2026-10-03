@@ -862,3 +862,23 @@ MemberBrand, member_brand_extra, member_brand_sync = install_brand_kit(
 # A referência visual original fica persistida no PostgreSQL e só é instalada pelo administrador.
 from approved_template import install_reference
 ApprovedArtwork = install_reference(app, Base, DB, engine, authorized, admin_only)
+
+# Ambiente comercial de demonstração, totalmente isolado da Nexon Labs.
+from demo_seed import seed_demo_environment
+seed_demo_environment(
+    DB=DB,
+    Account=Account,
+    Member=Member,
+    Project=Project,
+    Task=Task,
+    Activity=Activity,
+    Meeting=Meeting,
+    MeetingClosure=MeetingClosure,
+    MeetingAttendee=MeetingAttendee,
+    Quote=app.state.Quote,
+    Company=app.state.Company,
+    Ticket=app.state.Ticket,
+    TicketEvent=app.state.TicketEvent,
+    hash_password=hash_password,
+    password_in_use=password_in_use,
+)
