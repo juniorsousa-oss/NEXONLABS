@@ -4,7 +4,32 @@ os.environ['DATABASE_URL'] = 'sqlite:///' + tempfile.mkstemp(prefix='nexon_test_
 os.environ['APP_PASSWORD'] = 'test-password'
 os.environ['SESSION_SECRET'] = 'test-key-with-sufficient-length'
 from fastapi.testclient import TestClient
-from app import app
+from app import app, DB, Organization, Project, Account, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
+
+
+def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
+    with DB() as db:
+        nexon=db.get(Organization,NEXON_LABS_ORG_ID)
+        demo=db.get(Organization,ATRIA_DEMO_ORG_ID)
+        assert nexon is not None and nexon.slug=='nexon-labs'
+        assert demo is not None and demo.slug=='atria-demo'
+        first_account=db.query(Account).order_by(Account.id).first()
+        assert first_account is not None
+        assert first_account.organization_id==NEXON_LABS_ORG_ID
+
+    with TestClient(app) as c:
+        assert c.post('/api/login',json={'password':'test-password'}).status_code==200
+        state=c.get('/api/state')
+        assert state.status_code==200,state.text
+        assert state.json()['organization']['slug']=='nexon-labs'
+        created=c.post('/api/projects',json={'name':'Projeto multiempresa base'})
+        assert created.status_code==201,created.text
+        project_id=created.json()['id']
+
+    with DB() as db:
+        project=db.get(Project,project_id)
+        assert project is not None
+        assert project.organization_id==NEXON_LABS_ORG_ID
 
 def test_health_and_protected_routes():
     c=TestClient(app)
