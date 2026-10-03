@@ -4,7 +4,7 @@ os.environ['DATABASE_URL'] = 'sqlite:///' + tempfile.mkstemp(prefix='nexon_test_
 os.environ['APP_PASSWORD'] = 'test-password'
 os.environ['SESSION_SECRET'] = 'test-key-with-sufficient-length'
 from fastapi.testclient import TestClient
-from app import app, DB, Organization, Project, Account, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
+from app import app, DB, Organization, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
 
 
 def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
@@ -30,6 +30,66 @@ def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
         project=db.get(Project,project_id)
         assert project is not None
         assert project.organization_id==NEXON_LABS_ORG_ID
+
+def test_organization_data_isolation_in_both_directions():
+    demo_password='demo-isolation-password'
+    with DB() as db:
+        demo=db.query(Account).filter(Account.organization_id==ATRIA_DEMO_ORG_ID).first()
+        if demo is None:
+            demo=Account(
+                organization_id=ATRIA_DEMO_ORG_ID,
+                name='Administrador Demo',
+                password_hash=hash_password(demo_password),
+                role='admin'
+            )
+            db.add(demo)
+            db.commit()
+            db.refresh(demo)
+        demo_account_id=demo.id
+
+    with TestClient(app) as c:
+        # Cria um dado real da Nexon Labs.
+        assert c.post('/api/login',json={'password':'test-password'}).status_code==200
+        nexon_project=c.post('/api/projects',json={'name':'Projeto privado Nexon'})
+        assert nexon_project.status_code==201,nexon_project.text
+        nexon_project_id=nexon_project.json()['id']
+        assert any(p['id']==nexon_project_id for p in c.get('/api/state').json()['projects'])
+        c.post('/api/logout')
+
+        # A conta Demo recebe somente o tenant Demo e não enxerga IDs da Nexon.
+        login=c.post('/api/login',json={'password':demo_password})
+        assert login.status_code==200,login.text
+        assert login.json()['user']['organization_id']==ATRIA_DEMO_ORG_ID
+        state=c.get('/api/state')
+        assert state.status_code==200,state.text
+        assert state.json()['organization']['slug']=='atria-demo'
+        assert all(p['id']!=nexon_project_id for p in state.json()['projects'])
+        assert c.get('/api/accounts').status_code==200
+        accounts=c.get('/api/accounts').json()
+        assert [a['id'] for a in accounts]==[demo_account_id]
+
+        blocked_update=c.put(f'/api/projects/{nexon_project_id}',json={'name':'Tentativa cruzada'})
+        assert blocked_update.status_code==404,blocked_update.text
+        blocked_task=c.post('/api/tasks',json={'project_id':nexon_project_id,'title':'Tentativa cruzada'})
+        assert blocked_task.status_code==404,blocked_task.text
+
+        demo_project=c.post('/api/projects',json={'name':'Projeto exclusivo Demo'})
+        assert demo_project.status_code==201,demo_project.text
+        demo_project_id=demo_project.json()['id']
+        assert any(p['id']==demo_project_id for p in c.get('/api/state').json()['projects'])
+        c.post('/api/logout')
+
+        # Ao retornar à Nexon Labs, o dado Demo também fica invisível.
+        assert c.post('/api/login',json={'password':'test-password'}).status_code==200
+        nexon_state=c.get('/api/state').json()
+        assert any(p['id']==nexon_project_id for p in nexon_state['projects'])
+        assert all(p['id']!=demo_project_id for p in nexon_state['projects'])
+        assert c.put(f'/api/projects/{demo_project_id}',json={'name':'Tentativa Nexon em Demo'}).status_code==404
+
+    with DB() as db:
+        assert db.get(Project,nexon_project_id).organization_id==NEXON_LABS_ORG_ID
+        assert db.get(Project,demo_project_id).organization_id==ATRIA_DEMO_ORG_ID
+
 
 def test_health_and_protected_routes():
     c=TestClient(app)
