@@ -154,9 +154,14 @@ def calculate(data: QuoteIn):
     )
 
 def install_quotes(app, Base, DB, engine, authorized, log, Project):
+    from tenant_module import NEXON_LABS_ORG_ID, ensure_organization_columns
+
     class Quote(Base):
         __tablename__ = "commercial_quotes"
         id: Mapped[int] = mapped_column(primary_key=True)
+        organization_id: Mapped[int] = mapped_column(
+            ForeignKey("organizations.id"), nullable=False, default=NEXON_LABS_ORG_ID, index=True
+        )
         payload: Mapped[str] = mapped_column(Text, nullable=False)
         created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
         updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -165,9 +170,13 @@ def install_quotes(app, Base, DB, engine, authorized, log, Project):
     class Company(Base):
         __tablename__ = "commercial_company"
         id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        organization_id: Mapped[int] = mapped_column(
+            ForeignKey("organizations.id"), nullable=False, default=NEXON_LABS_ORG_ID, index=True
+        )
         payload: Mapped[str] = mapped_column(Text, nullable=False)
 
     Base.metadata.create_all(engine, tables=[Quote.__table__, Company.__table__])
+    ensure_organization_columns(engine, ["commercial_quotes", "commercial_company"], NEXON_LABS_ORG_ID)
     app.state.Quote = Quote
 
     def session():
