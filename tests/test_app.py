@@ -9,7 +9,7 @@ from unittest.mock import patch
 import time
 from sqlalchemy import event
 from accounts_module import SESSION_IDLE_TIMEOUT_SECONDS
-from app import app, DB, engine, Organization, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
+from app import app, DB, engine, Organization, OrganizationBrandAsset, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
 
 
 def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
@@ -116,6 +116,66 @@ def test_atria_demo_has_professional_seed_data():
         assert 'Nexon Labs' in company.json()['subtitle']
 
 
+def test_organization_branding_is_tenant_scoped_and_demo_is_locked():
+    import base64
+    import io
+    from PIL import Image
+
+    image=Image.new('RGBA',(64,64),(11,45,74,255))
+    output=io.BytesIO()
+    image.save(output,format='PNG')
+    image_data='data:image/png;base64,'+base64.b64encode(output.getvalue()).decode()
+
+    with TestClient(app) as c:
+        assert c.post('/api/login',json={'password':'test-password'}).status_code==200
+        current=c.get('/api/organization/brand')
+        assert current.status_code==200,current.text
+        assert current.json()['slug']=='nexon-labs'
+
+        settings=c.put('/api/organization/brand',json={
+            'primary_color':'#123456',
+            'secondary_color':'#11AA99',
+            'use_custom_brand':True,
+        })
+        assert settings.status_code==200,settings.text
+        assert settings.json()['use_custom_brand'] is True
+        assert settings.json()['primary_color']=='#123456'
+
+        uploaded=c.put('/api/organization/brand/assets/favicon',json={'image_data':image_data})
+        assert uploaded.status_code==200,uploaded.text
+        state=c.get('/api/state').json()
+        assert state['organization']['assets']['favicon'] is True
+        asset=c.get('/api/organization/brand/assets/favicon')
+        assert asset.status_code==200
+        assert asset.headers['content-type'].startswith('image/png')
+
+        c.post('/api/logout')
+        assert c.post('/api/login',json={'password':'demo-test-password'}).status_code==200
+        demo=c.get('/api/organization/brand').json()
+        assert demo['slug']=='atria-demo'
+        assert demo['assets']['favicon'] is False
+        blocked=c.put('/api/organization/brand',json={
+            'primary_color':'#654321',
+            'secondary_color':'#00AA88',
+            'use_custom_brand':True,
+        })
+        assert blocked.status_code==409
+        blocked_upload=c.put('/api/organization/brand/assets/logo',json={'image_data':image_data})
+        assert blocked_upload.status_code==409
+
+    with DB() as db:
+        assert db.get(OrganizationBrandAsset,(NEXON_LABS_ORG_ID,'favicon')) is not None
+        assert db.get(OrganizationBrandAsset,(ATRIA_DEMO_ORG_ID,'favicon')) is None
+        nexon=db.get(Organization,NEXON_LABS_ORG_ID)
+        nexon.primary_color='#0B2D4A'
+        nexon.secondary_color='#14B8A6'
+        nexon.use_custom_brand=True
+        asset=db.get(OrganizationBrandAsset,(NEXON_LABS_ORG_ID,'favicon'))
+        if asset is not None:
+            db.delete(asset)
+        db.commit()
+
+
 def test_session_expires_after_inactivity():
     with TestClient(app) as c:
         login=c.post('/api/login',json={'password':'test-password'})
@@ -140,7 +200,7 @@ def test_state_load_uses_bounded_number_of_queries():
         finally:
             event.remove(engine,'before_cursor_execute',before_cursor_execute)
         assert result.status_code==200,result.text
-        assert statements<=13, f'/api/state executou {statements} consultas; esperado no máximo 13.'
+        assert statements<=14, f'/api/state executou {statements} consultas; esperado no máximo 14.'
 
 
 def test_health_and_protected_routes():

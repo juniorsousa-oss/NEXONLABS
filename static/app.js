@@ -13,7 +13,50 @@ const dayMonth=s=>s?new Date(s+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-d
 const isLate=s=>{const d=new Date();const local=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');return Boolean(s&&s<local)};
 function notice(message){const t=$('#toast');t.textContent=message;t.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('visible'),3500)}
 async function api(path,options={}){const r=await fetch('/api'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){location.href='/';throw Error('Sessão encerrada.')}if(!r.ok){let p={};try{p=await r.json()}catch{}const detail=Array.isArray(p.detail)?p.detail.map(x=>x.msg).join('; '):p.detail;throw Error(detail||`Erro ${r.status}`)}return r.headers.get('content-type')?.includes('application/json')?r.json():r}
-async function refresh(){try{Object.assign(state,await api('/state'));$('#display-name').textContent=state.user;const avatar=$('#avatar');avatar.textContent=initials(state.user);if(state.has_photo){const image=document.createElement('img');image.alt='';image.className='profile-avatar-image';image.onerror=()=>image.remove();image.src='/api/profile/avatar?updated='+Date.now();avatar.appendChild(image);}const alertCount=state.projects.filter(p=>p.status==='atrasado').length+state.tasks.filter(t=>!t.completed&&isLate(t.due_at)).length;$('#bell-dot').hidden=!alertCount;render()}catch(e){notice(e.message)}}
+const ATRIA_BRAND={primary:'#0B2D4A',secondary:'#14B8A6'};
+function brandAssetUrl(kind){return state.organization?.asset_urls?.[kind]||''}
+function contrastText(hex){
+  const value=String(hex||'').replace('#','');
+  if(!/^[0-9A-Fa-f]{6}$/.test(value))return '#FFFFFF';
+  const rgb=[0,2,4].map(i=>parseInt(value.slice(i,i+2),16)/255)
+    .map(v=>v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4));
+  const luminance=.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];
+  return luminance>.46?'#102943':'#FFFFFF';
+}
+function applyOrganizationBrand(){
+  const org=state.organization||{};
+  const custom=Boolean(org.use_custom_brand&&!org.is_demo);
+  const primary=custom?(org.primary_color||ATRIA_BRAND.primary):ATRIA_BRAND.primary;
+  const secondary=custom?(org.secondary_color||ATRIA_BRAND.secondary):ATRIA_BRAND.secondary;
+  document.documentElement.style.setProperty('--navy',primary);
+  document.documentElement.style.setProperty('--teal',secondary);
+  document.documentElement.style.setProperty('--brand-primary',primary);
+  document.documentElement.style.setProperty('--brand-secondary',secondary);
+  document.documentElement.style.setProperty('--brand-on-primary',contrastText(primary));
+  const defaultBrand=$('#default-brand-lockup');
+  const customLogo=$('#organization-brand-image');
+  const logo=custom?(brandAssetUrl('logo_dark')||brandAssetUrl('logo')):'';
+  if(defaultBrand&&customLogo){
+    defaultBrand.hidden=Boolean(logo);
+    customLogo.hidden=!logo;
+    if(logo)customLogo.src=logo;
+  }
+  const orgLabel=$('#profile-organization');
+  if(orgLabel)orgLabel.textContent=custom?(org.name||'Organização'):'ATRIA';
+  const signature=$('#brand-signature');
+  if(signature)signature.innerHTML=custom?'POWERED BY ATRIA<br>BY NEXON LABS':'GESTÃO INTEGRADA<br>BY NEXON LABS';
+  const favicon=document.querySelector('link[rel="icon"]');
+  if(favicon)favicon.href=custom&&brandAssetUrl('favicon')?brandAssetUrl('favicon'):'/static/logo.svg?v=2';
+}
+function fileAsDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(String(reader.result||''));
+    reader.onerror=()=>reject(new Error('Não foi possível ler o arquivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+async function refresh(){try{Object.assign(state,await api('/state'));$('#display-name').textContent=state.user;applyOrganizationBrand();const avatar=$('#avatar');avatar.textContent=initials(state.user);if(state.has_photo){const image=document.createElement('img');image.alt='';image.className='profile-avatar-image';image.onerror=()=>image.remove();image.src='/api/profile/avatar?updated='+Date.now();avatar.appendChild(image);}const alertCount=state.projects.filter(p=>p.status==='atrasado').length+state.tasks.filter(t=>!t.completed&&isLate(t.due_at)).length;$('#bell-dot').hidden=!alertCount;render()}catch(e){notice(e.message)}}
 function heading(title,description,button=''){return `<div class="simple-head"><div><h1>${esc(title)}</h1><p>${esc(description)}</p></div>${button}</div>`}
 const newProjectButton=()=>`<button class="primary" data-action="new-project">${icon('plus')} Novo projeto</button>`;
 function metric(name,value,type='folder',hint='Dados atuais'){return `<div class="metric"><div class="metric-heading"><div class="micon ${type==='check-circle'?'teal':''}">${icon(type)}</div><div><div class="num">${esc(value)}</div><div class="mlabel">${esc(name)}</div></div></div><div class="metric-foot"><span class="up">${icon('check-circle').replace('<svg','<svg style="width:13px;height:13px;vertical-align:-2px"')} Dados em tempo real</span>${esc(hint)}</div></div>`}
@@ -89,22 +132,47 @@ function tasksPage(){const list=state.tasks.filter(t=>!query||[t.title,t.assigne
 function teamPage(){return window.NexonBrandUI.page()}
 function schedulePage(){const due=state.projects.filter(p=>p.due_at).sort((a,b)=>a.due_at.localeCompare(b.due_at));const taskDue=state.tasks.filter(t=>t.due_at&&!t.completed).map(t=>({...t,project:state.projects.find(p=>p.id===t.project_id)}));const events=[...due.map(p=>({id:p.id,date:p.due_at,title:p.name,subtitle:'Prazo do projeto',status:p.status,action:'edit-project'})),...taskDue.map(t=>({id:t.id,date:t.due_at,title:t.title,subtitle:'Tarefa · '+(t.project?.name||''),status:isLate(t.due_at)?'atrasado':'planejamento',action:'edit-task'}))].sort((a,b)=>a.date.localeCompare(b.date));return `${heading('Cronograma','Entregas e tarefas organizadas por prazo.',newProjectButton())}<section class="panel"><div class="panel-head"><h2>Próximos compromissos</h2><span class="muted">${events.length} registros</span></div><div class="list-stack" style="margin-top:17px">${events.length?events.map(e=>`<div class="line-item"><aside><div class="date-box"><b>${dayMonth(e.date).split(' ')[0]}</b><small>${dayMonth(e.date).split(' ').slice(1).join(' ')}</small></div><div><h3>${esc(e.title)}</h3><p>${esc(e.subtitle)} · ${shortDate(e.date)}</p></div></aside><button class="secondary" data-action="${e.action}" data-id="${e.id}">${icon('chevron-right')} Abrir</button></div>`).join(''):empty('Sem prazos definidos','Defina datas para acompanhar seu cronograma.')}</div></section>`}
 function reportsPage(){const done=state.projects.filter(p=>p.status==='concluido').length;return `${heading('Relatórios','Indicadores calculados a partir dos projetos e tarefas cadastrados.',`<button class="primary" data-action="export">${icon('download')} Exportar projetos CSV</button>`)}<div class="report-tiles">${metric('Projetos cadastrados',state.projects.length,'folder')}${metric('Projetos concluídos',done,'check-circle')}${metric('Tarefas concluídas',state.tasks.filter(t=>t.completed).length,'chart')}</div><section class="panel"><div class="panel-head"><h2>Distribuição por status</h2></div><div class="list-stack" style="margin-top:16px">${Object.entries(statusText).map(([key,label])=>`<div class="line-item"><h3>${label}</h3><strong>${state.projects.filter(p=>p.status===key).length}</strong></div>`).join('')}</div><div class="subsection"><h3>Últimas movimentações</h3>${state.activities.length?state.activities.slice(0,20).map(a=>`<div class="task-inside"><span>${esc(a.message)}</span><small class="muted">${relative(a.created_at)}</small></div>`).join(''):'<p class="muted">Nenhuma movimentação registrada.</p>'}</div></section>`}
+function brandAssetCard(kind,label,hint){
+  const org=state.organization||{},has=Boolean(org.assets?.[kind]),src=brandAssetUrl(kind);
+  const editable=state.user_role==='admin'&&!org.is_demo;
+  return '<article class="brand-asset-card"><div class="brand-asset-preview '+(kind==='watermark'?'watermark-preview':'')+'">'+
+    (has?'<img src="'+esc(src)+'" alt="'+esc(label)+'">':'<div class="brand-asset-empty">'+icon(kind==='favicon'?'layers':'file')+'<span>Usando padrão ATRIA</span></div>')+
+    '</div><div class="brand-asset-copy"><strong>'+esc(label)+'</strong><small>'+esc(hint)+'</small></div>'+
+    (editable?'<div class="brand-asset-actions"><label class="secondary brand-upload-button">'+icon('plus')+' '+(has?'Substituir':'Enviar')+
+      '<input type="file" hidden data-brand-file="'+kind+'" accept="image/png,image/jpeg,image/webp"></label>'+
+      (has?'<button type="button" class="brand-remove-link" data-action="remove-brand-asset" data-kind="'+kind+'">Remover</button>':'')+
+      '</div>':'')+'</article>';
+}
 function settingsPage(){
-  return heading('Configurações','Personalize seus dados e gerencie os acessos ao sistema.')+
-  '<section class="panel"><div class="panel-head"><h2>Identidade visual aprovada</h2></div>'+
-  '<div style="display:flex;align-items:center;gap:13px;margin:16px 0">'+
-  '<span style="background:var(--navy);border-radius:12px;padding:8px">'+
-  '<img src="/static/logo.svg" width="65" height="65" alt="Símbolo Nexon Labs"></span>'+
-  '<div><h2 style="margin:0">NEXON LABS</h2><p class="muted">SOLUÇÕES DIGITAIS</p></div></div>'+
-  '<p class="muted">O nome e a identidade visual do aplicativo permanecem inalterados durante a definição da marca.</p>'+
-  '<div style="display:flex;gap:9px;margin-top:17px">'+
-  ['#0B2D4A','#14B8A6','#FFFFFF','#E5E7EB'].map(c=>
-  '<span title="'+c+'" style="width:35px;height:35px;border-radius:50%;border:1px solid #ddd;background:'+c+'"></span>').join('')+
-  '</div></section>'+window.NexonUsers.panel()+
+  const org=state.organization||{};
+  const admin=state.user_role==='admin',locked=Boolean(org.is_demo);
+  const primary=org.primary_color||ATRIA_BRAND.primary,secondary=org.secondary_color||ATRIA_BRAND.secondary;
+  const identity='<section class="panel organization-brand-panel"><div class="panel-head"><div><h2>Identidade visual</h2>'+
+    '<p class="muted">Marca da organização aplicada sem remover a assinatura do ATRIA e da Nexon Labs.</p></div>'+
+    '<span class="brand-mode-badge">'+(locked?'Padrão ATRIA':org.use_custom_brand?'Personalizada':'Padrão ATRIA')+'</span></div>'+
+    (locked?'<div class="brand-locked-note"><strong>Ambiente de demonstração</strong><span>O ATRIA Demo permanece com a identidade oficial do produto.</span></div>':
+    '<form id="organization-brand-form" class="organization-brand-form">'+
+      '<label class="brand-enable"><input type="checkbox" name="use_custom_brand" '+(org.use_custom_brand?'checked':'')+' '+(!admin?'disabled':'')+'>'+
+      '<span><strong>Usar identidade personalizada</strong><small>Ativa logo, favicon e cores próprias desta organização.</small></span></label>'+
+      '<div class="brand-color-grid"><label>Cor principal<div><input type="color" name="primary_color" value="'+esc(primary)+'" '+(!admin?'disabled':'')+'><code>'+esc(primary)+'</code></div></label>'+
+      '<label>Cor de destaque<div><input type="color" name="secondary_color" value="'+esc(secondary)+'" '+(!admin?'disabled':'')+'><code>'+esc(secondary)+'</code></div></label></div>'+
+      (admin?'<div class="brand-settings-actions"><button type="button" class="secondary" data-action="restore-brand-default">Restaurar padrão ATRIA</button>'+
+      '<button type="submit" class="primary">Salvar identidade</button></div>':'<p class="muted">Somente administradores podem alterar a identidade visual.</p>')+
+    '</form>')+
+    '<div class="brand-assets-grid">'+
+      brandAssetCard('logo','Logo principal','Uso em fundos claros e documentos.')+
+      brandAssetCard('logo_dark','Logo para fundo escuro','Uso preferencial na barra lateral.')+
+      brandAssetCard('favicon','Favicon','Ícone quadrado do navegador e atalhos.')+
+      brandAssetCard('watermark','Marca d’água','Reservada para PDFs, relatórios e documentos.')+
+    '</div>'+
+    '<div class="brand-product-signature"><span>Assinatura permanente do produto</span><strong>Powered by ATRIA · by Nexon Labs</strong></div>'+
+    '</section>';
+  return heading('Configurações','Personalize sua organização, seus dados e os acessos ao sistema.')+
+    identity+window.NexonUsers.panel()+
   '<section class="panel" style="margin-top:16px"><div class="panel-head"><h2>Segurança e sessão</h2></div>'+
   '<p class="muted">Acesso individual: '+esc(state.user||'Usuário')+
   ' · '+(state.user_role==='admin'?'Administrador':'Usuário')+'.</p>'+
-  '<p class="muted">Os dados de trabalho continuam compartilhados entre os usuários autorizados desta versão.</p>'+
+  '<p class="muted">Cada organização mantém usuários e dados isolados no ATRIA.</p>'+
   '<button type="button" class="secondary" data-action="logout">'+icon('logout')+' Sair da conta</button></section>';
 }
 function render(){document.querySelectorAll('.nav-link[data-route]').forEach(e=>{const active=e.dataset.route===route;e.classList.toggle('active',active);if(active)e.setAttribute('aria-current','page');else e.removeAttribute('aria-current');});const views={inicio:dashboard,projetos:projectsPage,tarefas:tasksPage,equipe:teamPage,cronograma:schedulePage,reunioes:window.NexonMeetings.page,orcamentos:window.NexonQuotes.page,chamados:window.NexonTickets.page,relatorios:reportsPage,configuracoes:settingsPage};$('#main').innerHTML=(views[route]||dashboard)();}
@@ -160,9 +228,29 @@ function menuFor(target,p){closeMenu();const rect=target.getBoundingClientRect()
 async function safeWrite(callback){try{await callback();closeModal();await refresh()}catch(e){notice(e.message)}}
 document.addEventListener('click',async e=>{const confirmEl=e.target.closest('[data-confirm-choice]');if(confirmEl){finishConfirm(confirmEl.dataset.confirmChoice==='yes');return}const filterEl=e.target.closest('[data-filter]');if(filterEl){filter=filterEl.dataset.filter;page=1;render();return}const pageEl=e.target.closest('[data-page]');if(pageEl){page=Number(pageEl.dataset.page);render();return}const button=e.target.closest('[data-action],[data-route]');if(!button){if(menuPop&&!e.target.closest('.tooltip-menu'))closeMenu();if(profileMenuPop&&!e.target.closest('.profile-menu')&&!e.target.closest('#profile'))closeProfileMenu();return}if(button.dataset.route){go(button.dataset.route);return}const action=button.dataset.action,id=Number(button.dataset.id);if(!button.closest('.tooltip-menu')&&action!=='project-menu')closeMenu();switch(action){case 'close-modal':closeModal();break;case 'profile-settings':closeProfileMenu();go('configuracoes');break;case 'new-project':projectForm(null);break;case 'edit-project':projectForm(state.projects.find(p=>p.id===id));break;case 'project-menu':menuFor(button,state.projects.find(p=>p.id===id));break;case 'new-task':taskForm(null,button.dataset.projectId);break;case 'edit-task':taskForm(state.tasks.find(t=>t.id===id));break;case 'new-member':memberForm();break;case 'complete-project':{const p=state.projects.find(p=>p.id===id);if(!p)break;const pending=state.tasks.filter(t=>t.project_id===id&&!t.completed);if(pending.length){notice('Conclua antes as '+pending.length+' tarefa(s) pendente(s) do projeto.');break;}if(await confirmAction('Concluir o projeto '+p.name+'? Ele sairá dos projetos ativos.','Concluir projeto','Concluir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'PUT',body:JSON.stringify({...p,status:'concluido',progress:100})});notice('Projeto concluído.');});break;}
 case 'reopen-project':{const p=state.projects.find(p=>p.id===id);if(!p)break;if(await confirmAction('Reabrir o projeto '+p.name+'?','Reabrir projeto','Reabrir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'PUT',body:JSON.stringify({...p,status:'em_andamento',progress:Math.min(99,Number(p.progress||0))})});notice('Projeto reaberto.');});break;}
-case 'delete-project':if(await confirmAction('Excluir o projeto e todas as tarefas dele? Esta ação não pode ser desfeita.','Excluir projeto','Excluir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'DELETE'});notice('Projeto excluído.')});break;case 'delete-task':if(await confirmAction('Excluir esta tarefa?','Excluir tarefa','Excluir'))await safeWrite(async()=>{await api('/tasks/'+id,{method:'DELETE'});notice('Tarefa excluída.')});break;case 'delete-member':if(await confirmAction('Remover integrante da equipe?','Remover integrante','Remover'))await safeWrite(async()=>{await api('/members/'+id,{method:'DELETE'});notice('Integrante removido.')});break;case 'toggle-task':{const t=state.tasks.find(t=>t.id===id);await safeWrite(async()=>{await api('/tasks/'+id,{method:'PUT',body:JSON.stringify({...t,completed:button.checked})});notice('Tarefa atualizada.')});break}case 'export':window.location.assign('/api/export/projects.csv');break;case 'logout':closeProfileMenu();await api('/logout',{method:'POST'});location.assign('/');break;}}
+case 'restore-brand-default':if(await confirmAction('Restaurar a identidade visual padrão do ATRIA nesta organização?','Restaurar identidade','Restaurar')){try{for(const kind of ['logo','logo_dark','favicon','watermark'])if(state.organization?.assets?.[kind])await api('/organization/brand/assets/'+kind,{method:'DELETE'});await api('/organization/brand',{method:'PUT',body:JSON.stringify({primary_color:ATRIA_BRAND.primary,secondary_color:ATRIA_BRAND.secondary,use_custom_brand:false})});notice('Identidade padrão do ATRIA restaurada.');await refresh()}catch(error){notice(error.message)}}break;case 'remove-brand-asset':{const kind=button.dataset.kind;if(await confirmAction('Remover este arquivo da identidade visual?','Remover identidade','Remover')){try{await api('/organization/brand/assets/'+kind,{method:'DELETE'});notice('Arquivo removido.');await refresh()}catch(error){notice(error.message)}}break;}case 'delete-project':if(await confirmAction('Excluir o projeto e todas as tarefas dele? Esta ação não pode ser desfeita.','Excluir projeto','Excluir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'DELETE'});notice('Projeto excluído.')});break;case 'delete-task':if(await confirmAction('Excluir esta tarefa?','Excluir tarefa','Excluir'))await safeWrite(async()=>{await api('/tasks/'+id,{method:'DELETE'});notice('Tarefa excluída.')});break;case 'delete-member':if(await confirmAction('Remover integrante da equipe?','Remover integrante','Remover'))await safeWrite(async()=>{await api('/members/'+id,{method:'DELETE'});notice('Integrante removido.')});break;case 'toggle-task':{const t=state.tasks.find(t=>t.id===id);await safeWrite(async()=>{await api('/tasks/'+id,{method:'PUT',body:JSON.stringify({...t,completed:button.checked})});notice('Tarefa atualizada.')});break}case 'export':window.location.assign('/api/export/projects.csv');break;case 'logout':closeProfileMenu();await api('/logout',{method:'POST'});location.assign('/');break;}}
 );
-document.addEventListener('submit',async e=>{if(!['project-form','task-form','member-form'].includes(e.target.id))return;e.preventDefault();const f=e.target,values=formValues(f);if(f.id==='project-form'){values.progress=Number(values.progress);values.started_at=values.started_at||null;values.due_at=values.due_at||null;values.client_site=(values.client_site||'').trim();const id=modalProject;await safeWrite(async()=>{await api(id?'/projects/'+id:'/projects',{method:id?'PUT':'POST',body:JSON.stringify(values)});notice(id?'Projeto atualizado.':'Projeto cadastrado.')})}if(f.id==='task-form'){values.project_id=Number(values.project_id);values.hours=Number(values.hours);values.due_at=values.due_at||null;values.completed=values.completed==='true';const id=Number(f.dataset.id);await safeWrite(async()=>{await api(id?'/tasks/'+id:'/tasks',{method:id?'PUT':'POST',body:JSON.stringify(values)});notice('Tarefa salva.')})}if(f.id==='member-form'){const id=Number(f.dataset.id)||null;await safeWrite(async()=>{await api(id?'/members/'+id:'/members',{method:id?'PUT':'POST',body:JSON.stringify(values)});notice(id?'Colaborador atualizado.':'Colaborador cadastrado.')})}});
+document.addEventListener('submit',async e=>{if(!['project-form','task-form','member-form','organization-brand-form'].includes(e.target.id))return;e.preventDefault();const f=e.target,values=formValues(f);if(f.id==='organization-brand-form'){try{const payload={primary_color:String(values.primary_color||ATRIA_BRAND.primary),secondary_color:String(values.secondary_color||ATRIA_BRAND.secondary),use_custom_brand:Boolean(f.elements.use_custom_brand?.checked)};await api('/organization/brand',{method:'PUT',body:JSON.stringify(payload)});notice('Identidade visual atualizada.');await refresh()}catch(error){notice(error.message)}return;}if(f.id==='project-form'){values.progress=Number(values.progress);values.started_at=values.started_at||null;values.due_at=values.due_at||null;values.client_site=(values.client_site||'').trim();const id=modalProject;await safeWrite(async()=>{await api(id?'/projects/'+id:'/projects',{method:id?'PUT':'POST',body:JSON.stringify(values)});notice(id?'Projeto atualizado.':'Projeto cadastrado.')})}if(f.id==='task-form'){values.project_id=Number(values.project_id);values.hours=Number(values.hours);values.due_at=values.due_at||null;values.completed=values.completed==='true';const id=Number(f.dataset.id);await safeWrite(async()=>{await api(id?'/tasks/'+id:'/tasks',{method:id?'PUT':'POST',body:JSON.stringify(values)});notice('Tarefa salva.')})}if(f.id==='member-form'){const id=Number(f.dataset.id)||null;await safeWrite(async()=>{await api(id?'/members/'+id:'/members',{method:id?'PUT':'POST',body:JSON.stringify(values)});notice(id?'Colaborador atualizado.':'Colaborador cadastrado.')})}});
+document.addEventListener('change',async e=>{
+  const input=e.target.closest('[data-brand-file]');
+  if(!input||!input.files?.length)return;
+  const file=input.files[0],kind=input.dataset.brandFile;
+  const limit=kind==='favicon'?1_000_000:2_500_000;
+  if(file.size>limit){notice('Arquivo maior que o limite permitido.');input.value='';return;}
+  try{
+    const image_data=await fileAsDataUrl(file);
+    await api('/organization/brand/assets/'+kind,{method:'PUT',body:JSON.stringify({image_data})});
+    notice('Arquivo de identidade visual atualizado.');
+    await refresh();
+  }catch(error){notice(error.message)}
+  finally{input.value=''}
+});
+document.addEventListener('input',e=>{
+  const color=e.target.closest('#organization-brand-form input[type="color"]');
+  if(!color)return;
+  const code=color.parentElement?.querySelector('code');
+  if(code)code.textContent=color.value.toUpperCase();
+});
 $('#global-search').addEventListener('input',e=>{query=e.target.value.trim();page=1;if(!['projetos','inicio','tarefas'].includes(route))go('projetos');else render()});
 $('#bell').addEventListener('click',()=>{const count=state.projects.filter(p=>p.status==='atrasado').length+state.tasks.filter(t=>!t.completed&&isLate(t.due_at)).length;notice(count?`${count} prazo(s) exigem atenção. Confira o cronograma.`:'Nenhuma pendência de prazo identificada.');if(count)go('cronograma')});
 $('#profile').addEventListener('click',e=>{e.stopPropagation();if(profileMenuPop){closeProfileMenu();return}profileMenuFor($('#profile'));});

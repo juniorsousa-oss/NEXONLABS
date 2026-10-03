@@ -1,7 +1,7 @@
 name: Validar Nexon Labs
 on:
   push:
-    branches: [main, feature/multi-tenant-foundation, fix/session-performance]
+    branches: [main, feature/multi-tenant-foundation, fix/session-performance, feature/organization-branding]
     paths:
       - 'app.py'
       - 'quotes_module.py'

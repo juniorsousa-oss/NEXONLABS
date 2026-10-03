@@ -17,7 +17,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text, create_engine, func, select
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, create_engine, func, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -146,7 +146,15 @@ class AccountPhoto(Base):
     organization_id: Mapped[int] = mapped_column(ForeignKey('organizations.id'), nullable=False, default=NEXON_LABS_ORG_ID, index=True)
     image: Mapped[bytes] = mapped_column(nullable=False)
 
-Base.metadata.create_all(engine, tables=[AccountPhoto.__table__])
+class OrganizationBrandAsset(Base):
+    __tablename__ = 'organization_brand_assets'
+    organization_id: Mapped[int] = mapped_column(ForeignKey('organizations.id', ondelete='CASCADE'), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(24), primary_key=True)
+    mime_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    image: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+Base.metadata.create_all(engine, tables=[AccountPhoto.__table__, OrganizationBrandAsset.__table__])
 ensure_organization_columns(engine, ['app_account_photos'], NEXON_LABS_ORG_ID)
 
 Status = Literal['planejamento', 'em_andamento', 'concluido']
@@ -460,6 +468,19 @@ class ProfilePhotoIn(BaseModel):
     # Base64 do arquivo original; limite validado novamente após decodificação.
     photo_data: str = Field(min_length=24, max_length=2_800_000)
 
+class OrganizationBrandSettingsIn(BaseModel):
+    primary_color: str = Field(pattern=r'^#[0-9A-Fa-f]{6}$')
+    secondary_color: str = Field(pattern=r'^#[0-9A-Fa-f]{6}$')
+    use_custom_brand: bool = False
+
+    @field_validator('primary_color', 'secondary_color')
+    @classmethod
+    def normalize_color(cls, value: str) -> str:
+        return value.upper()
+
+class OrganizationBrandAssetIn(BaseModel):
+    image_data: str = Field(min_length=32, max_length=4_200_000)
+
 @app.get('/api/profile/avatar', dependencies=[Depends(authorized)])
 def get_my_avatar(request: Request, db: Session = Depends(session)):
     current = authorized(request)
@@ -534,6 +555,140 @@ def delete_my_avatar(request: Request, db: Session = Depends(session)):
         db.delete(photo)
         db.commit()
     return {'ok': True, 'has_photo': False}
+
+BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark'}
+
+def organization_brand_payload(db: Session, organization):
+    payload = organization_public(organization)
+    kinds = set(db.scalars(select(OrganizationBrandAsset.kind).where(
+        OrganizationBrandAsset.organization_id == organization.id
+    )).all())
+    payload['assets'] = {kind: kind in kinds for kind in sorted(BRAND_ASSET_KINDS)}
+    payload['asset_urls'] = {
+        kind: f'/api/organization/brand/assets/{kind}' if kind in kinds else ''
+        for kind in sorted(BRAND_ASSET_KINDS)
+    }
+    payload['is_demo'] = organization.id == ATRIA_DEMO_ORG_ID
+    payload['signature'] = 'Powered by ATRIA · by Nexon Labs'
+    return payload
+
+def decode_brand_asset(kind: str, image_data: str):
+    import base64
+    import binascii
+    from PIL import Image, UnidentifiedImageError
+    if kind not in BRAND_ASSET_KINDS:
+        raise HTTPException(404, 'Tipo de identidade visual não encontrado.')
+    prefixes = {
+        'data:image/png;base64,': 'image/png',
+        'data:image/jpeg;base64,': 'image/jpeg',
+        'data:image/webp;base64,': 'image/webp',
+    }
+    mime_type = next((mime for prefix, mime in prefixes.items() if image_data.startswith(prefix)), None)
+    if mime_type is None:
+        raise HTTPException(422, 'Envie uma imagem PNG, JPEG ou WebP.')
+    try:
+        raw = base64.b64decode(image_data.partition(',')[2], validate=True)
+    except (ValueError, binascii.Error) as error:
+        raise HTTPException(422, 'Não foi possível ler a imagem enviada.') from error
+    max_bytes = 1_000_000 if kind == 'favicon' else 2_500_000
+    if len(raw) > max_bytes:
+        raise HTTPException(413, 'A imagem excede o limite permitido para este campo.')
+    try:
+        with Image.open(io.BytesIO(raw)) as image:
+            image.verify()
+        with Image.open(io.BytesIO(raw)) as image:
+            width, height = image.size
+    except (OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
+        raise HTTPException(422, 'Arquivo de imagem inválido.') from error
+    if width < 32 or height < 32 or width > 4096 or height > 4096:
+        raise HTTPException(422, 'Use uma imagem entre 32 e 4096 pixels por lado.')
+    if kind == 'favicon' and abs(width - height) > max(4, int(max(width, height) * .04)):
+        raise HTTPException(422, 'O favicon precisa ser quadrado.')
+    return raw, mime_type
+
+@app.get('/api/organization/brand', dependencies=[Depends(authorized)])
+def get_organization_brand(request: Request, db: Session = Depends(session)):
+    current = authorized(request)
+    organization = db.get(Organization, current['organization_id'])
+    if organization is None:
+        raise HTTPException(404, 'Organização não encontrada.')
+    return organization_brand_payload(db, organization)
+
+@app.put('/api/organization/brand', dependencies=[Depends(admin_only)])
+def update_organization_brand(data: OrganizationBrandSettingsIn, request: Request, db: Session = Depends(session)):
+    current = authorized(request)
+    organization = db.get(Organization, current['organization_id'])
+    if organization is None:
+        raise HTTPException(404, 'Organização não encontrada.')
+    if organization.id == ATRIA_DEMO_ORG_ID and data.use_custom_brand:
+        raise HTTPException(409, 'O ambiente ATRIA Demo usa a identidade oficial do produto.')
+    organization.primary_color = data.primary_color
+    organization.secondary_color = data.secondary_color
+    organization.use_custom_brand = bool(data.use_custom_brand and organization.id != ATRIA_DEMO_ORG_ID)
+    log(db, 'Identidade visual da organização atualizada.')
+    db.commit()
+    db.refresh(organization)
+    return organization_brand_payload(db, organization)
+
+@app.put('/api/organization/brand/assets/{kind}', dependencies=[Depends(admin_only)])
+def upload_organization_brand_asset(kind: str, data: OrganizationBrandAssetIn, request: Request, db: Session = Depends(session)):
+    current = authorized(request)
+    if current['organization_id'] == ATRIA_DEMO_ORG_ID:
+        raise HTTPException(409, 'O ambiente ATRIA Demo mantém a identidade oficial do ATRIA.')
+    raw, mime_type = decode_brand_asset(kind, data.image_data)
+    asset = db.scalar(select(OrganizationBrandAsset).where(
+        OrganizationBrandAsset.organization_id == current['organization_id'],
+        OrganizationBrandAsset.kind == kind
+    ).limit(1))
+    if asset is None:
+        asset = OrganizationBrandAsset(
+            organization_id=current['organization_id'],
+            kind=kind,
+            mime_type=mime_type,
+            image=raw,
+        )
+        db.add(asset)
+    else:
+        asset.mime_type = mime_type
+        asset.image = raw
+        asset.updated_at = datetime.now(timezone.utc)
+    organization = db.get(Organization, current['organization_id'])
+    organization.use_custom_brand = True
+    log(db, f'Arquivo de identidade visual atualizado: {kind}.')
+    db.commit()
+    return {'ok': True, 'kind': kind}
+
+@app.delete('/api/organization/brand/assets/{kind}', dependencies=[Depends(admin_only)])
+def delete_organization_brand_asset(kind: str, request: Request, db: Session = Depends(session)):
+    current = authorized(request)
+    if kind not in BRAND_ASSET_KINDS:
+        raise HTTPException(404, 'Tipo de identidade visual não encontrado.')
+    asset = db.scalar(select(OrganizationBrandAsset).where(
+        OrganizationBrandAsset.organization_id == current['organization_id'],
+        OrganizationBrandAsset.kind == kind
+    ).limit(1))
+    if asset is not None:
+        db.delete(asset)
+        log(db, f'Arquivo de identidade visual removido: {kind}.')
+        db.commit()
+    return {'ok': True, 'kind': kind}
+
+@app.get('/api/organization/brand/assets/{kind}', dependencies=[Depends(authorized)])
+def get_organization_brand_asset(kind: str, request: Request, db: Session = Depends(session)):
+    current = authorized(request)
+    if kind not in BRAND_ASSET_KINDS:
+        raise HTTPException(404, 'Tipo de identidade visual não encontrado.')
+    asset = db.scalar(select(OrganizationBrandAsset).where(
+        OrganizationBrandAsset.organization_id == current['organization_id'],
+        OrganizationBrandAsset.kind == kind
+    ).limit(1))
+    if asset is None:
+        raise HTTPException(404, 'Arquivo de identidade visual não cadastrado.')
+    return Response(
+        content=asset.image,
+        media_type=asset.mime_type,
+        headers={'Cache-Control': 'private, no-store'}
+    )
 
 @app.get('/api/state', dependencies=[Depends(authorized)])
 def state(request: Request, db: Session = Depends(session)):
@@ -695,7 +850,7 @@ def state(request: Request, db: Session = Depends(session)):
         user=current['name'],
         user_id=current['id'],
         user_role=current['role'],
-        organization=organization_public(organization) if organization else None,
+        organization=organization_brand_payload(db, organization) if organization else None,
         has_photo=has_photo,
         auth_enabled=True,
     )
