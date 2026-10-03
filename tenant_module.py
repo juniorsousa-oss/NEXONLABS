@@ -60,6 +60,15 @@ def setup_organizations(Base, engine, DB):
             ))
         db.commit()
 
+    # IDs 1 e 2 são reservados para manter migrações determinísticas.
+    # Em PostgreSQL, sincronize a sequence para que o próximo cliente comece em 3.
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            conn.execute(text(
+                "SELECT setval(pg_get_serial_sequence('organizations','id'), "
+                "(SELECT MAX(id) FROM organizations), true)"
+            ))
+
     return Organization
 
 
