@@ -93,9 +93,23 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
     Base.metadata.create_all(engine, tables=[Ticket.__table__, TicketEvent.__table__])
     ensure_organization_columns(engine, ["service_tickets"], NEXON_LABS_ORG_ID)
 
-    def session():
+    def session(request: Request):
+        current = authorized(request)
         with DB() as db:
+            db.info["organization_id"] = current["organization_id"]
             yield db
+
+    def org_id(db: Session):
+        return int(db.info["organization_id"])
+
+    def ticket_or_404(db: Session, ticket_id: int):
+        record = db.scalar(select(Ticket).where(
+            Ticket.id == ticket_id,
+            Ticket.organization_id == org_id(db)
+        ).limit(1))
+        if record is None:
+            raise HTTPException(404, "Chamado não encontrado.")
+        return record
 
     def stamp(value):
         if value is None:
@@ -105,7 +119,10 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
         return value.isoformat()
 
     def verify_project(db, project_id):
-        if project_id is not None and db.get(Project, project_id) is None:
+        if project_id is not None and db.scalar(select(Project.id).where(
+            Project.id == project_id,
+            Project.organization_id == org_id(db)
+        ).limit(1)) is None:
             raise HTTPException(422, "Projeto informado não existe.")
 
     def to_dict(record, db):
@@ -113,7 +130,10 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
         events = db.scalars(select(TicketEvent).where(TicketEvent.ticket_id == record.id).order_by(TicketEvent.id)).all()
         public = data.model_dump(mode="json")
         # O vínculo deve refletir a tabela de projetos, não uma cópia antiga no payload.
-        public["project_id"] = record.project_id if record.project_id is not None and db.get(Project, record.project_id) is not None else None
+        public["project_id"] = record.project_id if record.project_id is not None and db.scalar(select(Project.id).where(
+            Project.id == record.project_id,
+            Project.organization_id == org_id(db)
+        ).limit(1)) is not None else None
         return {
             **public,
             "id": record.id,
@@ -129,7 +149,9 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
 
     @app.get("/api/tickets", dependencies=[Depends(authorized)])
     def list_tickets(db: Session = Depends(session)):
-        records = db.scalars(select(Ticket).order_by(Ticket.id.desc())).all()
+        records = db.scalars(select(Ticket).where(
+            Ticket.organization_id == org_id(db)
+        ).order_by(Ticket.id.desc())).all()
         return [to_dict(record, db) for record in records]
 
     @app.post("/api/tickets", dependencies=[Depends(authorized)], status_code=201)
@@ -137,7 +159,7 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
         if data.status != "aberto":
             raise HTTPException(422, "Novos chamados começam abertos; atualize o andamento depois do cadastro.")
         verify_project(db, data.project_id)
-        record = Ticket(payload=data.model_dump_json(), project_id=data.project_id)
+        record = Ticket(organization_id=org_id(db), payload=data.model_dump_json(), project_id=data.project_id)
         db.add(record)
         db.flush()
         db.add(TicketEvent(ticket_id=record.id, kind="abertura", message="Chamado registrado."))
@@ -148,9 +170,7 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
 
     @app.put("/api/tickets/{ticket_id}", dependencies=[Depends(authorized)])
     def update_ticket(ticket_id: int, data: TicketInput, db: Session = Depends(session)):
-        record = db.get(Ticket, ticket_id)
-        if record is None:
-            raise HTTPException(404, "Chamado não encontrado.")
+        record = ticket_or_404(db, ticket_id)
         verify_project(db, data.project_id)
         previous = TicketInput.model_validate_json(record.payload)
         if data.status != previous.status and (
@@ -203,9 +223,7 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
     @app.post("/api/tickets/{ticket_id}/transition", dependencies=[Depends(authorized)])
     def transition_ticket(ticket_id: int, data: TicketTransitionIn, request: Request,
                           db: Session = Depends(session)):
-        record = db.get(Ticket, ticket_id)
-        if record is None:
-            raise HTTPException(404, "Chamado não encontrado.")
+        record = ticket_or_404(db, ticket_id)
         previous = TicketInput.model_validate_json(record.payload)
         before, after = previous.status, data.status
         if before == after:
@@ -239,9 +257,7 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
 
     @app.post("/api/tickets/{ticket_id}/comments", dependencies=[Depends(authorized)], status_code=201)
     def add_ticket_comment(ticket_id: int, data: TicketCommentInput, db: Session = Depends(session)):
-        record = db.get(Ticket, ticket_id)
-        if record is None:
-            raise HTTPException(404, "Chamado não encontrado.")
+        record = ticket_or_404(db, ticket_id)
         now = datetime.now(timezone.utc)
         db.add(TicketEvent(ticket_id=record.id, kind="comentario", message=data.message))
         record.updated_at = now
