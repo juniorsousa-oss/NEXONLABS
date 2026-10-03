@@ -835,3 +835,46 @@ button:active:not(:disabled){transform:translateY(1px)}
   .meeting-entry>.meeting-actions{grid-column:1/-1}
   .meeting-entry>.meeting-actions button{flex:1 1 auto}
 }
+
+
+/* Standard identity material block */
+.brand-standard-ready{
+  margin-bottom:16px;
+  background:linear-gradient(180deg,#fff,#fbfdff);
+}
+.brand-standard-ready .panel-head{
+  align-items:flex-start;
+}
+.brand-standard-ready>p{
+  max-width:880px;
+  margin:12px 0 0;
+  color:#667b93;
+  font-size:12.5px;
+  line-height:1.55;
+}
+.brand-standard-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#eaf8f5;
+  color:#087a70;
+  font-size:10px;
+  font-weight:750;
+  white-space:nowrap;
+}
+.brand-standard-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:15px;
+}
+.brand-standard-ready>.member-brand-hint{
+  display:block;
+  margin-bottom:0;
+}
+@media(max-width:600px){
+  .brand-standard-ready .panel-head{flex-direction:column}
+  .brand-standard-actions button{width:100%}
+}
