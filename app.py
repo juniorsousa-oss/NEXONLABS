@@ -1,4 +1,4 @@
-"""Nexon Labs — gestão de projetos. API, HTML e banco de dados.
+"""ATRIA by Nexon Labs — gestão integrada de projetos e operações. API, HTML e banco de dados.
 
 Inicie com: uvicorn app:app --host 0.0.0.0 --port 8000
 Configure APP_PASSWORD e SESSION_SECRET no ambiente antes de publicar.
@@ -169,7 +169,7 @@ class MemberIn(BaseModel):
     email: str = Field(default='', max_length=200)
     whatsapp: str = Field(default='', max_length=40)
     city: str = Field(default='Patos de Minas - MG', max_length=120)
-    site: str = Field(default='https://nexonlabs.onrender.com', max_length=250)
+    site: str = Field(default='https://nexonlabs.com.br', max_length=250)
 
     @field_validator('name','role','email','whatsapp','city','site')
     @classmethod
@@ -203,7 +203,7 @@ class MeetingIn(BaseModel):
 class LoginIn(BaseModel):
     password: str
 
-app = FastAPI(title='Nexon Labs | Gestão de Projetos', docs_url=None, redoc_url=None)
+app = FastAPI(title='ATRIA | Gestão de Projetos e Operações', docs_url=None, redoc_url=None)
 app.add_middleware(SessionMiddleware, secret_key=os.getenv('SESSION_SECRET', 'LOCAL_DEVELOPMENT_ONLY_CHANGE_ME'), same_site='lax', https_only=os.getenv('COOKIE_SECURE', '0') == '1')
 app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
 
@@ -764,7 +764,7 @@ def export_projects(db: Session = Depends(session)):
                       p.started_at.isoformat() if p.started_at else '', p.due_at.isoformat() if p.due_at else ''])
     buffer.seek(0)
     return StreamingResponse(iter(['\ufeff' + buffer.getvalue()]), media_type='text/csv; charset=utf-8',
-                             headers={'Content-Disposition': 'attachment; filename="nexonlabs_projetos.csv"'})
+                             headers={'Content-Disposition': 'attachment; filename="atria_projetos.csv"'})
 
 @app.get('/health')
 def health(): return {'status': 'ok'}
