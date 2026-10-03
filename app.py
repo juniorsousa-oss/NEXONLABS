@@ -469,7 +469,17 @@ class ProfilePhotoIn(BaseModel):
     photo_data: str = Field(min_length=24, max_length=2_800_000)
 
 class OrganizationBrandSettingsIn(BaseModel):
-    primary_color: str = Field(pattern=r'^#[0-9A-Fa-f]{6}
+    primary_color: str = Field(pattern=r'^#[0-9A-Fa-f]{6}$')
+    secondary_color: str = Field(pattern=r'^#[0-9A-Fa-f]{6}$')
+    use_custom_brand: bool = False
+
+    @field_validator('primary_color', 'secondary_color')
+    @classmethod
+    def normalize_color(cls, value: str) -> str:
+        return value.upper()
+
+class OrganizationBrandAssetIn(BaseModel):
+    image_data: str = Field(min_length=32, max_length=4_200_000)
 
 @app.get('/api/profile/avatar', dependencies=[Depends(authorized)])
 def get_my_avatar(request: Request, db: Session = Depends(session)):
