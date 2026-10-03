@@ -572,6 +572,36 @@ def organization_brand_payload(db: Session, organization):
     payload['signature'] = 'Powered by ATRIA · by Nexon Labs'
     return payload
 
+def normalize_brand_logo(kind: str, raw: bytes, mime_type: str):
+    """Recorta margens transparentes de logos para que ocupem corretamente a sidebar."""
+    if kind not in {'logo', 'logo_dark'} or mime_type not in {'image/png', 'image/webp'}:
+        return raw, mime_type
+    try:
+        from PIL import Image, ImageOps
+        with Image.open(io.BytesIO(raw)) as source:
+            image = ImageOps.exif_transpose(source).convert('RGBA')
+            bbox = image.getchannel('A').getbbox()
+            if bbox is None:
+                return raw, mime_type
+            cropped = image.crop(bbox)
+            if cropped.width < 2 or cropped.height < 2:
+                return raw, mime_type
+            padding = max(4, min(36, int(max(cropped.size) * .025)))
+            canvas = Image.new('RGBA', (cropped.width + padding * 2, cropped.height + padding * 2), (0, 0, 0, 0))
+            canvas.alpha_composite(cropped, (padding, padding))
+            max_side = max(canvas.size)
+            if max_side > 2400:
+                scale = 2400 / max_side
+                canvas = canvas.resize(
+                    (max(1, int(canvas.width * scale)), max(1, int(canvas.height * scale))),
+                    Image.Resampling.LANCZOS,
+                )
+            output = io.BytesIO()
+            canvas.save(output, format='PNG', optimize=True)
+            return output.getvalue(), 'image/png'
+    except Exception:
+        return raw, mime_type
+
 def decode_brand_asset(kind: str, image_data: str):
     import base64
     import binascii
@@ -636,6 +666,7 @@ def upload_organization_brand_asset(kind: str, data: OrganizationBrandAssetIn, r
     if current['organization_id'] == ATRIA_DEMO_ORG_ID:
         raise HTTPException(409, 'O ambiente ATRIA Demo mantém a identidade oficial do ATRIA.')
     raw, mime_type = decode_brand_asset(kind, data.image_data)
+    raw, mime_type = normalize_brand_logo(kind, raw, mime_type)
     asset = db.scalar(select(OrganizationBrandAsset).where(
         OrganizationBrandAsset.organization_id == current['organization_id'],
         OrganizationBrandAsset.kind == kind
@@ -684,9 +715,10 @@ def get_organization_brand_asset(kind: str, request: Request, db: Session = Depe
     ).limit(1))
     if asset is None:
         raise HTTPException(404, 'Arquivo de identidade visual não cadastrado.')
+    content, media_type = normalize_brand_logo(kind, asset.image, asset.mime_type)
     return Response(
-        content=asset.image,
-        media_type=asset.mime_type,
+        content=content,
+        media_type=media_type,
         headers={'Cache-Control': 'private, no-store'}
     )
 
