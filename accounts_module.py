@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import os
 import secrets
+import time
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, select, func
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 ITERATIONS = 310_000
 MAX_ACCOUNTS = 30
+SESSION_IDLE_TIMEOUT_SECONDS = max(900, min(86_400, int(os.getenv('SESSION_IDLE_TIMEOUT_SECONDS', '28800'))))
 
 def hash_password(password: str) -> str:
     salt = secrets.token_bytes(24)
@@ -93,12 +95,22 @@ def session_user(request, DB, Account):
     try:
         uid = int(request.session.get("account_id") or 0)
         version = int(request.session.get("account_version") or 0)
+        last_activity = int(request.session.get("last_activity") or 0)
     except (TypeError, ValueError):
+        request.session.clear()
         return None
     if not uid or not version:
         return None
+
+    now = int(time.time())
+    if last_activity and now - last_activity > SESSION_IDLE_TIMEOUT_SECONDS:
+        request.session.clear()
+        return None
+
     with DB() as db:
         account = db.get(Account, uid)
         if account and account.active and account.session_version == version:
+            request.session["last_activity"] = now
             return public(account)
+    request.session.clear()
     return None
