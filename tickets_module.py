@@ -68,9 +68,14 @@ class TicketCommentInput(BaseModel):
 
 
 def install_tickets(app, Base, DB, engine, authorized, log, Project):
+    from tenant_module import NEXON_LABS_ORG_ID, ensure_organization_columns
+
     class Ticket(Base):
         __tablename__ = "service_tickets"
         id: Mapped[int] = mapped_column(primary_key=True)
+        organization_id: Mapped[int] = mapped_column(
+            ForeignKey("organizations.id"), nullable=False, default=NEXON_LABS_ORG_ID, index=True
+        )
         payload: Mapped[str] = mapped_column(Text, nullable=False)
         project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id", ondelete="SET NULL"), nullable=True)
         created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -86,6 +91,7 @@ def install_tickets(app, Base, DB, engine, authorized, log, Project):
         created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     Base.metadata.create_all(engine, tables=[Ticket.__table__, TicketEvent.__table__])
+    ensure_organization_columns(engine, ["service_tickets"], NEXON_LABS_ORG_ID)
 
     def session():
         with DB() as db:
