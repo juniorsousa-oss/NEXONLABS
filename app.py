@@ -53,6 +53,7 @@ Organization = setup_organizations(Base, engine, DB)
 class Member(Base):
     __tablename__ = 'members'
     id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey('organizations.id'), nullable=False, default=NEXON_LABS_ORG_ID, index=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     role: Mapped[str] = mapped_column(String(120), default='Equipe')
     email: Mapped[str] = mapped_column(String(200), default='')
@@ -60,6 +61,7 @@ class Member(Base):
 class Project(Base):
     __tablename__ = 'projects'
     id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey('organizations.id'), nullable=False, default=NEXON_LABS_ORG_ID, index=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, default='')
     client: Mapped[str] = mapped_column(String(160), default='')
@@ -75,6 +77,7 @@ class Project(Base):
 class Task(Base):
     __tablename__ = 'tasks'
     id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey('organizations.id'), nullable=False, default=NEXON_LABS_ORG_ID, index=True)
     project_id: Mapped[int] = mapped_column(ForeignKey('projects.id', ondelete='CASCADE'), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     assignee: Mapped[str] = mapped_column(String(120), default='')
