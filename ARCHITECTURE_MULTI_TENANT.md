@@ -163,16 +163,29 @@ O cliente pode personalizar sua marca, mas não remover a autoria Nexon Labs.
 
 ## Estratégia de migração
 
-1. Criar tabela `organizations`.
-2. Criar organizações `atria-demo` e `nexon-labs`.
-3. Vincular todos os dados existentes à organização `nexon-labs`.
-4. Vincular contas atuais à organização `nexon-labs`.
-5. Adicionar filtros de organização aos endpoints existentes.
-6. Criar ambiente de demonstração isolado.
-7. Adicionar branding por organização.
-8. Adicionar storage por organização.
-9. Criar testes de isolamento.
-10. Só então habilitar onboarding de novos clientes.
+1. ✅ Criar tabela `organizations`.
+2. ✅ Criar organizações `atria-demo` e `nexon-labs`.
+3. ✅ Vincular todos os dados existentes à organização `nexon-labs`.
+4. ✅ Vincular contas atuais à organização `nexon-labs`.
+5. ✅ Adicionar filtros de organização aos endpoints existentes.
+6. ⏳ Criar ambiente de demonstração com usuário e dados próprios.
+7. ⏳ Adicionar branding por organização.
+8. ⏳ Adicionar storage por organização.
+9. ✅ Criar testes de isolamento.
+10. ⏳ Habilitar onboarding de novos clientes após validação das etapas anteriores.
+
+### Status técnico — Fase 2
+
+O isolamento bidirecional entre `nexon-labs` e `atria-demo` já está ativo na branch
+`feature/multi-tenant-foundation`.
+
+As consultas, criações, alterações e exclusões de projetos, tarefas, equipe, reuniões,
+atividades, contas, chamados e orçamentos usam a organização da sessão. Tentativas de
+acessar diretamente um ID de outra organização retornam recurso não encontrado.
+
+A matriz visual interna da Nexon Labs também foi restringida à organização Nexon Labs.
+
+Validação automatizada atual: **19 testes aprovados**.
 
 ## Regra de segurança para migração
 
