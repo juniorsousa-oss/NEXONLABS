@@ -102,6 +102,31 @@ def ensure_organization_columns(engine, table_names, default_org_id=NEXON_LABS_O
             ))
 
 
+
+def ensure_member_tenant_uniqueness(engine):
+    """Remove a unicidade global histórica de members.name no PostgreSQL.
+
+    Cada empresa pode ter integrantes com o mesmo nome; a unicidade passa a ser
+    composta por organização + nome.
+    """
+    inspector = inspect(engine)
+    if "members" not in inspector.get_table_names():
+        return
+
+    if engine.dialect.name == "postgresql":
+        constraints = inspector.get_unique_constraints("members")
+        with engine.begin() as conn:
+            for constraint in constraints:
+                if constraint.get("column_names") == ["name"] and constraint.get("name"):
+                    safe_name = constraint["name"].replace('"', '""')
+                    conn.execute(text(f'ALTER TABLE "members" DROP CONSTRAINT IF EXISTS "{safe_name}"'))
+
+    with engine.begin() as conn:
+        conn.execute(text(
+            'CREATE UNIQUE INDEX IF NOT EXISTS "uq_members_organization_name" '
+            'ON "members" (organization_id, name)'
+        ))
+
 def organization_public(organization):
     return {
         "id": organization.id,
