@@ -2,6 +2,7 @@ import os
 import tempfile
 os.environ['DATABASE_URL'] = 'sqlite:///' + tempfile.mkstemp(prefix='nexon_test_', suffix='.db')[1]
 os.environ['APP_PASSWORD'] = 'test-password'
+os.environ['ATRIA_DEMO_PASSWORD'] = 'demo-test-password'
 os.environ['SESSION_SECRET'] = 'test-key-with-sufficient-length'
 from fastapi.testclient import TestClient
 from app import app, DB, Organization, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
@@ -32,19 +33,10 @@ def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
         assert project.organization_id==NEXON_LABS_ORG_ID
 
 def test_organization_data_isolation_in_both_directions():
-    demo_password='demo-isolation-password'
+    demo_password='demo-test-password'
     with DB() as db:
         demo=db.query(Account).filter(Account.organization_id==ATRIA_DEMO_ORG_ID).first()
-        if demo is None:
-            demo=Account(
-                organization_id=ATRIA_DEMO_ORG_ID,
-                name='Administrador Demo',
-                password_hash=hash_password(demo_password),
-                role='admin'
-            )
-            db.add(demo)
-            db.commit()
-            db.refresh(demo)
+        assert demo is not None
         demo_account_id=demo.id
 
     with TestClient(app) as c:
@@ -89,6 +81,34 @@ def test_organization_data_isolation_in_both_directions():
     with DB() as db:
         assert db.get(Project,nexon_project_id).organization_id==NEXON_LABS_ORG_ID
         assert db.get(Project,demo_project_id).organization_id==ATRIA_DEMO_ORG_ID
+
+
+def test_atria_demo_has_professional_seed_data():
+    with TestClient(app) as c:
+        login=c.post('/api/login',json={'password':'demo-test-password'})
+        assert login.status_code==200,login.text
+        assert login.json()['user']['organization_id']==ATRIA_DEMO_ORG_ID
+
+        state=c.get('/api/state')
+        assert state.status_code==200,state.text
+        data=state.json()
+        assert data['organization']['slug']=='atria-demo'
+        assert len(data['projects'])>=4
+        assert len(data['tasks'])>=7
+        assert len(data['members'])>=4
+        assert len(data['meetings'])>=3
+        assert all('Demo' not in p['name'] for p in data['projects'])
+
+        quotes=c.get('/api/quotes')
+        assert quotes.status_code==200,quotes.text
+        assert len(quotes.json())>=2
+        tickets=c.get('/api/tickets')
+        assert tickets.status_code==200,tickets.text
+        assert len(tickets.json())>=3
+        company=c.get('/api/quotes/settings/company')
+        assert company.status_code==200,company.text
+        assert company.json()['name']=='ATRIA Demo'
+        assert 'Nexon Labs' in company.json()['subtitle']
 
 
 def test_health_and_protected_routes():
