@@ -544,3 +544,294 @@ button:active:not(:disabled){transform:translateY(1px)}
   .login-brand-copy h2{font-size:25px}
   .login-form-panel{padding:36px 28px 40px}
 }
+
+
+/* ATRIA UI refinement v2 — confirmation, profile and calendar polish */
+.confirmation-cover{
+  z-index:90;
+  padding:24px;
+}
+.confirmation-modal{
+  width:min(440px,calc(100vw - 32px));
+  text-align:center;
+  padding:30px 28px 24px;
+  border-radius:20px;
+  overflow:visible;
+}
+.confirmation-icon{
+  width:48px;height:48px;
+  margin:0 auto 15px;
+  display:grid;place-items:center;
+  border-radius:14px;
+  background:#fff0f1;
+  color:#b63242;
+  font-size:24px;
+  font-weight:800;
+  border:1px solid #f4ced3;
+}
+.confirmation-modal h2{
+  margin:0;
+  color:#102943;
+  font-size:21px;
+  letter-spacing:-.45px;
+}
+.confirmation-modal p{
+  margin:10px auto 22px;
+  color:#657990;
+  max-width:350px;
+  font-size:13px;
+  line-height:1.55;
+}
+.confirmation-actions{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+}
+.confirmation-actions button{
+  min-width:112px;
+  min-height:42px;
+  justify-content:center;
+}
+.confirmation-danger{
+  color:#fff;
+  background:#b73546;
+  border-color:#b73546;
+}
+.confirmation-danger:hover{
+  color:#fff;
+  background:#9f2e3d;
+  border-color:#9f2e3d;
+}
+
+.profile-menu{
+  position:fixed;
+  z-index:80;
+  width:220px;
+  padding:8px;
+  border:1px solid #dde6ef;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 18px 52px rgba(8,36,61,.16);
+}
+.profile-menu-head{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  padding:10px 11px 12px;
+  margin-bottom:5px;
+  border-bottom:1px solid #edf1f5;
+}
+.profile-menu-head strong{
+  color:#102943;
+  font-size:13px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.profile-menu-head small{
+  color:#7a8da3;
+  font-size:10px;
+  letter-spacing:.025em;
+}
+.profile-menu button{
+  width:100%;
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:9px 10px;
+  border:0;
+  border-radius:9px;
+  background:transparent;
+  color:#294964;
+  text-align:left;
+  font-size:12px;
+  font-weight:650;
+}
+.profile-menu button:hover{background:#f2f7fa}
+.profile-menu button svg{width:17px;height:17px}
+.profile-menu .profile-menu-logout{color:#ad3443}
+.profile-menu .profile-menu-logout:hover{background:#fff1f3}
+
+/* Home: title and time can no longer concatenate. */
+.home-meeting-compact .delivery-body{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  column-gap:10px;
+}
+.home-meeting-compact .delivery-body strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.home-meeting-compact .delivery-body small{
+  margin:0!important;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Meeting calendar */
+.meeting-layout{
+  grid-template-columns:minmax(0,1.55fr) minmax(360px,.95fr);
+  gap:18px;
+}
+.meeting-layout>.panel{
+  border-radius:16px;
+  overflow:hidden;
+}
+.meeting-toolbar{
+  margin-bottom:18px;
+  padding-bottom:14px;
+  border-bottom:1px solid #edf2f6;
+}
+.meeting-toolbar h2{
+  font-size:21px;
+  color:#102943;
+}
+.meeting-month{
+  padding:4px;
+  border:1px solid #e3eaf1;
+  border-radius:12px;
+  background:#f8fafc;
+}
+.meeting-month strong{
+  min-width:162px;
+  font-size:13px;
+}
+.meeting-month .secondary{
+  width:35px;
+  height:35px;
+  padding:0;
+  border:0;
+  background:#fff;
+  box-shadow:0 2px 8px rgba(12,47,77,.055);
+}
+.meeting-weekdays{
+  color:#72859c;
+  letter-spacing:.02em;
+}
+.meeting-day,.meeting-blank{
+  min-height:112px;
+}
+.meeting-day{
+  position:relative;
+  padding:9px 8px;
+  gap:6px;
+  border-radius:12px;
+  background:#fdfefe;
+}
+.meeting-day:hover,.meeting-day:focus-visible{
+  transform:translateY(-1px);
+  box-shadow:0 8px 20px rgba(16,59,86,.07);
+}
+.meeting-day.today{
+  background:linear-gradient(180deg,#f8fffe,#f3fbfa);
+}
+.meeting-number{
+  align-self:flex-start;
+  margin-left:auto;
+  font-size:12px;
+}
+.meeting-dot{
+  border-radius:6px;
+  padding:5px 6px;
+  font-size:9.5px;
+  line-height:1.25;
+  border-left:3px solid #14b8a6;
+}
+.meeting-more{
+  margin-top:auto;
+  font-weight:650;
+}
+
+/* Upcoming agenda: content on first row, actions underneath. */
+.meeting-agenda{
+  gap:11px;
+}
+.meeting-entry{
+  display:grid;
+  grid-template-columns:56px minmax(0,1fr);
+  align-items:start;
+  column-gap:12px;
+  row-gap:9px;
+  padding:12px;
+  border-radius:13px;
+  background:#fff;
+}
+.meeting-entry>.date-box{
+  grid-column:1;
+  grid-row:1;
+  width:54px;
+  min-height:54px;
+}
+.meeting-entry>.meeting-copy{
+  grid-column:2;
+  grid-row:1;
+  min-width:0;
+  padding-top:2px;
+}
+.meeting-copy strong{
+  font-size:13px;
+  line-height:1.35;
+  overflow-wrap:normal;
+  word-break:normal;
+}
+.meeting-copy small{
+  line-height:1.42;
+  overflow-wrap:anywhere;
+}
+.meeting-entry>.meeting-actions{
+  grid-column:2;
+  grid-row:2;
+  justify-content:flex-start;
+  flex-wrap:wrap;
+  gap:7px;
+}
+.meeting-entry>.meeting-actions button{
+  min-height:35px;
+  padding:8px 11px;
+}
+.meeting-title-line{
+  align-items:flex-start;
+}
+.meeting-all .meeting-entry{
+  grid-template-columns:56px minmax(0,1fr) auto;
+}
+.meeting-all .meeting-entry>.meeting-actions{
+  grid-column:3;
+  grid-row:1;
+  align-self:center;
+  justify-content:flex-end;
+}
+
+/* Avoid information collisions in project/meeting content. */
+.project-table td,.project-table th{overflow:hidden}
+.project-client-cell,.mini-person,.meeting-copy{min-width:0}
+.project-client-cell>span,.mini-person>span:last-child{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  display:block;
+}
+
+@media(max-width:1250px){
+  .meeting-layout{grid-template-columns:1fr}
+  .meeting-layout>.panel:nth-child(2){max-width:none}
+  .meeting-all .meeting-entry{grid-template-columns:56px minmax(0,1fr)}
+  .meeting-all .meeting-entry>.meeting-actions{grid-column:2;grid-row:2;justify-content:flex-start}
+}
+@media(max-width:680px){
+  .confirmation-actions{flex-direction:column-reverse}
+  .confirmation-actions button{width:100%}
+  .meeting-toolbar{align-items:flex-start}
+  .meeting-month{width:100%;justify-content:space-between}
+  .meeting-month strong{min-width:0;flex:1}
+  .meeting-day,.meeting-blank{min-height:78px}
+  .meeting-dot{font-size:8.5px;padding:4px}
+  .meeting-entry{grid-template-columns:48px minmax(0,1fr);padding:10px;column-gap:9px}
+  .meeting-entry>.date-box{width:46px;min-height:48px}
+  .meeting-entry>.meeting-actions{grid-column:1/-1}
+  .meeting-entry>.meeting-actions button{flex:1 1 auto}
+}
