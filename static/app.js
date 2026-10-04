@@ -15,6 +15,7 @@ function notice(message){const t=$('#toast');t.textContent=message;t.classList.a
 async function api(path,options={}){const r=await fetch('/api'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){location.href='/';throw Error('Sessão encerrada.')}if(!r.ok){let p={};try{p=await r.json()}catch{}const detail=Array.isArray(p.detail)?p.detail.map(x=>x.msg).join('; '):p.detail;throw Error(detail||`Erro ${r.status}`)}return r.headers.get('content-type')?.includes('application/json')?r.json():r}
 const ATRIA_BRAND={primary:'#0B2D4A',secondary:'#14B8A6'};
 function brandAssetUrl(kind){return state.organization?.asset_urls?.[kind]||''}
+function productBrandAssetUrl(kind){return state.product_brand?.asset_urls?.[kind]||''}
 function contrastText(hex){
   const value=String(hex||'').replace('#','');
   if(!/^[0-9A-Fa-f]{6}$/.test(value))return '#FFFFFF';
@@ -35,19 +36,28 @@ function applyOrganizationBrand(){
   document.documentElement.style.setProperty('--brand-on-primary',contrastText(primary));
   const defaultBrand=$('#default-brand-lockup');
   const customLogo=$('#organization-brand-image');
-  const logo=custom?brandAssetUrl('logo_dark'):'';
+  const officialLogo=productBrandAssetUrl('logo_dark')||productBrandAssetUrl('logo');
+  const logo=custom?brandAssetUrl('logo_dark'):officialLogo;
   if(defaultBrand&&customLogo){
-    defaultBrand.hidden=Boolean(logo);
-    customLogo.hidden=!logo;
-    if(logo)customLogo.src=logo;
+    defaultBrand.hidden=false;
+    customLogo.hidden=true;
     document.querySelector('.sidebar .brand')?.classList.toggle('custom-brand-active',Boolean(logo));
+    if(logo){
+      customLogo.onload=()=>{defaultBrand.hidden=true;customLogo.hidden=false};
+      customLogo.onerror=()=>{customLogo.hidden=true;defaultBrand.hidden=false};
+      customLogo.src=logo+(logo.includes('?')?'&':'?')+'v='+(state.product_brand?.assets?.logo_dark||state.product_brand?.assets?.logo?1:0);
+    }
   }
   const orgLabel=$('#profile-organization');
   if(orgLabel)orgLabel.textContent=custom?(org.name||'Organização'):'ATRIA';
   const signature=$('#brand-signature');
-  if(signature)signature.innerHTML=custom?'POWERED BY ATRIA<br>BY NEXON LABS':'GESTÃO INTEGRADA<br>BY NEXON LABS';
+  if(signature){
+    signature.hidden=false;
+    signature.innerHTML=custom?'POWERED BY ATRIA<br>BY NEXON LABS':'GESTÃO INTEGRADA';
+  }
   const favicon=document.querySelector('link[rel="icon"]');
-  if(favicon)favicon.href=custom&&brandAssetUrl('favicon')?brandAssetUrl('favicon'):'/static/logo.svg?v=2';
+  const faviconUrl=custom&&brandAssetUrl('favicon')?brandAssetUrl('favicon'):(productBrandAssetUrl('favicon')||'/static/logo.svg?v=2');
+  if(favicon)favicon.href=faviconUrl;
 }
 function fileAsDataUrl(file){
   return new Promise((resolve,reject)=>{
@@ -144,10 +154,26 @@ function brandAssetCard(kind,label,hint){
       (has?'<button type="button" class="brand-remove-link" data-action="remove-brand-asset" data-kind="'+kind+'">Remover</button>':'')+
       '</div>':'')+'</article>';
 }
+function productBrandAssetCard(kind,label,hint){
+  const brand=state.product_brand||{},has=Boolean(brand.assets?.[kind]),src=productBrandAssetUrl(kind);
+  return '<article class="brand-asset-card"><div class="brand-asset-preview '+(kind==='watermark'?'watermark-preview':'')+'">'+
+    (has?'<img src="'+esc(src)+'" alt="'+esc(label)+'">':'<div class="brand-asset-empty">'+icon(kind==='favicon'?'layers':'file')+'<span>Arquivo oficial pendente</span></div>')+
+    '</div><div class="brand-asset-copy"><strong>'+esc(label)+'</strong><small>'+esc(hint)+'</small></div>'+
+    '<div class="brand-asset-actions"><label class="secondary brand-upload-button">'+icon('plus')+' '+(has?'Substituir':'Enviar')+
+      '<input type="file" hidden data-product-brand-file="'+kind+'" accept="image/png,image/jpeg,image/webp"></label>'+
+      (has?'<button type="button" class="brand-remove-link" data-action="remove-product-brand-asset" data-kind="'+kind+'">Remover</button>':'')+
+    '</div></article>';
+}
 function settingsPage(){
   const org=state.organization||{};
   const admin=state.user_role==='admin',locked=Boolean(org.is_demo);
   const primary=org.primary_color||ATRIA_BRAND.primary,secondary=org.secondary_color||ATRIA_BRAND.secondary;
+  const official=(admin&&org.slug==='nexon-labs')?'<section class="panel organization-brand-panel product-brand-panel"><div class="panel-head"><div><h2>Identidade oficial do ATRIA</h2><p class="muted">Estes arquivos definem a marca padrão do produto, incluindo login, sidebar e favicon quando o cliente não possui personalização.</p></div><span class="brand-mode-badge">Produto</span></div><div class="brand-assets-grid">'+
+    productBrandAssetCard('logo','Logo principal ATRIA','Uso em fundos claros, documentos, assinatura e cartão padrão.')+
+    productBrandAssetCard('logo_dark','Logo ATRIA para fundo escuro','Uso no login e na barra lateral.')+
+    productBrandAssetCard('favicon','Favicon oficial ATRIA','Símbolo A para navegador e atalhos.')+
+    productBrandAssetCard('watermark','Marca d’água ATRIA','Uso opcional em documentos e relatórios.')+
+    '</div><div class="brand-product-signature"><span>Regra oficial</span><strong>A logo ATRIA já contém BY NEXON LABS; não repetir a assinatura quando ela estiver visível.</strong></div></section>':'';
   const identity='<section class="panel organization-brand-panel"><div class="panel-head"><div><h2>Identidade visual</h2>'+
     '<p class="muted">Marca da organização aplicada sem remover a assinatura do ATRIA e da Nexon Labs.</p></div>'+
     '<span class="brand-mode-badge">'+(locked?'Padrão ATRIA':org.use_custom_brand?'Personalizada':'Padrão ATRIA')+'</span></div>'+
@@ -166,10 +192,10 @@ function settingsPage(){
       brandAssetCard('favicon','Favicon','Ícone quadrado do navegador e atalhos.')+
       brandAssetCard('watermark','Marca d’água','Reservada para PDFs, relatórios e documentos.')+
     '</div>'+
-    '<div class="brand-product-signature"><span>Assinatura permanente do produto</span><strong>Powered by ATRIA · by Nexon Labs</strong></div>'+
+    '<div class="brand-product-signature"><span>Assinatura do produto</span><strong>'+(org.use_custom_brand&&!org.is_demo?'Powered by ATRIA · by Nexon Labs':'A marca ATRIA já inclui BY NEXON LABS')+'</strong></div>'+
     '</section>';
   return heading('Configurações','Personalize sua organização, seus dados e os acessos ao sistema.')+
-    identity+window.NexonUsers.panel()+
+    official+identity+window.NexonUsers.panel()+
   '<section class="panel" style="margin-top:16px"><div class="panel-head"><h2>Segurança e sessão</h2></div>'+
   '<p class="muted">Acesso individual: '+esc(state.user||'Usuário')+
   ' · '+(state.user_role==='admin'?'Administrador':'Usuário')+'.</p>'+
@@ -229,19 +255,21 @@ function menuFor(target,p){closeMenu();const rect=target.getBoundingClientRect()
 async function safeWrite(callback){try{await callback();closeModal();await refresh()}catch(e){notice(e.message)}}
 document.addEventListener('click',async e=>{const confirmEl=e.target.closest('[data-confirm-choice]');if(confirmEl){finishConfirm(confirmEl.dataset.confirmChoice==='yes');return}const filterEl=e.target.closest('[data-filter]');if(filterEl){filter=filterEl.dataset.filter;page=1;render();return}const pageEl=e.target.closest('[data-page]');if(pageEl){page=Number(pageEl.dataset.page);render();return}const button=e.target.closest('[data-action],[data-route]');if(!button){if(menuPop&&!e.target.closest('.tooltip-menu'))closeMenu();if(profileMenuPop&&!e.target.closest('.profile-menu')&&!e.target.closest('#profile'))closeProfileMenu();return}if(button.dataset.route){go(button.dataset.route);return}const action=button.dataset.action,id=Number(button.dataset.id);if(!button.closest('.tooltip-menu')&&action!=='project-menu')closeMenu();switch(action){case 'close-modal':closeModal();break;case 'profile-settings':closeProfileMenu();go('configuracoes');break;case 'new-project':projectForm(null);break;case 'edit-project':projectForm(state.projects.find(p=>p.id===id));break;case 'project-menu':menuFor(button,state.projects.find(p=>p.id===id));break;case 'new-task':taskForm(null,button.dataset.projectId);break;case 'edit-task':taskForm(state.tasks.find(t=>t.id===id));break;case 'new-member':memberForm();break;case 'complete-project':{const p=state.projects.find(p=>p.id===id);if(!p)break;const pending=state.tasks.filter(t=>t.project_id===id&&!t.completed);if(pending.length){notice('Conclua antes as '+pending.length+' tarefa(s) pendente(s) do projeto.');break;}if(await confirmAction('Concluir o projeto '+p.name+'? Ele sairá dos projetos ativos.','Concluir projeto','Concluir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'PUT',body:JSON.stringify({...p,status:'concluido',progress:100})});notice('Projeto concluído.');});break;}
 case 'reopen-project':{const p=state.projects.find(p=>p.id===id);if(!p)break;if(await confirmAction('Reabrir o projeto '+p.name+'?','Reabrir projeto','Reabrir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'PUT',body:JSON.stringify({...p,status:'em_andamento',progress:Math.min(99,Number(p.progress||0))})});notice('Projeto reaberto.');});break;}
-case 'restore-brand-default':if(await confirmAction('Restaurar a identidade visual padrão do ATRIA nesta organização?','Restaurar identidade','Restaurar')){try{for(const kind of ['logo','logo_dark','favicon','watermark'])if(state.organization?.assets?.[kind])await api('/organization/brand/assets/'+kind,{method:'DELETE'});await api('/organization/brand',{method:'PUT',body:JSON.stringify({primary_color:ATRIA_BRAND.primary,secondary_color:ATRIA_BRAND.secondary,use_custom_brand:false})});notice('Identidade padrão do ATRIA restaurada.');await refresh()}catch(error){notice(error.message)}}break;case 'remove-brand-asset':{const kind=button.dataset.kind;if(await confirmAction('Remover este arquivo da identidade visual?','Remover identidade','Remover')){try{await api('/organization/brand/assets/'+kind,{method:'DELETE'});notice('Arquivo removido.');await refresh()}catch(error){notice(error.message)}}break;}case 'delete-project':if(await confirmAction('Excluir o projeto e todas as tarefas dele? Esta ação não pode ser desfeita.','Excluir projeto','Excluir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'DELETE'});notice('Projeto excluído.')});break;case 'delete-task':if(await confirmAction('Excluir esta tarefa?','Excluir tarefa','Excluir'))await safeWrite(async()=>{await api('/tasks/'+id,{method:'DELETE'});notice('Tarefa excluída.')});break;case 'delete-member':if(await confirmAction('Remover integrante da equipe?','Remover integrante','Remover'))await safeWrite(async()=>{await api('/members/'+id,{method:'DELETE'});notice('Integrante removido.')});break;case 'toggle-task':{const t=state.tasks.find(t=>t.id===id);await safeWrite(async()=>{await api('/tasks/'+id,{method:'PUT',body:JSON.stringify({...t,completed:button.checked})});notice('Tarefa atualizada.')});break}case 'export':window.location.assign('/api/export/projects.csv');break;case 'logout':closeProfileMenu();await api('/logout',{method:'POST'});location.assign('/');break;}}
+case 'remove-product-brand-asset':{const kind=button.dataset.kind;if(await confirmAction('Remover este arquivo da identidade oficial do ATRIA?','Remover arquivo oficial','Remover')){try{await api('/product-brand/assets/'+kind,{method:'DELETE'});notice('Arquivo oficial removido.');await refresh()}catch(error){notice(error.message)}}break;}case 'restore-brand-default':if(await confirmAction('Restaurar a identidade visual padrão do ATRIA nesta organização?','Restaurar identidade','Restaurar')){try{for(const kind of ['logo','logo_dark','favicon','watermark'])if(state.organization?.assets?.[kind])await api('/organization/brand/assets/'+kind,{method:'DELETE'});await api('/organization/brand',{method:'PUT',body:JSON.stringify({primary_color:ATRIA_BRAND.primary,secondary_color:ATRIA_BRAND.secondary,use_custom_brand:false})});notice('Identidade padrão do ATRIA restaurada.');await refresh()}catch(error){notice(error.message)}}break;case 'remove-brand-asset':{const kind=button.dataset.kind;if(await confirmAction('Remover este arquivo da identidade visual?','Remover identidade','Remover')){try{await api('/organization/brand/assets/'+kind,{method:'DELETE'});notice('Arquivo removido.');await refresh()}catch(error){notice(error.message)}}break;}case 'delete-project':if(await confirmAction('Excluir o projeto e todas as tarefas dele? Esta ação não pode ser desfeita.','Excluir projeto','Excluir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'DELETE'});notice('Projeto excluído.')});break;case 'delete-task':if(await confirmAction('Excluir esta tarefa?','Excluir tarefa','Excluir'))await safeWrite(async()=>{await api('/tasks/'+id,{method:'DELETE'});notice('Tarefa excluída.')});break;case 'delete-member':if(await confirmAction('Remover integrante da equipe?','Remover integrante','Remover'))await safeWrite(async()=>{await api('/members/'+id,{method:'DELETE'});notice('Integrante removido.')});break;case 'toggle-task':{const t=state.tasks.find(t=>t.id===id);await safeWrite(async()=>{await api('/tasks/'+id,{method:'PUT',body:JSON.stringify({...t,completed:button.checked})});notice('Tarefa atualizada.')});break}case 'export':window.location.assign('/api/export/projects.csv');break;case 'logout':closeProfileMenu();await api('/logout',{method:'POST'});location.assign('/');break;}}
 );
 document.addEventListener('submit',async e=>{if(!['project-form','task-form','member-form','organization-brand-form'].includes(e.target.id))return;e.preventDefault();const f=e.target,values=formValues(f);if(f.id==='organization-brand-form'){try{const payload={primary_color:String(values.primary_color||ATRIA_BRAND.primary),secondary_color:String(values.secondary_color||ATRIA_BRAND.secondary),use_custom_brand:Boolean(f.elements.use_custom_brand?.checked)};await api('/organization/brand',{method:'PUT',body:JSON.stringify(payload)});notice('Identidade visual atualizada.');await refresh()}catch(error){notice(error.message)}return;}if(f.id==='project-form'){values.progress=Number(values.progress);values.started_at=values.started_at||null;values.due_at=values.due_at||null;values.client_site=(values.client_site||'').trim();const id=modalProject;await safeWrite(async()=>{await api(id?'/projects/'+id:'/projects',{method:id?'PUT':'POST',body:JSON.stringify(values)});notice(id?'Projeto atualizado.':'Projeto cadastrado.')})}if(f.id==='task-form'){values.project_id=Number(values.project_id);values.hours=Number(values.hours);values.due_at=values.due_at||null;values.completed=values.completed==='true';const id=Number(f.dataset.id);await safeWrite(async()=>{await api(id?'/tasks/'+id:'/tasks',{method:id?'PUT':'POST',body:JSON.stringify(values)});notice('Tarefa salva.')})}if(f.id==='member-form'){const id=Number(f.dataset.id)||null;await safeWrite(async()=>{await api(id?'/members/'+id:'/members',{method:id?'PUT':'POST',body:JSON.stringify(values)});notice(id?'Colaborador atualizado.':'Colaborador cadastrado.')})}});
 document.addEventListener('change',async e=>{
-  const input=e.target.closest('[data-brand-file]');
+  const productInput=e.target.closest('[data-product-brand-file]');
+  const input=productInput||e.target.closest('[data-brand-file]');
   if(!input||!input.files?.length)return;
-  const file=input.files[0],kind=input.dataset.brandFile;
+  const file=input.files[0],kind=productInput?productInput.dataset.productBrandFile:input.dataset.brandFile;
   const limit=kind==='favicon'?1_000_000:2_500_000;
   if(file.size>limit){notice('Arquivo maior que o limite permitido.');input.value='';return;}
   try{
     const image_data=await fileAsDataUrl(file);
-    await api('/organization/brand/assets/'+kind,{method:'PUT',body:JSON.stringify({image_data})});
-    notice('Arquivo de identidade visual atualizado.');
+    const endpoint=productInput?'/product-brand/assets/':'/organization/brand/assets/';
+    await api(endpoint+kind,{method:'PUT',body:JSON.stringify({image_data})});
+    notice(productInput?'Identidade oficial do ATRIA atualizada.':'Arquivo de identidade visual atualizado.');
     await refresh();
   }catch(error){notice(error.message)}
   finally{input.value=''}
