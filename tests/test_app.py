@@ -9,7 +9,7 @@ os.environ['SESSION_SECRET'] = 'test-key-with-sufficient-length'
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 import time
-from sqlalchemy import event
+from sqlalchemy import event, select
 from accounts_module import SESSION_IDLE_TIMEOUT_SECONDS
 from app import app, DB, engine, Organization, OrganizationBrandAsset, ProductBrandAsset, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID, ATRIA_PLATFORM_ORG_ID
 
