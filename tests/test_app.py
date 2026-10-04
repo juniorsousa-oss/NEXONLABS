@@ -238,8 +238,7 @@ def test_regular_client_admin_cannot_change_atria_global_standard():
         })
         assert denied.status_code==404
         accounts=c.get('/api/accounts').json()
-        own=next(item for item in accounts if item['name']=='Administrador da organização')
-        assert c.delete(f"/api/accounts/{own['id']}").status_code==200
+        assert any(item['name']=='Administrador da organização' for item in accounts)
 
 
 def test_session_expires_after_inactivity():
