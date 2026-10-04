@@ -154,7 +154,14 @@ class OrganizationBrandAsset(Base):
     image: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
-Base.metadata.create_all(engine, tables=[AccountPhoto.__table__, OrganizationBrandAsset.__table__])
+class ProductBrandAsset(Base):
+    __tablename__ = 'product_brand_assets'
+    kind: Mapped[str] = mapped_column(String(24), primary_key=True)
+    mime_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    image: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+Base.metadata.create_all(engine, tables=[AccountPhoto.__table__, OrganizationBrandAsset.__table__, ProductBrandAsset.__table__])
 ensure_organization_columns(engine, ['app_account_photos'], NEXON_LABS_ORG_ID)
 
 Status = Literal['planejamento', 'em_andamento', 'concluido']
@@ -260,6 +267,10 @@ def session(request: Request):
     current = authorized(request)
     with DB() as db:
         db.info['organization_id'] = current['organization_id']
+        yield db
+
+def public_session():
+    with DB() as db:
         yield db
 
 def organization_id(db: Session) -> int:
@@ -557,6 +568,19 @@ def delete_my_avatar(request: Request, db: Session = Depends(session)):
     return {'ok': True, 'has_photo': False}
 
 BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark'}
+PRODUCT_BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark'}
+
+def product_brand_payload(db: Session):
+    kinds = set(db.scalars(select(ProductBrandAsset.kind)).all())
+    return {
+        'assets': {kind: kind in kinds for kind in sorted(PRODUCT_BRAND_ASSET_KINDS)},
+        'asset_urls': {
+            kind: f'/api/product-brand/assets/{kind}' if kind in kinds else ''
+            for kind in sorted(PRODUCT_BRAND_ASSET_KINDS)
+        },
+        'name': 'ATRIA',
+        'manufacturer': 'Nexon Labs',
+    }
 
 def organization_brand_payload(db: Session, organization):
     payload = organization_public(organization)
@@ -638,6 +662,52 @@ def decode_brand_asset(kind: str, image_data: str):
     if kind == 'favicon' and abs(width - height) > max(4, int(max(width, height) * .04)):
         raise HTTPException(422, 'O favicon precisa ser quadrado.')
     return raw, mime_type
+
+def product_brand_admin(request: Request):
+    current = admin_only(request)
+    if current['organization_id'] != NEXON_LABS_ORG_ID:
+        raise HTTPException(404, 'Recurso não encontrado.')
+    return current
+
+@app.get('/api/product-brand')
+def get_product_brand(db: Session = Depends(public_session)):
+    return product_brand_payload(db)
+
+@app.get('/api/product-brand/assets/{kind}')
+def get_product_brand_asset(kind: str, db: Session = Depends(public_session)):
+    if kind not in PRODUCT_BRAND_ASSET_KINDS:
+        raise HTTPException(404, 'Arquivo de identidade do produto não encontrado.')
+    asset = db.get(ProductBrandAsset, kind)
+    if asset is None:
+        raise HTTPException(404, 'Arquivo de identidade do produto ainda não cadastrado.')
+    content, media_type = normalize_brand_logo(kind, asset.image, asset.mime_type)
+    return Response(content=content, media_type=media_type, headers={'Cache-Control':'public, max-age=300'})
+
+@app.put('/api/product-brand/assets/{kind}', dependencies=[Depends(product_brand_admin)])
+def upload_product_brand_asset(kind: str, data: OrganizationBrandAssetIn, db: Session = Depends(session)):
+    if kind not in PRODUCT_BRAND_ASSET_KINDS:
+        raise HTTPException(404, 'Tipo de identidade do produto não encontrado.')
+    raw, mime_type = decode_brand_asset(kind, data.image_data)
+    raw, mime_type = normalize_brand_logo(kind, raw, mime_type)
+    asset = db.get(ProductBrandAsset, kind)
+    if asset is None:
+        db.add(ProductBrandAsset(kind=kind, mime_type=mime_type, image=raw))
+    else:
+        asset.mime_type = mime_type
+        asset.image = raw
+        asset.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return {'ok': True, 'kind': kind}
+
+@app.delete('/api/product-brand/assets/{kind}', dependencies=[Depends(product_brand_admin)])
+def delete_product_brand_asset(kind: str, db: Session = Depends(session)):
+    if kind not in PRODUCT_BRAND_ASSET_KINDS:
+        raise HTTPException(404, 'Tipo de identidade do produto não encontrado.')
+    asset = db.get(ProductBrandAsset, kind)
+    if asset is not None:
+        db.delete(asset)
+        db.commit()
+    return {'ok': True, 'kind': kind}
 
 @app.get('/api/organization/brand', dependencies=[Depends(authorized)])
 def get_organization_brand(request: Request, db: Session = Depends(session)):
@@ -886,6 +956,7 @@ def state(request: Request, db: Session = Depends(session)):
         user_id=current['id'],
         user_role=current['role'],
         organization=organization_brand_payload(db, organization) if organization else None,
+        product_brand=product_brand_payload(db),
         has_photo=has_photo,
         auth_enabled=True,
     )

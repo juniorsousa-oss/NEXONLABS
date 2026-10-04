@@ -1,8 +1,7 @@
-"""Opção B aprovada — peças de identidade por colaborador.
-Frente escura: marca à esquerda, teclado/diagonal e "DA IDEIA À OPERAÇÃO" à direita.
-Verso claro: colaborador à esquerda, QR central e serviços no painel lateral escuro.
-Assinatura: bloco escuro da marca à esquerda e dados personalizados à direita.
-As artes de colaboradores são documentos internos autenticados.
+"""Materiais de identidade do ATRIA por colaborador.
+O padrão oficial usa somente logo e informações da organização/pessoa.
+Cada organização herda a marca ATRIA ou aplica sua identidade personalizada.
+Um template externo compatível pode substituir o padrão quando instalado pelo administrador.
 """
 from __future__ import annotations
 
@@ -116,6 +115,55 @@ def wordmark(draw,x,y,large=42,dark=False,brand_name='Nexon Labs'):
     draw.text((x+2,y+large+8),subtitle,
               font=font(max(11,int(large*.27)),True),fill=TEAL if dark else WHITE)
 
+def hex_color(value,default):
+    text=str(value or '').strip().lstrip('#')
+    if len(text)==6:
+        try:return tuple(int(text[i:i+2],16) for i in (0,2,4))
+        except ValueError:pass
+    return default
+
+def open_logo(raw):
+    if not raw:return None
+    try:
+        image=Image.open(io.BytesIO(raw)).convert('RGBA')
+        alpha=image.getchannel('A')
+        bbox=alpha.point(lambda value:255 if value>=20 else 0).getbbox() or alpha.getbbox()
+        return image.crop(bbox) if bbox else image
+    except Exception:
+        return None
+
+def paste_logo(canvas,raw,box,brand_name='ATRIA',dark=False):
+    x1,y1,x2,y2=box
+    logo=open_logo(raw)
+    if logo is not None:
+        max_w,max_h=max(1,x2-x1),max(1,y2-y1)
+        logo.thumbnail((max_w,max_h),Image.Resampling.LANCZOS)
+        x=x1+(max_w-logo.width)//2
+        y=y1+(max_h-logo.height)//2
+        canvas.paste(logo,(x,y),logo)
+        return
+    d=ImageDraw.Draw(canvas)
+    center=(x1+int((x2-x1)*.28),y1+(y2-y1)//2)
+    brand_mark(canvas,center,min(120,y2-y1-20),navy_core=not dark)
+    wordmark(d,x1+int((x2-x1)*.46),center[1]-38,38,dark=not dark,brand_name=brand_name)
+
+def network_pattern(image,accent=(18,174,174),opacity=35):
+    overlay=Image.new('RGBA',image.size,(255,255,255,0))
+    d=ImageDraw.Draw(overlay)
+    w,h=image.size
+    points=[(int(w*.06),int(h*.20),26),(int(w*.14),int(h*.08),15),(int(w*.18),int(h*.34),19),
+            (int(w*.82),int(h*.16),22),(int(w*.91),int(h*.28),31),(int(w*.78),int(h*.72),17),
+            (int(w*.92),int(h*.80),24),(int(w*.68),int(h*.88),13)]
+    links=[(0,1),(0,2),(3,4),(3,5),(5,6),(5,7)]
+    for a,b in links:
+        x1,y1,_=points[a];x2,y2,_=points[b]
+        d.line((x1,y1,x2,y2),fill=(*accent,max(14,opacity//2)),width=2)
+    for x,y,r in points:
+        d.ellipse((x-r,y-r,x+r,y+r),fill=(*accent,opacity))
+    base=image.convert('RGBA')
+    base.alpha_composite(overlay)
+    return base.convert('RGB')
+
 def gradient(w,h,dark=True):
     im=Image.new('RGB',(w,h))
     d=ImageDraw.Draw(im)
@@ -183,85 +231,94 @@ def role_line(draw,member,x,y,maxwidth,size=24,dark=False):
               fill=INK if dark else WHITE)
     draw.text((x,y+77),str(member.get('_brand_name') or 'ATRIA'),font=font(20,True),fill=TEAL)
 
-def front(member,w=1134,h=661):
-    im=gradient(w,h,True);d=ImageDraw.Draw(im)
-    # Faixa direita de teclado e borda diagonal ciano, como a Opção B aprovada.
-    art=keyboard_art(int(w*.36),h)
-    im.paste(art,(w-art.width,0))
-    d=ImageDraw.Draw(im)
-    d.polygon([(int(w*.68),0),(int(w*.75),0),(int(w*.62),h),(int(w*.55),h)],
-              fill=(10,46,73))
-    d.line((int(w*.71),0,int(w*.61),h),fill=CYAN,width=4)
-    for k in range(3):
-        x=int(w*(.78+k*.08))
-        d.line((x,-30,x-int(w*.13),h+30),fill=(10,77,102),width=12)
-    d.rounded_rectangle((0,0,w-1,h-1),radius=17,outline=(39,113,139),width=2)
-    brand_mark(im,(116,180),135)
-    d=ImageDraw.Draw(im)
-    wordmark(d,206,139,49,brand_name=member.get('_brand_name') or 'Nexon Labs')
-    d.line((100,390,169,390),fill=CYAN,width=5)
-    lines(d,[SLOGAN],100,415,WHITE,20,maxwidth=int(w*.51))
-    # A frase no mesmo lado/posição do layout aprovado, sem inventar outra chamada.
-    lines(d,['DA','IDEIA','À','OPERAÇÃO.'],w-180,170,WHITE,29,leading=1.35,bold=True,maxwidth=159)
-    return im
+def _brand_palette(member):
+    return (
+        hex_color(member.get('_primary_color'),NAVY),
+        hex_color(member.get('_secondary_color'),TEAL),
+    )
 
-def back(member,w=1134,h=661):
-    im=Image.new('RGB',(w,h),WHITE);d=ImageDraw.Draw(im)
-    d.polygon([(int(w*.80),0),(w,0),(w,h),(int(w*.70),h)],fill=NAVY)
-    d.polygon([(int(w*.79),0),(int(w*.84),0),(int(w*.73),h),(int(w*.68),h)],fill=TEAL)
-    role_line(d,member,59,77,int(w*.49),size=29,dark=True)
-    contact(d,member,60,256,int(w*.49),size=24,spacing=67,dark=True)
-    d.line((int(w*.54),70,int(w*.54),h-65),fill=LINE,width=3)
-    if member.get('site'):
-        qr=make_qr(member['site'],169)
-        im.paste(qr,(int(w*.585),115))
-        d=ImageDraw.Draw(im)
-        lines(d,['ACESSE NOSSO SITE'],int(w*.57),307,INK,17,leading=1.4,bold=True)
-        lines(d,['E CONHEÇA NOSSAS','SOLUÇÕES'],int(w*.57),341,MUTED,13,leading=1.45)
-    else:
-        d.text((int(w*.57),205),'SITE NÃO INFORMADO',fill=INK,font=font(14,True))
-    for i,(title,subtitle) in enumerate(zip(LABELS,SUBLABELS)):
-        yy=88+i*135
-        d.ellipse((w-179,yy,w-145,yy+34),outline=CYAN,width=3)
-        lines(d,[title,subtitle],w-130,yy,WHITE,16,leading=1.4,bold=True,maxwidth=120)
-    return im
+def _contact_rows(member):
+    rows=[]
+    if member.get('email'):rows.append(('✉',member['email']))
+    if member.get('site'):rows.append(('◎',re.sub(r'^https?://','',member['site']).rstrip('/')))
+    if member.get('whatsapp'):rows.append(('W',member['whatsapp']))
+    if member.get('city'):rows.append(('●',member['city']))
+    return rows
 
-def signature(member,w=1180,h=455):
+def _person_block(draw,member,x,y,maxwidth,accent):
+    name=str(member.get('name') or '').upper()
+    role=str(member.get('role') or 'Colaborador')
+    organization=str(member.get('_brand_name') or 'ATRIA')
+    draw.text((x,y),name,font=textfit(draw,name,maxwidth,38,True,minsize=19),fill=INK)
+    draw.text((x,y+51),role,font=textfit(draw,role,maxwidth,25,minsize=14),fill=MUTED)
+    draw.text((x,y+88),organization,font=textfit(draw,organization,maxwidth,25,True,minsize=14),fill=accent)
+    yy=y+145
+    for icon_text,value in _contact_rows(member)[:4]:
+        draw.rounded_rectangle((x,yy,x+39,yy+39),radius=10,fill=(239,247,251))
+        draw.text((x+10,yy+5),icon_text,font=font(21,True),fill=INK)
+        draw.text((x+56,yy+4),value,font=textfit(draw,value,maxwidth-56,23,minsize=13),fill=INK)
+        yy+=58
+
+def front(member,branding=None,w=1200,h=667):
+    branding=branding or {}
+    primary,accent=_brand_palette(member)
     im=Image.new('RGB',(w,h),WHITE)
+    im=network_pattern(im,accent,opacity=22)
     d=ImageDraw.Draw(im)
-    d.rounded_rectangle((3,3,w-4,h-4),radius=20,fill=WHITE,outline=LINE,width=2)
-    # Bloco naval com corte diagonal e filete teal, mesma composição B.
-    d.polygon([(3,3),(465,3),(527,h-3),(3,h-3)],fill=NAVY)
-    d.polygon([(433,3),(456,3),(520,h-3),(499,h-3)],fill=TEAL)
-    brand_mark(im,(164,143),131)
+    left=int(w*.43)
+    d.rounded_rectangle((1,1,w-2,h-2),radius=28,outline=LINE,width=2)
+    d.rounded_rectangle((1,1,left+24,h-2),radius=28,fill=primary)
+    d.rectangle((left-10,1,left+24,h-2),fill=primary)
+    d.line((left+45,70,left+45,h-70),fill=accent,width=4)
+    logo=branding.get('logo_dark') or branding.get('logo')
+    paste_logo(im,logo,(38,95,left-25,h-95),member.get('_brand_name') or 'ATRIA',dark=True)
     d=ImageDraw.Draw(im)
-    wordmark(d,54,226,39,brand_name=member.get('_brand_name') or 'Nexon Labs')
-    d.line((54,337,112,337),fill=CYAN,width=4)
-    lines(d,['Tecnologia que','simplifica necessidades.'],54,351,WHITE,17,leading=1.45,maxwidth=400)
-    role_line(d,member,547,69,580,size=31,dark=True)
-    contact(d,member,551,199,570,size=21,spacing=46,dark=True)
-    d.line((550,h-58,w-34,h-58),fill=LINE,width=2)
-    d.text((551,h-48),'APLICATIVOS   |   AUTOMAÇÃO   |   INTEGRAÇÃO   |   RESULTADOS',
-           font=textfit(d,'APLICATIVOS   |   AUTOMAÇÃO   |   INTEGRAÇÃO   |   RESULTADOS',585,13,minsize=9),fill=MUTED)
+    _person_block(d,member,left+100,122,w-left-145,accent)
     return im
 
-def render(member,kind):
-    if kind=='front':return front(member)
-    if kind=='back':return back(member)
-    if kind=='signature':return signature(member)
+def back(member,branding=None,w=1200,h=667):
+    branding=branding or {}
+    primary,accent=_brand_palette(member)
+    im=Image.new('RGB',(w,h),primary)
+    im=network_pattern(im,accent,opacity=28)
+    d=ImageDraw.Draw(im)
+    d.rounded_rectangle((1,1,w-2,h-2),radius=28,outline=tuple(min(255,x+35) for x in primary),width=2)
+    logo=branding.get('logo_dark') or branding.get('logo')
+    paste_logo(im,logo,(170,155,w-170,h-155),member.get('_brand_name') or 'ATRIA',dark=True)
+    return im
+
+def signature(member,branding=None,w=1600,h=430):
+    branding=branding or {}
+    primary,accent=_brand_palette(member)
+    im=Image.new('RGB',(w,h),WHITE)
+    im=network_pattern(im,accent,opacity=18)
+    d=ImageDraw.Draw(im)
+    d.rounded_rectangle((2,2,w-3,h-3),radius=24,outline=LINE,width=2)
+    divider=615
+    d.line((divider,58,divider,h-58),fill=accent,width=4)
+    logo=branding.get('logo') or branding.get('logo_dark')
+    paste_logo(im,logo,(55,70,divider-60,h-70),member.get('_brand_name') or 'ATRIA',dark=False)
+    d=ImageDraw.Draw(im)
+    _person_block(d,member,divider+68,54,w-divider-115,accent)
+    return im
+
+def render(member,kind,branding=None):
+    if kind=='front':return front(member,branding)
+    if kind=='back':return back(member,branding)
+    if kind=='signature':return signature(member,branding)
     raise HTTPException(404,'Material não encontrado.')
 
 def image_png(image):
     output=io.BytesIO();image.save(output,format='PNG',optimize=True)
     return output.getvalue()
 
-def card_pdf(member):
+def card_pdf(member,branding=None):
     from reportlab.lib.units import mm
     buffer=io.BytesIO()
     c=canvas.Canvas(buffer,pagesize=(96*mm,56*mm),pageCompression=1)
     c.setTitle(f"{member.get('_brand_name') or 'ATRIA'} — cartão de visita")
     # Página inteira 96×56 mm: formato de corte 90×50 mm + sangria de 3 mm por lado.
-    for art in (front(member),back(member)):
+    for art in (front(member,branding),back(member,branding)):
         c.drawImage(ImageReader(art),0,0,width=96*mm,height=56*mm,mask='auto')
         c.showPage()
     c.save();return buffer.getvalue()
@@ -275,13 +332,13 @@ def signature_html(member,png):
     phone=html.escape(whatsapp_url(member.get('whatsapp') or ''),quote=True)
     extra=''
     if phone:extra+='<a href="'+phone+'">WhatsApp</a> &nbsp; '
-    if site:extra+='<a href="'+site+'">Site da Nexon Labs</a>'
+    if site:extra+='<a href="'+site+'">Site</a>'
     return ('<!doctype html><html lang="pt-BR"><meta charset="utf-8">'
             '<title>Assinatura de e-mail - '+html.escape(member['name'])+'</title>'
             '<body style="margin:0;padding:0;font-family:Arial,sans-serif">'
             '<table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td>'
             '<img src="'+image+'" width="590" height="228" alt="Assinatura de '
-            +html.escape(member['name'],quote=True)+' - Nexon Labs" style="max-width:100%;height:auto;display:block">'
+            +html.escape(member['name'],quote=True)+' - '+html.escape(str(member.get('_brand_name') or 'ATRIA'),quote=True)+'" style="max-width:100%;height:auto;display:block">'
             '</td></tr><tr><td style="padding:7px 4px;font-size:12px;color:#0b2d4a">'+extra+
             '</td></tr></table></body></html>')
 
@@ -319,7 +376,7 @@ def cached_artifact(key, make):
 def artifact_key(data,reference,kind,fmt):
     # A edição de qualquer dado ou a troca da imagem-matriz altera a chave.
     value=hashlib.sha256()
-    value.update(b'nexon-brand-b-cache-v1\\0')
+    value.update(b'atria-brand-kit-v2\\0')
     value.update(hashlib.sha256(reference or b'').digest())
     value.update(json.dumps(data,sort_keys=True,ensure_ascii=False).encode('utf-8'))
     value.update(kind.encode('ascii'))
@@ -350,12 +407,41 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organ
 
     def member_data(db,member):
         brand_name='ATRIA'
+        brand_slug='atria'
+        primary='#0B2D4A'
+        secondary='#14B8A6'
+        use_custom=False
         if Organization is not None:
             organization=db.get(Organization,org_id(db))
             if organization is not None:
                 brand_name=organization.name
+                brand_slug=organization.slug
+                primary=organization.primary_color or primary
+                secondary=organization.secondary_color or secondary
+                use_custom=bool(organization.use_custom_brand)
         return dict(name=member.name,role=member.role,email=member.email,
-                    _brand_name=brand_name,**extra(db,member))
+                    _brand_name=brand_name,_brand_slug=brand_slug,
+                    _primary_color=primary,_secondary_color=secondary,
+                    _use_custom_brand=use_custom,**extra(db,member))
+
+    def branding_data(db,data):
+        from app import OrganizationBrandAsset, ProductBrandAsset
+        custom=bool(data.get('_use_custom_brand'))
+        organization_id=org_id(db)
+        def organization_asset(kind):
+            if not custom:return None
+            row=db.scalar(select(OrganizationBrandAsset).where(
+                OrganizationBrandAsset.organization_id==organization_id,
+                OrganizationBrandAsset.kind==kind
+            ).limit(1))
+            return row.image if row is not None else None
+        def product_asset(kind):
+            row=db.get(ProductBrandAsset,kind)
+            return row.image if row is not None else None
+        return {
+            'logo':organization_asset('logo') or product_asset('logo'),
+            'logo_dark':organization_asset('logo_dark') or organization_asset('logo') or product_asset('logo_dark') or product_asset('logo'),
+        }
 
     def sync(db,member,data):
         saved=db.get(MemberBrand,member.id)
@@ -385,15 +471,11 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organ
             raise HTTPException(422,'A assinatura está disponível em PNG ou HTML.')
         member=member_or_404(db,member_id)
         data=member_data(db,member)
-        # Nunca mostrar a reconstrução aproximada em produção quando o layout
-        # aprovado não estiver instalado. Somente a matriz original é aceita.
         from approved_template import cached_faces as approved_faces, draw_personalized, encode as approved_png
         from approved_template import signature_html as approved_html, card_pdf as approved_pdf
         from app import ApprovedArtwork
-        from tenant_module import NEXON_LABS_ORG_ID
-        # A matriz histórica é exclusiva da Nexon Labs. Outras organizações usam
-        # o layout padrão até a fase de branding por cliente.
-        source=db.get(ApprovedArtwork,1) if org_id(db)==NEXON_LABS_ORG_ID else None
+        source=db.get(ApprovedArtwork,org_id(db))
+        branding=branding_data(db,data)
         def generate():
             if source is not None:
                 parts=approved_faces(source.image)
@@ -407,8 +489,8 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organ
                     return approved_html(data,png).encode('utf-8'),'text/html; charset=utf-8','assinatura'
                 return png,'image/png',kind
             if kind=='card':
-                return card_pdf(data),'application/pdf','cartao'
-            art=render(data,kind)
+                return card_pdf(data,branding),'application/pdf','cartao'
+            art=render(data,kind,branding)
             png=image_png(art)
             if format=='html':
                 return signature_html(data,png).encode('utf-8'),'text/html; charset=utf-8','assinatura'
@@ -419,7 +501,9 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organ
         # A frente não contém dados pessoais: a mesma arte aprovada é
         # compartilhada entre os colaboradores no cache do servidor.
         cache_data={} if kind=='front' and source is not None else data
-        key=artifact_key(cache_data,source.image if source is not None else None,kind,format)
+        brand_bytes=(branding.get('logo') or b'')+(branding.get('logo_dark') or b'')
+        reference=(source.image if source is not None else b'')+hashlib.sha256(brand_bytes).digest()
+        key=artifact_key(cache_data,reference,kind,format)
         content,media,filename,etag=cached_artifact(key,generate)
         common={'ETag':etag,'Vary':'Cookie',
                 'Cache-Control':'private, no-cache, must-revalidate',
@@ -430,9 +514,10 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organ
             return Response(status_code=304,headers=common)
         safe=re.sub(r'[^a-z0-9]+','-',member.name.lower()).strip('-') or 'colaborador'
         ext='pdf' if format=='pdf' else 'html' if format=='html' else 'png'
+        prefix=re.sub(r'[^a-z0-9]+','-',str(data.get('_brand_slug') or 'atria').lower()).strip('-') or 'atria'
         return Response(content=content,media_type=media,headers={
             **common,
-            'Content-Disposition':f'attachment; filename="nexonlabs_{safe}_{filename}.{ext}"'
+            'Content-Disposition':f'attachment; filename="{prefix}_{safe}_{filename}.{ext}"'
         })
 
     return MemberBrand,extra,sync

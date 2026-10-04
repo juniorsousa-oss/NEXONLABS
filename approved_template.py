@@ -74,54 +74,70 @@ def raw_image(value: str,confirmed: bool=False):
 def install_reference(app,Base,DB,engine,authorized,admin_only):
     from tenant_module import NEXON_LABS_ORG_ID
 
-    class ApprovedArtwork(Base):
+    class LegacyApprovedArtwork(Base):
         __tablename__='approved_brand_artwork'
         id:Mapped[int]=mapped_column(Integer,primary_key=True)
         image:Mapped[bytes]=mapped_column(nullable=False)
-    Base.metadata.create_all(engine,tables=[ApprovedArtwork.__table__])
-    def nexon_authorized(request: Request):
-        current=authorized(request)
-        if current['organization_id']!=NEXON_LABS_ORG_ID:
-            raise HTTPException(404,'Recurso não encontrado.')
-        return current
 
-    def nexon_admin_only(request: Request):
-        current=admin_only(request)
-        if current['organization_id']!=NEXON_LABS_ORG_ID:
-            raise HTTPException(404,'Recurso não encontrado.')
-        return current
+    class OrganizationBrandTemplate(Base):
+        __tablename__='organization_brand_templates'
+        organization_id:Mapped[int]=mapped_column(Integer,primary_key=True)
+        image:Mapped[bytes]=mapped_column(nullable=False)
+
+    Base.metadata.create_all(engine,tables=[LegacyApprovedArtwork.__table__,OrganizationBrandTemplate.__table__])
+
+    # Preserva a matriz histórica já instalada pela Nexon Labs durante a migração
+    # para templates independentes por organização.
+    try:
+        with DB() as db:
+            legacy=db.get(LegacyApprovedArtwork,1)
+            current=db.get(OrganizationBrandTemplate,NEXON_LABS_ORG_ID)
+            if legacy is not None and current is None:
+                db.add(OrganizationBrandTemplate(organization_id=NEXON_LABS_ORG_ID,image=legacy.image))
+                db.commit()
+    except Exception:
+        pass
 
     def session(request: Request):
-        current=nexon_authorized(request)
+        current=authorized(request)
         with DB() as db:
             db.info['organization_id']=current['organization_id']
             yield db
 
-    @app.get('/api/brand-reference/status',dependencies=[Depends(nexon_authorized)])
-    def reference_status(db:Session=Depends(session)):
-        return {'installed':db.get(ApprovedArtwork,1) is not None}
+    def org_id(db: Session):
+        return int(db.info['organization_id'])
 
-    @app.put('/api/brand-reference',dependencies=[Depends(nexon_admin_only)])
+    @app.get('/api/brand-reference/status',dependencies=[Depends(authorized)])
+    def reference_status(db:Session=Depends(session)):
+        return {'installed':db.get(OrganizationBrandTemplate,org_id(db)) is not None}
+
+    @app.put('/api/brand-reference',dependencies=[Depends(admin_only)])
     def save_reference(data:ReferenceUpload,db:Session=Depends(session)):
-        # PNG/JPEG podem ter codificações diferentes: a prévia e a confirmação
-        # explícita evitam confundir igualdade de arquivos com igualdade visual.
         original=raw_image(data.image_data,data.confirmed)
-        row=db.get(ApprovedArtwork,1)
+        row=db.get(OrganizationBrandTemplate,org_id(db))
         if row:row.image=original
-        else:db.add(ApprovedArtwork(id=1,image=original))
+        else:db.add(OrganizationBrandTemplate(organization_id=org_id(db),image=original))
         db.commit()
         return {'ok':True,'installed':True,'sha256':hashlib.sha256(original).hexdigest(),
                 'exact_original_file':hashlib.sha256(original).hexdigest()==APPROVED_SHA256}
 
-    @app.get('/api/brand-reference/{kind}',dependencies=[Depends(nexon_authorized)])
+    @app.delete('/api/brand-reference',dependencies=[Depends(admin_only)])
+    def delete_reference(db:Session=Depends(session)):
+        row=db.get(OrganizationBrandTemplate,org_id(db))
+        if row is not None:
+            db.delete(row)
+            db.commit()
+        return {'ok':True,'installed':False}
+
+    @app.get('/api/brand-reference/{kind}',dependencies=[Depends(authorized)])
     def reference_preview(kind:str,db:Session=Depends(session)):
-        row=db.get(ApprovedArtwork,1)
-        if row is None:raise HTTPException(409,'A matriz visual aprovada ainda não foi instalada.')
+        row=db.get(OrganizationBrandTemplate,org_id(db))
+        if row is None:raise HTTPException(409,'O modelo personalizado ainda não foi instalado para esta organização.')
         if kind not in BOXES:raise HTTPException(404,'Prévia não encontrada.')
         with Image.open(io.BytesIO(row.image)) as picture:
             return Response(content=encode(picture.crop(BOXES[kind])),media_type='image/png',
                             headers={'Cache-Control':'private, no-store'})
-    return ApprovedArtwork
+    return OrganizationBrandTemplate
 
 def encode(image):
     out=io.BytesIO();image.save(out,format='PNG',optimize=True)
@@ -181,14 +197,14 @@ def draw_personalized(original,data,kind):
         d.rectangle((345,20,718,218),fill='white')
         writefit(d,name,(347,24),353,23,True)
         writefit(d,role,(347,58),355,18)
-        writefit(d,'Nexon Labs',(347,83),350,17,True,color=TEAL)
+        writefit(d,str(data.get('_brand_name') or 'ATRIA'),(347,83),350,17,True,color=TEAL)
         draw_contacts(d,data,347,121,25,17,325)
         return art
     if kind=='back':
         d.rectangle((45,35,325,228),fill='white')
         writefit(d,name,(47,40),265,21,True)
         writefit(d,role,(47,70),273,15)
-        writefit(d,'Nexon Labs',(47,95),260,16,True,color=TEAL)
+        writefit(d,str(data.get('_brand_name') or 'ATRIA'),(47,95),260,16,True,color=TEAL)
         draw_contacts(d,data,48,132,25,15,242)
         # O QR da composição original é ilustrativo; substituir APENAS o miolo
         # quadrado pelo código funcional do endereço cadastrado.
@@ -224,7 +240,7 @@ def card_pdf(face,back):
     # completar a área sem alterar letras, logo ou a composição aprovada.
     out=io.BytesIO()
     c=canvas.Canvas(out,pagesize=(96*mm,56*mm),pageCompression=1)
-    c.setTitle('Nexon Labs — modelo B aprovado, referência visual')
+    c.setTitle('ATRIA — modelo personalizado, referência visual')
     for art,color in ((face,NAVY),(back,'white')):
         c.setFillColor(color);c.rect(0,0,96*mm,56*mm,stroke=0,fill=1)
         iw,ih=art.size
