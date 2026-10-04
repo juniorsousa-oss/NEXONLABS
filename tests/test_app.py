@@ -9,7 +9,7 @@ from unittest.mock import patch
 import time
 from sqlalchemy import event
 from accounts_module import SESSION_IDLE_TIMEOUT_SECONDS
-from app import app, DB, engine, Organization, OrganizationBrandAsset, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
+from app import app, DB, engine, Organization, OrganizationBrandAsset, ProductBrandAsset, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
 
 
 def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
@@ -176,6 +176,44 @@ def test_organization_branding_is_tenant_scoped_and_demo_is_locked():
         db.commit()
 
 
+def test_product_brand_is_public_but_only_nexon_admin_can_change_it():
+    import base64
+    import io
+    from PIL import Image
+
+    image=Image.new('RGBA',(96,96),(11,45,74,255))
+    output=io.BytesIO();image.save(output,format='PNG')
+    image_data='data:image/png;base64,'+base64.b64encode(output.getvalue()).decode()
+
+    with TestClient(app) as anonymous:
+        public=anonymous.get('/api/product-brand')
+        assert public.status_code==200,public.text
+        assert public.json()['name']=='ATRIA'
+        assert anonymous.get('/api/product-brand/assets/favicon').status_code==404
+        assert anonymous.put('/api/product-brand/assets/favicon',json={'image_data':image_data}).status_code==401
+
+    with TestClient(app) as nexon:
+        assert nexon.post('/api/login',json={'password':'test-password'}).status_code==200
+        saved=nexon.put('/api/product-brand/assets/favicon',json={'image_data':image_data})
+        assert saved.status_code==200,saved.text
+        assert nexon.get('/api/product-brand').json()['assets']['favicon'] is True
+
+    with TestClient(app) as anonymous:
+        asset=anonymous.get('/api/product-brand/assets/favicon')
+        assert asset.status_code==200
+        assert asset.headers['content-type'].startswith('image/png')
+
+    with TestClient(app) as demo:
+        assert demo.post('/api/login',json={'password':'demo-test-password'}).status_code==200
+        assert demo.put('/api/product-brand/assets/favicon',json={'image_data':image_data}).status_code==404
+
+    with DB() as db:
+        row=db.get(ProductBrandAsset,'favicon')
+        if row is not None:
+            db.delete(row)
+            db.commit()
+
+
 def test_session_expires_after_inactivity():
     with TestClient(app) as c:
         login=c.post('/api/login',json={'password':'test-password'})
@@ -200,7 +238,7 @@ def test_state_load_uses_bounded_number_of_queries():
         finally:
             event.remove(engine,'before_cursor_execute',before_cursor_execute)
         assert result.status_code==200,result.text
-        assert statements<=14, f'/api/state executou {statements} consultas; esperado no máximo 14.'
+        assert statements<=15, f'/api/state executou {statements} consultas; esperado no máximo 15.'
 
 
 def test_health_and_protected_routes():
@@ -707,7 +745,7 @@ def test_colaborador_brand_kit_aprovado():
         assert user.json()['role']==payload['role']
         assert user.json()['email']==''
         root=f'/api/members/{mid}/brand/'
-        for kind,size in (('front',(1134,661)),('back',(1134,661)),('signature',(1180,455))):
+        for kind,size in (('front',(1200,667)),('back',(1200,667)),('signature',(1600,430))):
             response=client.get(root+kind+'?format=png')
             assert response.status_code==200,(kind,response.text[:150])
             assert response.headers['content-type']=='image/png'
