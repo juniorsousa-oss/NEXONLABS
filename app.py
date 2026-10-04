@@ -269,6 +269,10 @@ def session(request: Request):
         db.info['organization_id'] = current['organization_id']
         yield db
 
+def public_session():
+    with DB() as db:
+        yield db
+
 def organization_id(db: Session) -> int:
     value = db.info.get('organization_id')
     if value is None:
@@ -666,11 +670,11 @@ def product_brand_admin(request: Request):
     return current
 
 @app.get('/api/product-brand')
-def get_product_brand(db: Session = Depends(session)):
+def get_product_brand(db: Session = Depends(public_session)):
     return product_brand_payload(db)
 
 @app.get('/api/product-brand/assets/{kind}')
-def get_product_brand_asset(kind: str, db: Session = Depends(session)):
+def get_product_brand_asset(kind: str, db: Session = Depends(public_session)):
     if kind not in PRODUCT_BRAND_ASSET_KINDS:
         raise HTTPException(404, 'Arquivo de identidade do produto não encontrado.')
     asset = db.get(ProductBrandAsset, kind)
