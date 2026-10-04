@@ -153,6 +153,7 @@ def test_organization_branding_is_tenant_scoped_and_demo_is_locked():
         assert uploaded.status_code==200,uploaded.text
         state=c.get('/api/state').json()
         assert state['organization']['assets']['favicon'] is True
+        assert '?v=' in state['organization']['asset_urls']['favicon']
         asset=c.get('/api/organization/brand/assets/favicon')
         assert asset.status_code==200
         assert asset.headers['content-type'].startswith('image/png')
@@ -213,22 +214,32 @@ def test_product_brand_is_global_and_only_platform_admin_can_change_it():
         assert state['organization']['is_platform'] is True
         saved=platform.put('/api/product-brand/assets/favicon',json={'image_data':image_data})
         assert saved.status_code==200,saved.text
-        assert platform.get('/api/product-brand').json()['assets']['favicon'] is True
+        logo=platform.put('/api/product-brand/assets/logo_dark',json={'image_data':image_data})
+        assert logo.status_code==200,logo.text
+        brand=platform.get('/api/product-brand').json()
+        assert brand['assets']['favicon'] is True
+        assert brand['assets']['logo_dark'] is True
+        assert brand['brand_ready'] is True
+        assert '?v=' in brand['asset_urls']['favicon']
+        assert '?v=' in brand['asset_urls']['logo_dark']
 
     with TestClient(app) as anonymous:
-        asset=anonymous.get('/api/product-brand/assets/favicon')
+        brand=anonymous.get('/api/product-brand').json()
+        asset=anonymous.get(brand['asset_urls']['favicon'])
         assert asset.status_code==200
         assert asset.headers['content-type'].startswith('image/png')
+        assert 'immutable' in asset.headers['cache-control']
 
     with TestClient(app) as demo:
         assert demo.post('/api/login',json={'password':'demo-test-password'}).status_code==200
         assert demo.put('/api/product-brand/assets/favicon',json={'image_data':image_data}).status_code==404
 
     with DB() as db:
-        row=db.get(ProductBrandAsset,'favicon')
-        if row is not None:
-            db.delete(row)
-            db.commit()
+        for kind in ('favicon','logo_dark'):
+            row=db.get(ProductBrandAsset,kind)
+            if row is not None:
+                db.delete(row)
+        db.commit()
 
 
 def test_platform_admin_is_a_dedicated_profile_not_a_client_profile():
@@ -346,6 +357,10 @@ def test_validation_and_markup():
         page=c.get('/').text
         assert 'NEXON' in page
         assert 'id="atria-platform-nav"' in page
+        assert '<svg class="brand-mark"' not in page
+        login_html=c.get('/static/login.html').text
+        assert "this.src='/static/logo.svg'" not in login_html
+        assert 'loadOfficialBrand' in login_html
         assert 'DESIGN LOCK v1' in c.get('/static/style.css').text
 
 def test_meetings_calendar_and_client_agenda():
