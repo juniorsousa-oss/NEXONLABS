@@ -3,6 +3,8 @@ services:
     build:
       context: https://github.com/juniorsousa-oss/NEXONLABS.git#main
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       APP_ENV: production
       COOKIE_SECURE: "1"
