@@ -338,7 +338,7 @@ def signature_html(member,png):
             '<body style="margin:0;padding:0;font-family:Arial,sans-serif">'
             '<table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td>'
             '<img src="'+image+'" width="590" height="228" alt="Assinatura de '
-            +html.escape(member['name'],quote=True)+' - Nexon Labs" style="max-width:100%;height:auto;display:block">'
+            +html.escape(member['name'],quote=True)+' - '+html.escape(str(member.get('_brand_name') or 'ATRIA'),quote=True)+'" style="max-width:100%;height:auto;display:block">'
             '</td></tr><tr><td style="padding:7px 4px;font-size:12px;color:#0b2d4a">'+extra+
             '</td></tr></table></body></html>')
 
@@ -376,7 +376,7 @@ def cached_artifact(key, make):
 def artifact_key(data,reference,kind,fmt):
     # A edição de qualquer dado ou a troca da imagem-matriz altera a chave.
     value=hashlib.sha256()
-    value.update(b'nexon-brand-b-cache-v1\\0')
+    value.update(b'atria-brand-kit-v2\\0')
     value.update(hashlib.sha256(reference or b'').digest())
     value.update(json.dumps(data,sort_keys=True,ensure_ascii=False).encode('utf-8'))
     value.update(kind.encode('ascii'))
