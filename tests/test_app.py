@@ -224,8 +224,7 @@ def test_regular_client_admin_cannot_change_atria_global_standard():
         created=c.post('/api/accounts',json={
             'name':'Administrador da organização',
             'role':'admin',
-            'active':True,
-            'new_password':'Org-Admin-7788'
+            'password':'Org-Admin-7788'
         })
         assert created.status_code==201,created.text
         c.post('/api/logout')
