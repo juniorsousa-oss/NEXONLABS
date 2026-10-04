@@ -358,8 +358,10 @@ def test_validation_and_markup():
         assert 'NEXON' in page
         assert 'id="atria-platform-nav"' in page
         assert '<svg class="brand-mark"' not in page
+        assert 'id="default-brand-lockup" class="default-brand-lockup default-brand-typographic" hidden' in page
         login_html=c.get('/static/login.html').text
         assert "this.src='/static/logo.svg'" not in login_html
+        assert 'id="login-brand-fallback" class="login-brand-fallback" aria-label="ATRIA by Nexon Labs" hidden' in login_html
         assert 'loadOfficialBrand' in login_html
         assert 'DESIGN LOCK v1' in c.get('/static/style.css').text
 

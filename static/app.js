@@ -41,13 +41,15 @@ function applyOrganizationBrand(){
   const officialLogo=productBrandAssetUrl('logo_dark')||productBrandAssetUrl('logo');
   const logo=custom?brandAssetUrl('logo_dark'):officialLogo;
   if(defaultBrand&&customLogo){
-    defaultBrand.hidden=false;
+    defaultBrand.hidden=true;
     customLogo.hidden=true;
     document.querySelector('.sidebar .brand')?.classList.toggle('custom-brand-active',Boolean(logo));
     if(logo){
       customLogo.onload=()=>{defaultBrand.hidden=true;customLogo.hidden=false};
       customLogo.onerror=()=>{customLogo.hidden=true;defaultBrand.hidden=false};
       customLogo.src=logo;
+    }else{
+      defaultBrand.hidden=false;
     }
   }
   const orgLabel=$('#profile-organization');

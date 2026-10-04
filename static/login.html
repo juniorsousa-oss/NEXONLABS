@@ -15,7 +15,7 @@
     <section class="login-brand-panel">
       <div class="login-brand login-brand-official">
         <img id="login-product-logo" alt="ATRIA by Nexon Labs" hidden>
-        <div id="login-brand-fallback" class="login-brand-fallback" aria-label="ATRIA by Nexon Labs">
+        <div id="login-brand-fallback" class="login-brand-fallback" aria-label="ATRIA by Nexon Labs" hidden>
           <strong>ATRIA</strong><span>BY NEXON LABS</span>
         </div>
       </div>
@@ -54,16 +54,20 @@
     const favicon=document.querySelector('#login-favicon');
     try{
       const response=await fetch('/api/product-brand',{cache:'no-store',credentials:'same-origin'});
-      if(!response.ok)return;
+      if(!response.ok){fallback.hidden=false;return}
       const brand=await response.json();
       const logoUrl=brand.asset_urls?.logo_dark||brand.asset_urls?.logo||'';
       if(logoUrl){
         logo.onload=()=>{logo.hidden=false;fallback.hidden=true};
         logo.onerror=()=>{logo.hidden=true;fallback.hidden=false};
         logo.src=logoUrl;
+      }else{
+        fallback.hidden=false;
       }
       if(brand.asset_urls?.favicon)favicon.href=brand.asset_urls.favicon;
-    }catch{}
+    }catch{
+      fallback.hidden=false;
+    }
   }
   loadOfficialBrand();
   const passwordInput=document.querySelector('#password');
