@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 NEXON_LABS_ORG_ID = 1
 ATRIA_DEMO_ORG_ID = 2
+ATRIA_PLATFORM_ORG_ID = 3
 
 
 def setup_organizations(Base, engine, DB):
@@ -58,9 +59,19 @@ def setup_organizations(Base, engine, DB):
                 secondary_color="#00E6C6",
                 use_custom_brand=False,
             ))
+        platform = db.get(Organization, ATRIA_PLATFORM_ORG_ID)
+        if platform is None:
+            db.add(Organization(
+                id=ATRIA_PLATFORM_ORG_ID,
+                name="ATRIA Platform",
+                slug="atria-platform",
+                primary_color="#0B2D4A",
+                secondary_color="#14B8A6",
+                use_custom_brand=False,
+            ))
         db.commit()
 
-    # IDs 1 e 2 são reservados para manter migrações determinísticas.
+    # IDs 1, 2 e 3 são reservados para Nexon Labs, Demo e administração da plataforma.
     # Em PostgreSQL, sincronize a sequence para que o próximo cliente comece em 3.
     if engine.dialect.name == "postgresql":
         with engine.begin() as conn:
