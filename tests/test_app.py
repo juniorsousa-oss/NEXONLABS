@@ -27,6 +27,7 @@ def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
         state=c.get('/api/state')
         assert state.status_code==200,state.text
         assert state.json()['organization']['slug']=='nexon-labs'
+        assert state.json()['platform_admin'] is True
         created=c.post('/api/projects',json={'name':'Projeto multiempresa base'})
         assert created.status_code==201,created.text
         project_id=created.json()['id']
@@ -97,6 +98,9 @@ def test_atria_demo_has_professional_seed_data():
         assert state.status_code==200,state.text
         data=state.json()
         assert data['organization']['slug']=='atria-demo'
+        assert data['platform_admin'] is False
+        assert data['organization']['use_custom_brand'] is False
+        assert data['product_brand']['layout_version']=='atria-v1'
         assert len(data['projects'])>=4
         assert len(data['tasks'])>=7
         assert len(data['members'])>=4
@@ -176,7 +180,7 @@ def test_organization_branding_is_tenant_scoped_and_demo_is_locked():
         db.commit()
 
 
-def test_product_brand_is_public_but_only_nexon_admin_can_change_it():
+def test_product_brand_is_global_and_only_platform_admin_can_change_it():
     import base64
     import io
     from PIL import Image
@@ -214,6 +218,31 @@ def test_product_brand_is_public_but_only_nexon_admin_can_change_it():
             db.commit()
 
 
+def test_regular_client_admin_cannot_change_atria_global_standard():
+    with TestClient(app) as c:
+        assert c.post('/api/login',json={'password':'test-password'}).status_code==200
+        created=c.post('/api/accounts',json={
+            'name':'Administrador da organização',
+            'role':'admin',
+            'active':True,
+            'new_password':'Org-Admin-7788'
+        })
+        assert created.status_code==201,created.text
+        c.post('/api/logout')
+        assert c.post('/api/login',json={'password':'Org-Admin-7788'}).status_code==200
+        state=c.get('/api/state').json()
+        assert state['user_role']=='admin'
+        assert state['platform_admin'] is False
+        denied=c.put('/api/product-brand',json={
+            'primary_color':'#101F33',
+            'secondary_color':'#22BBAA',
+        })
+        assert denied.status_code==404
+        accounts=c.get('/api/accounts').json()
+        own=next(item for item in accounts if item['name']=='Administrador da organização')
+        assert c.delete(f"/api/accounts/{own['id']}").status_code==200
+
+
 def test_session_expires_after_inactivity():
     with TestClient(app) as c:
         login=c.post('/api/login',json={'password':'test-password'})
@@ -238,7 +267,7 @@ def test_state_load_uses_bounded_number_of_queries():
         finally:
             event.remove(engine,'before_cursor_execute',before_cursor_execute)
         assert result.status_code==200,result.text
-        assert statements<=15, f'/api/state executou {statements} consultas; esperado no máximo 15.'
+        assert statements<=16, f'/api/state executou {statements} consultas; esperado no máximo 16.'
 
 
 def test_health_and_protected_routes():
@@ -286,7 +315,9 @@ def test_validation_and_markup():
         assert cleared.status_code==200,cleared.text
         assert cleared.json()['client_site']==''
         assert c.delete(f"/api/projects/{valid_site.json()['id']}").status_code==200
-        assert 'NEXON' in c.get('/').text
+        page=c.get('/').text
+        assert 'NEXON' in page
+        assert 'id="atria-platform-nav"' in page
         assert 'DESIGN LOCK v1' in c.get('/static/style.css').text
 
 def test_meetings_calendar_and_client_agenda():
