@@ -592,15 +592,31 @@ def delete_my_avatar(request: Request, db: Session = Depends(session)):
 BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark'}
 PRODUCT_BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark'}
 
+def _brand_asset_version(updated_at: datetime | None) -> str:
+    if updated_at is None:
+        return '1'
+    try:
+        return str(int(updated_at.timestamp()))
+    except (ValueError, OSError, OverflowError):
+        return updated_at.isoformat().replace(':','').replace('+','').replace('-','')
+
 def product_brand_payload(db: Session):
-    kinds = set(db.scalars(select(ProductBrandAsset.kind)).all())
+    records = db.scalars(select(ProductBrandAsset)).all()
+    assets = {asset.kind: asset for asset in records}
+    kinds = set(assets)
     settings = db.get(ProductSettings,1) or ProductSettings(id=1)
+    required = {'logo_dark', 'favicon'}
     return {
         'assets': {kind: kind in kinds for kind in sorted(PRODUCT_BRAND_ASSET_KINDS)},
         'asset_urls': {
-            kind: f'/api/product-brand/assets/{kind}' if kind in kinds else ''
+            kind: (
+                f'/api/product-brand/assets/{kind}?v={_brand_asset_version(assets[kind].updated_at)}'
+                if kind in assets else ''
+            )
             for kind in sorted(PRODUCT_BRAND_ASSET_KINDS)
         },
+        'brand_ready': required.issubset(kinds),
+        'missing_required_assets': sorted(required - kinds),
         'name': 'ATRIA',
         'manufacturer': 'Nexon Labs',
         'primary_color': settings.primary_color,
@@ -610,12 +626,17 @@ def product_brand_payload(db: Session):
 
 def organization_brand_payload(db: Session, organization):
     payload = organization_public(organization)
-    kinds = set(db.scalars(select(OrganizationBrandAsset.kind).where(
+    records = db.scalars(select(OrganizationBrandAsset).where(
         OrganizationBrandAsset.organization_id == organization.id
-    )).all())
+    )).all()
+    assets = {asset.kind: asset for asset in records}
+    kinds = set(assets)
     payload['assets'] = {kind: kind in kinds for kind in sorted(BRAND_ASSET_KINDS)}
     payload['asset_urls'] = {
-        kind: f'/api/organization/brand/assets/{kind}' if kind in kinds else ''
+        kind: (
+            f'/api/organization/brand/assets/{kind}?v={_brand_asset_version(assets[kind].updated_at)}'
+            if kind in assets else ''
+        )
         for kind in sorted(BRAND_ASSET_KINDS)
     }
     payload['is_demo'] = organization.id == ATRIA_DEMO_ORG_ID
@@ -720,7 +741,14 @@ def get_product_brand_asset(kind: str, db: Session = Depends(public_session)):
     if asset is None:
         raise HTTPException(404, 'Arquivo de identidade do produto ainda não cadastrado.')
     content, media_type = normalize_brand_logo(kind, asset.image, asset.mime_type)
-    return Response(content=content, media_type=media_type, headers={'Cache-Control':'public, max-age=300'})
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            'Cache-Control':'public, max-age=31536000, immutable',
+            'X-Content-Type-Options':'nosniff',
+        },
+    )
 
 @app.put('/api/product-brand/assets/{kind}', dependencies=[Depends(product_brand_admin)])
 def upload_product_brand_asset(kind: str, data: OrganizationBrandAssetIn, db: Session = Depends(session)):
