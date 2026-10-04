@@ -197,14 +197,14 @@ def draw_personalized(original,data,kind):
         d.rectangle((345,20,718,218),fill='white')
         writefit(d,name,(347,24),353,23,True)
         writefit(d,role,(347,58),355,18)
-        writefit(d,'Nexon Labs',(347,83),350,17,True,color=TEAL)
+        writefit(d,str(data.get('_brand_name') or 'ATRIA'),(347,83),350,17,True,color=TEAL)
         draw_contacts(d,data,347,121,25,17,325)
         return art
     if kind=='back':
         d.rectangle((45,35,325,228),fill='white')
         writefit(d,name,(47,40),265,21,True)
         writefit(d,role,(47,70),273,15)
-        writefit(d,'Nexon Labs',(47,95),260,16,True,color=TEAL)
+        writefit(d,str(data.get('_brand_name') or 'ATRIA'),(47,95),260,16,True,color=TEAL)
         draw_contacts(d,data,48,132,25,15,242)
         # O QR da composição original é ilustrativo; substituir APENAS o miolo
         # quadrado pelo código funcional do endereço cadastrado.
@@ -240,7 +240,7 @@ def card_pdf(face,back):
     # completar a área sem alterar letras, logo ou a composição aprovada.
     out=io.BytesIO()
     c=canvas.Canvas(out,pagesize=(96*mm,56*mm),pageCompression=1)
-    c.setTitle('Nexon Labs — modelo B aprovado, referência visual')
+    c.setTitle('ATRIA — modelo personalizado, referência visual')
     for art,color in ((face,NAVY),(back,'white')):
         c.setFillColor(color);c.rect(0,0,96*mm,56*mm,stroke=0,fill=1)
         iw,ih=art.size
