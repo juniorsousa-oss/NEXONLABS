@@ -407,12 +407,41 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organ
 
     def member_data(db,member):
         brand_name='ATRIA'
+        brand_slug='atria'
+        primary='#0B2D4A'
+        secondary='#14B8A6'
+        use_custom=False
         if Organization is not None:
             organization=db.get(Organization,org_id(db))
             if organization is not None:
                 brand_name=organization.name
+                brand_slug=organization.slug
+                primary=organization.primary_color or primary
+                secondary=organization.secondary_color or secondary
+                use_custom=bool(organization.use_custom_brand)
         return dict(name=member.name,role=member.role,email=member.email,
-                    _brand_name=brand_name,**extra(db,member))
+                    _brand_name=brand_name,_brand_slug=brand_slug,
+                    _primary_color=primary,_secondary_color=secondary,
+                    _use_custom_brand=use_custom,**extra(db,member))
+
+    def branding_data(db,data):
+        from app import OrganizationBrandAsset, ProductBrandAsset
+        custom=bool(data.get('_use_custom_brand'))
+        organization_id=org_id(db)
+        def organization_asset(kind):
+            if not custom:return None
+            row=db.scalar(select(OrganizationBrandAsset).where(
+                OrganizationBrandAsset.organization_id==organization_id,
+                OrganizationBrandAsset.kind==kind
+            ).limit(1))
+            return row.image if row is not None else None
+        def product_asset(kind):
+            row=db.get(ProductBrandAsset,kind)
+            return row.image if row is not None else None
+        return {
+            'logo':organization_asset('logo') or product_asset('logo'),
+            'logo_dark':organization_asset('logo_dark') or organization_asset('logo') or product_asset('logo_dark') or product_asset('logo'),
+        }
 
     def sync(db,member,data):
         saved=db.get(MemberBrand,member.id)
@@ -442,15 +471,11 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organ
             raise HTTPException(422,'A assinatura está disponível em PNG ou HTML.')
         member=member_or_404(db,member_id)
         data=member_data(db,member)
-        # Nunca mostrar a reconstrução aproximada em produção quando o layout
-        # aprovado não estiver instalado. Somente a matriz original é aceita.
         from approved_template import cached_faces as approved_faces, draw_personalized, encode as approved_png
         from approved_template import signature_html as approved_html, card_pdf as approved_pdf
         from app import ApprovedArtwork
-        from tenant_module import NEXON_LABS_ORG_ID
-        # A matriz histórica é exclusiva da Nexon Labs. Outras organizações usam
-        # o layout padrão até a fase de branding por cliente.
-        source=db.get(ApprovedArtwork,1) if org_id(db)==NEXON_LABS_ORG_ID else None
+        source=db.get(ApprovedArtwork,org_id(db))
+        branding=branding_data(db,data)
         def generate():
             if source is not None:
                 parts=approved_faces(source.image)
@@ -464,8 +489,8 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organ
                     return approved_html(data,png).encode('utf-8'),'text/html; charset=utf-8','assinatura'
                 return png,'image/png',kind
             if kind=='card':
-                return card_pdf(data),'application/pdf','cartao'
-            art=render(data,kind)
+                return card_pdf(data,branding),'application/pdf','cartao'
+            art=render(data,kind,branding)
             png=image_png(art)
             if format=='html':
                 return signature_html(data,png).encode('utf-8'),'text/html; charset=utf-8','assinatura'
@@ -476,7 +501,9 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organ
         # A frente não contém dados pessoais: a mesma arte aprovada é
         # compartilhada entre os colaboradores no cache do servidor.
         cache_data={} if kind=='front' and source is not None else data
-        key=artifact_key(cache_data,source.image if source is not None else None,kind,format)
+        brand_bytes=(branding.get('logo') or b'')+(branding.get('logo_dark') or b'')
+        reference=(source.image if source is not None else b'')+hashlib.sha256(brand_bytes).digest()
+        key=artifact_key(cache_data,reference,kind,format)
         content,media,filename,etag=cached_artifact(key,generate)
         common={'ETag':etag,'Vary':'Cookie',
                 'Cache-Control':'private, no-cache, must-revalidate',
@@ -487,9 +514,10 @@ def install_brand_kit(app,Base,DB,engine,authorized,log,Member,member_dict,Organ
             return Response(status_code=304,headers=common)
         safe=re.sub(r'[^a-z0-9]+','-',member.name.lower()).strip('-') or 'colaborador'
         ext='pdf' if format=='pdf' else 'html' if format=='html' else 'png'
+        prefix=re.sub(r'[^a-z0-9]+','-',str(data.get('_brand_slug') or 'atria').lower()).strip('-') or 'atria'
         return Response(content=content,media_type=media,headers={
             **common,
-            'Content-Disposition':f'attachment; filename="nexonlabs_{safe}_{filename}.{ext}"'
+            'Content-Disposition':f'attachment; filename="{prefix}_{safe}_{filename}.{ext}"'
         })
 
     return MemberBrand,extra,sync
