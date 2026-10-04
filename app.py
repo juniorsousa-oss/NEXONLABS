@@ -161,8 +161,20 @@ class ProductBrandAsset(Base):
     image: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
-Base.metadata.create_all(engine, tables=[AccountPhoto.__table__, OrganizationBrandAsset.__table__, ProductBrandAsset.__table__])
+class ProductSettings(Base):
+    __tablename__ = 'product_settings'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    primary_color: Mapped[str] = mapped_column(String(16), default='#0B2D4A', nullable=False)
+    secondary_color: Mapped[str] = mapped_column(String(16), default='#14B8A6', nullable=False)
+    layout_version: Mapped[str] = mapped_column(String(32), default='atria-v1', nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+Base.metadata.create_all(engine, tables=[AccountPhoto.__table__, OrganizationBrandAsset.__table__, ProductBrandAsset.__table__, ProductSettings.__table__])
 ensure_organization_columns(engine, ['app_account_photos'], NEXON_LABS_ORG_ID)
+with DB() as db:
+    if db.get(ProductSettings,1) is None:
+        db.add(ProductSettings(id=1))
+        db.commit()
 
 Status = Literal['planejamento', 'em_andamento', 'concluido']
 
@@ -489,6 +501,15 @@ class OrganizationBrandSettingsIn(BaseModel):
     def normalize_color(cls, value: str) -> str:
         return value.upper()
 
+class ProductBrandSettingsIn(BaseModel):
+    primary_color: str = Field(pattern=r'^#[0-9A-Fa-f]{6}$')
+    secondary_color: str = Field(pattern=r'^#[0-9A-Fa-f]{6}$')
+
+    @field_validator('primary_color', 'secondary_color')
+    @classmethod
+    def normalize_product_color(cls, value: str) -> str:
+        return value.upper()
+
 class OrganizationBrandAssetIn(BaseModel):
     image_data: str = Field(min_length=32, max_length=4_200_000)
 
@@ -572,6 +593,7 @@ PRODUCT_BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark'}
 
 def product_brand_payload(db: Session):
     kinds = set(db.scalars(select(ProductBrandAsset.kind)).all())
+    settings = db.get(ProductSettings,1) or ProductSettings(id=1)
     return {
         'assets': {kind: kind in kinds for kind in sorted(PRODUCT_BRAND_ASSET_KINDS)},
         'asset_urls': {
@@ -580,6 +602,9 @@ def product_brand_payload(db: Session):
         },
         'name': 'ATRIA',
         'manufacturer': 'Nexon Labs',
+        'primary_color': settings.primary_color,
+        'secondary_color': settings.secondary_color,
+        'layout_version': settings.layout_version,
     }
 
 def organization_brand_payload(db: Session, organization):
@@ -664,13 +689,25 @@ def decode_brand_asset(kind: str, image_data: str):
     return raw, mime_type
 
 def product_brand_admin(request: Request):
-    current = admin_only(request)
-    if current['organization_id'] != NEXON_LABS_ORG_ID:
+    current = authorized(request)
+    if not current.get('platform_admin'):
         raise HTTPException(404, 'Recurso não encontrado.')
     return current
 
 @app.get('/api/product-brand')
 def get_product_brand(db: Session = Depends(public_session)):
+    return product_brand_payload(db)
+
+@app.put('/api/product-brand', dependencies=[Depends(product_brand_admin)])
+def update_product_brand(data: ProductBrandSettingsIn, db: Session = Depends(public_session)):
+    settings=db.get(ProductSettings,1)
+    if settings is None:
+        settings=ProductSettings(id=1)
+        db.add(settings)
+    settings.primary_color=data.primary_color
+    settings.secondary_color=data.secondary_color
+    settings.updated_at=datetime.now(timezone.utc)
+    db.commit()
     return product_brand_payload(db)
 
 @app.get('/api/product-brand/assets/{kind}')
@@ -955,6 +992,7 @@ def state(request: Request, db: Session = Depends(session)):
         user=current['name'],
         user_id=current['id'],
         user_role=current['role'],
+        platform_admin=bool(current.get('platform_admin')),
         organization=organization_brand_payload(db, organization) if organization else None,
         product_brand=product_brand_payload(db),
         has_photo=has_photo,

@@ -13,7 +13,7 @@ import secrets
 import time
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, select, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, select, func, inspect, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 ITERATIONS = 310_000
@@ -48,6 +48,7 @@ def setup_accounts(Base, engine, DB, default_organization_id=1):
         name: Mapped[str] = mapped_column(String(120), nullable=False)
         password_hash: Mapped[str] = mapped_column(String(250), nullable=False)
         role: Mapped[str] = mapped_column(String(24), default="usuario", nullable=False)
+        platform_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
         active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
         session_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
         created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -56,6 +57,11 @@ def setup_accounts(Base, engine, DB, default_organization_id=1):
     # Bancos históricos já possuem app_accounts: create_all não adiciona colunas.
     from tenant_module import ensure_organization_columns
     ensure_organization_columns(engine, ["app_accounts"], default_organization_id)
+
+    columns={column["name"] for column in inspect(engine).get_columns("app_accounts")}
+    if "platform_admin" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE app_accounts ADD COLUMN platform_admin BOOLEAN NOT NULL DEFAULT FALSE"))
 
     with DB() as db:
         if db.scalar(select(func.count()).select_from(Account)) == 0:
@@ -67,14 +73,25 @@ def setup_accounts(Base, engine, DB, default_organization_id=1):
                 organization_id=default_organization_id,
                 name=first_name[:120],
                 password_hash=hash_password(first_password),
-                role="admin"
+                role="admin",
+                platform_admin=True,
             ))
             db.commit()
+        if not db.scalar(select(func.count()).select_from(Account).where(Account.platform_admin.is_(True))):
+            first_admin=db.scalar(select(Account).where(
+                Account.organization_id==default_organization_id,
+                Account.role=="admin",
+                Account.active.is_(True),
+            ).order_by(Account.id).limit(1))
+            if first_admin is not None:
+                first_admin.platform_admin=True
+                db.commit()
     return Account
 
 def public(account):
     return {"id": account.id, "organization_id": account.organization_id,
             "name": account.name, "role": account.role,
+            "platform_admin": bool(account.platform_admin),
             "active": account.active, "created_at":account.created_at.isoformat() if account.created_at else None}
 
 def find_by_password(db, Account, password: str):
