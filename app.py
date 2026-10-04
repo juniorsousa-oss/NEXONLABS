@@ -44,6 +44,7 @@ class Base(DeclarativeBase):
 from tenant_module import (
     NEXON_LABS_ORG_ID,
     ATRIA_DEMO_ORG_ID,
+    ATRIA_PLATFORM_ORG_ID,
     ensure_organization_columns,
     ensure_member_tenant_uniqueness,
     organization_public,
@@ -618,6 +619,7 @@ def organization_brand_payload(db: Session, organization):
         for kind in sorted(BRAND_ASSET_KINDS)
     }
     payload['is_demo'] = organization.id == ATRIA_DEMO_ORG_ID
+    payload['is_platform'] = organization.id == ATRIA_PLATFORM_ORG_ID
     payload['signature'] = 'Powered by ATRIA · by Nexon Labs'
     return payload
 
