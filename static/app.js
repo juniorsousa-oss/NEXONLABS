@@ -47,7 +47,7 @@ function applyOrganizationBrand(){
     if(logo){
       customLogo.onload=()=>{defaultBrand.hidden=true;customLogo.hidden=false};
       customLogo.onerror=()=>{customLogo.hidden=true;defaultBrand.hidden=false};
-      customLogo.src=logo+(logo.includes('?')?'&':'?')+'v='+(state.product_brand?.assets?.logo_dark||state.product_brand?.assets?.logo?1:0);
+      customLogo.src=logo;
     }
   }
   const orgLabel=$('#profile-organization');
@@ -58,8 +58,11 @@ function applyOrganizationBrand(){
     signature.innerHTML=custom?'POWERED BY ATRIA<br>BY NEXON LABS':'GESTÃO INTEGRADA';
   }
   const favicon=document.querySelector('link[rel="icon"]');
-  const faviconUrl=custom&&brandAssetUrl('favicon')?brandAssetUrl('favicon'):(productBrandAssetUrl('favicon')||'/static/logo.svg?v=2');
-  if(favicon)favicon.href=faviconUrl;
+  const faviconUrl=custom&&brandAssetUrl('favicon')?brandAssetUrl('favicon'):productBrandAssetUrl('favicon');
+  if(favicon){
+    if(faviconUrl)favicon.href=faviconUrl;
+    else favicon.removeAttribute('href');
+  }
 }
 function fileAsDataUrl(file){
   return new Promise((resolve,reject)=>{
@@ -173,10 +176,14 @@ function platformAdminPage(){
   const brand=state.product_brand||{};
   const primary=brand.primary_color||ATRIA_BRAND.primary;
   const secondary=brand.secondary_color||ATRIA_BRAND.secondary;
+  const readiness=brand.brand_ready
+    ?'<div class="brand-locked-note"><strong>Padrão base completo</strong><span>Login, sidebar e favicon possuem os ativos oficiais necessários.</span></div>'
+    :'<div class="brand-locked-note"><strong>Padrão base incompleto</strong><span>Cadastre pelo menos a Logo ATRIA para fundo escuro e o Favicon oficial. Enquanto faltarem, o ATRIA usa apenas um fallback tipográfico e não reutiliza a marca antiga.</span></div>';
   return heading('Administração ATRIA','Defina o padrão global do produto. Organizações sem personalização herdam estas configurações automaticamente.')+
     '<section class="panel organization-brand-panel product-brand-panel"><div class="panel-head"><div><h2>Padrão oficial do produto</h2>'+
     '<p class="muted">O ATRIA Demo usa este padrão integralmente. Novos clientes recebem o mesmo layout e identidade-base, podendo sobrescrever apenas os itens liberados para a organização.</p></div>'+
     '<span class="brand-mode-badge">Global</span></div>'+
+    readiness+
     '<form id="product-brand-form" class="organization-brand-form">'+
       '<div class="brand-color-grid"><label>Cor principal padrão<div><input type="color" name="primary_color" value="'+esc(primary)+'"><code>'+esc(primary)+'</code></div></label>'+
       '<label>Cor de destaque padrão<div><input type="color" name="secondary_color" value="'+esc(secondary)+'"><code>'+esc(secondary)+'</code></div></label></div>'+
