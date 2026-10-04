@@ -55,7 +55,7 @@ def setup_accounts(Base, engine, DB, default_organization_id=1):
 
     Base.metadata.create_all(engine, tables=[Account.__table__])
     # Bancos históricos já possuem app_accounts: create_all não adiciona colunas.
-    from tenant_module import ensure_organization_columns
+    from tenant_module import ensure_organization_columns, ATRIA_PLATFORM_ORG_ID
     ensure_organization_columns(engine, ["app_accounts"], default_organization_id)
 
     columns={column["name"] for column in inspect(engine).get_columns("app_accounts")}
@@ -74,18 +74,67 @@ def setup_accounts(Base, engine, DB, default_organization_id=1):
                 name=first_name[:120],
                 password_hash=hash_password(first_password),
                 role="admin",
-                platform_admin=True,
+                platform_admin=False,
             ))
             db.commit()
-        if not db.scalar(select(func.count()).select_from(Account).where(Account.platform_admin.is_(True))):
-            first_admin=db.scalar(select(Account).where(
-                Account.organization_id==default_organization_id,
-                Account.role=="admin",
+
+        platform_password = os.getenv("PLATFORM_ADMIN_PASSWORD", "").strip()
+        platform_name = os.getenv("PLATFORM_ADMIN_NAME", "Administrador ATRIA").strip() or "Administrador ATRIA"
+
+        if platform_password:
+            if len(platform_password) < 8:
+                raise RuntimeError("PLATFORM_ADMIN_PASSWORD deve ter pelo menos 8 caracteres.")
+            platform_account = db.scalar(select(Account).where(
+                Account.organization_id == ATRIA_PLATFORM_ORG_ID,
+                Account.platform_admin.is_(True),
+            ).order_by(Account.id).limit(1))
+            duplicate = next((
+                account for account in db.scalars(select(Account)).all()
+                if account.id != getattr(platform_account, "id", None)
+                and verify_password(platform_password, account.password_hash)
+            ), None)
+            if duplicate is not None:
+                raise RuntimeError("PLATFORM_ADMIN_PASSWORD precisa ser exclusiva e não pode repetir a senha de outro usuário.")
+
+            if platform_account is None:
+                platform_account = Account(
+                    organization_id=ATRIA_PLATFORM_ORG_ID,
+                    name=platform_name[:120],
+                    password_hash=hash_password(platform_password),
+                    role="admin",
+                    platform_admin=True,
+                    active=True,
+                )
+                db.add(platform_account)
+                db.flush()
+            else:
+                platform_account.name = platform_name[:120]
+                platform_account.role = "admin"
+                platform_account.active = True
+                platform_account.platform_admin = True
+                if not verify_password(platform_password, platform_account.password_hash):
+                    platform_account.password_hash = hash_password(platform_password)
+                    platform_account.session_version += 1
+
+            for account in db.scalars(select(Account).where(Account.id != platform_account.id)).all():
+                if account.platform_admin:
+                    account.platform_admin = False
+                    account.session_version += 1
+            db.commit()
+        else:
+            active_platform_admin = db.scalar(select(Account).where(
+                Account.platform_admin.is_(True),
                 Account.active.is_(True),
             ).order_by(Account.id).limit(1))
-            if first_admin is not None:
-                first_admin.platform_admin=True
-                db.commit()
+            if active_platform_admin is None:
+                first_admin=db.scalar(select(Account).where(
+                    Account.organization_id==default_organization_id,
+                    Account.role=="admin",
+                    Account.active.is_(True),
+                ).order_by(Account.id).limit(1))
+                if first_admin is not None:
+                    first_admin.platform_admin=True
+                    db.commit()
     return Account
 
 def public(account):

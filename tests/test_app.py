@@ -3,21 +3,25 @@ import tempfile
 os.environ['DATABASE_URL'] = 'sqlite:///' + tempfile.mkstemp(prefix='nexon_test_', suffix='.db')[1]
 os.environ['APP_PASSWORD'] = 'test-password'
 os.environ['ATRIA_DEMO_PASSWORD'] = 'demo-test-password'
+os.environ['PLATFORM_ADMIN_NAME'] = 'Administrador ATRIA'
+os.environ['PLATFORM_ADMIN_PASSWORD'] = 'platform-test-password'
 os.environ['SESSION_SECRET'] = 'test-key-with-sufficient-length'
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 import time
-from sqlalchemy import event
+from sqlalchemy import event, select
 from accounts_module import SESSION_IDLE_TIMEOUT_SECONDS
-from app import app, DB, engine, Organization, OrganizationBrandAsset, ProductBrandAsset, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID
+from app import app, DB, engine, Organization, OrganizationBrandAsset, ProductBrandAsset, Project, Account, hash_password, NEXON_LABS_ORG_ID, ATRIA_DEMO_ORG_ID, ATRIA_PLATFORM_ORG_ID
 
 
 def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
     with DB() as db:
         nexon=db.get(Organization,NEXON_LABS_ORG_ID)
         demo=db.get(Organization,ATRIA_DEMO_ORG_ID)
+        platform=db.get(Organization,ATRIA_PLATFORM_ORG_ID)
         assert nexon is not None and nexon.slug=='nexon-labs'
         assert demo is not None and demo.slug=='atria-demo'
+        assert platform is not None and platform.slug=='atria-platform'
         first_account=db.query(Account).order_by(Account.id).first()
         assert first_account is not None
         assert first_account.organization_id==NEXON_LABS_ORG_ID
@@ -27,7 +31,7 @@ def test_multi_tenant_foundation_is_seeded_and_current_data_defaults_to_nexon():
         state=c.get('/api/state')
         assert state.status_code==200,state.text
         assert state.json()['organization']['slug']=='nexon-labs'
-        assert state.json()['platform_admin'] is True
+        assert state.json()['platform_admin'] is False
         created=c.post('/api/projects',json={'name':'Projeto multiempresa base'})
         assert created.status_code==201,created.text
         project_id=created.json()['id']
@@ -198,9 +202,18 @@ def test_product_brand_is_global_and_only_platform_admin_can_change_it():
 
     with TestClient(app) as nexon:
         assert nexon.post('/api/login',json={'password':'test-password'}).status_code==200
-        saved=nexon.put('/api/product-brand/assets/favicon',json={'image_data':image_data})
+        assert nexon.put('/api/product-brand/assets/favicon',json={'image_data':image_data}).status_code==404
+
+    with TestClient(app) as platform:
+        login=platform.post('/api/login',json={'password':'platform-test-password'})
+        assert login.status_code==200,login.text
+        state=platform.get('/api/state').json()
+        assert state['platform_admin'] is True
+        assert state['organization']['slug']=='atria-platform'
+        assert state['organization']['is_platform'] is True
+        saved=platform.put('/api/product-brand/assets/favicon',json={'image_data':image_data})
         assert saved.status_code==200,saved.text
-        assert nexon.get('/api/product-brand').json()['assets']['favicon'] is True
+        assert platform.get('/api/product-brand').json()['assets']['favicon'] is True
 
     with TestClient(app) as anonymous:
         asset=anonymous.get('/api/product-brand/assets/favicon')
@@ -216,6 +229,23 @@ def test_product_brand_is_global_and_only_platform_admin_can_change_it():
         if row is not None:
             db.delete(row)
             db.commit()
+
+
+def test_platform_admin_is_a_dedicated_profile_not_a_client_profile():
+    with DB() as db:
+        platform_accounts=db.scalars(select(Account).where(Account.platform_admin.is_(True))).all()
+        assert len(platform_accounts)==1
+        account=platform_accounts[0]
+        assert account.organization_id==ATRIA_PLATFORM_ORG_ID
+        assert account.name=='Administrador ATRIA'
+
+    with TestClient(app) as c:
+        assert c.post('/api/login',json={'password':'platform-test-password'}).status_code==200
+        state=c.get('/api/state').json()
+        assert state['platform_admin'] is True
+        assert state['organization']['slug']=='atria-platform'
+        assert state['organization']['is_platform'] is True
+        assert state['organization']['use_custom_brand'] is False
 
 
 def test_regular_client_admin_cannot_change_atria_global_standard():

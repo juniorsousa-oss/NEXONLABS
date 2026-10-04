@@ -69,7 +69,7 @@ function fileAsDataUrl(file){
     reader.readAsDataURL(file);
   });
 }
-async function refresh(){try{Object.assign(state,await api('/state'));$('#display-name').textContent=state.user;const platformNav=$('#atria-platform-nav');if(platformNav)platformNav.hidden=!state.platform_admin;if(route==='administracao-atria'&&!state.platform_admin){route='inicio';history.replaceState(null,'','#inicio')}applyOrganizationBrand();const avatar=$('#avatar');avatar.textContent=initials(state.user);if(state.has_photo){const image=document.createElement('img');image.alt='';image.className='profile-avatar-image';image.onerror=()=>image.remove();image.src='/api/profile/avatar?updated='+Date.now();avatar.appendChild(image);}const alertCount=state.projects.filter(p=>p.status==='atrasado').length+state.tasks.filter(t=>!t.completed&&isLate(t.due_at)).length;$('#bell-dot').hidden=!alertCount;render()}catch(e){notice(e.message)}}
+async function refresh(){try{Object.assign(state,await api('/state'));$('#display-name').textContent=state.user;const platformContext=Boolean(state.organization?.is_platform);const platformNav=$('#atria-platform-nav');if(platformNav)platformNav.hidden=!state.platform_admin;document.querySelectorAll('.nav-link[data-route]').forEach(link=>{if(link.id==='atria-platform-nav')return;link.hidden=platformContext&&!['configuracoes'].includes(link.dataset.route)});document.querySelectorAll('.nav-section').forEach(section=>section.hidden=platformContext);if(route==='administracao-atria'&&!state.platform_admin){route='inicio';history.replaceState(null,'','#inicio')}if(platformContext&&!['administracao-atria','configuracoes'].includes(route)){route='administracao-atria';history.replaceState(null,'','#administracao-atria')}applyOrganizationBrand();const avatar=$('#avatar');avatar.textContent=initials(state.user);if(state.has_photo){const image=document.createElement('img');image.alt='';image.className='profile-avatar-image';image.onerror=()=>image.remove();image.src='/api/profile/avatar?updated='+Date.now();avatar.appendChild(image);}const alertCount=state.projects.filter(p=>p.status==='atrasado').length+state.tasks.filter(t=>!t.completed&&isLate(t.due_at)).length;$('#bell-dot').hidden=!alertCount;render()}catch(e){notice(e.message)}}
 function heading(title,description,button=''){return `<div class="simple-head"><div><h1>${esc(title)}</h1><p>${esc(description)}</p></div>${button}</div>`}
 const newProjectButton=()=>`<button class="primary" data-action="new-project">${icon('plus')} Novo projeto</button>`;
 function metric(name,value,type='folder',hint='Dados atuais'){return `<div class="metric"><div class="metric-heading"><div class="micon ${type==='check-circle'?'teal':''}">${icon(type)}</div><div><div class="num">${esc(value)}</div><div class="mlabel">${esc(name)}</div></div></div><div class="metric-foot"><span class="up">${icon('check-circle').replace('<svg','<svg style="width:13px;height:13px;vertical-align:-2px"')} Dados em tempo real</span>${esc(hint)}</div></div>`}
@@ -196,7 +196,7 @@ function platformAdminPage(){
 }
 function settingsPage(){
   const org=state.organization||{};
-  const admin=state.user_role==='admin',locked=Boolean(org.is_demo);
+  const admin=state.user_role==='admin',locked=Boolean(org.is_demo||org.is_platform);
   const basePrimary=state.product_brand?.primary_color||ATRIA_BRAND.primary;
   const baseSecondary=state.product_brand?.secondary_color||ATRIA_BRAND.secondary;
   const primary=org.use_custom_brand?(org.primary_color||basePrimary):basePrimary;
@@ -204,7 +204,7 @@ function settingsPage(){
   const identity='<section class="panel organization-brand-panel"><div class="panel-head"><div><h2>Identidade visual</h2>'+
     '<p class="muted">Marca da organização aplicada sem remover a assinatura do ATRIA e da Nexon Labs.</p></div>'+
     '<span class="brand-mode-badge">'+(locked?'Padrão ATRIA':org.use_custom_brand?'Personalizada':'Padrão ATRIA')+'</span></div>'+
-    (locked?'<div class="brand-locked-note"><strong>Ambiente de demonstração</strong><span>O ATRIA Demo permanece com a identidade oficial do produto.</span></div>':
+    (locked?'<div class="brand-locked-note"><strong>'+(org.is_platform?'Administração da plataforma':'Ambiente de demonstração')+'</strong><span>'+(org.is_platform?'Este perfil usa diretamente a identidade oficial do ATRIA e não possui personalização de cliente.':'O ATRIA Demo permanece com a identidade oficial do produto.')+'</span></div>':
     '<form id="organization-brand-form" class="organization-brand-form">'+
       '<label class="brand-enable"><input type="checkbox" name="use_custom_brand" '+(org.use_custom_brand?'checked':'')+' '+(!admin?'disabled':'')+'>'+
       '<span><strong>Usar identidade personalizada</strong><small>Ativa logo, favicon e cores próprias desta organização.</small></span></label>'+
