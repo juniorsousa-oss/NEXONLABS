@@ -5,13 +5,45 @@ const icon=(name)=>`<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]||p
 document.querySelectorAll('[data-icon]').forEach(n=>n.innerHTML=icon(n.dataset.icon));
 const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state={projects:[],tasks:[],members:[],activities:[],meetings:[],user:'Equipe ATRIA',auth_enabled:false};
-let route='inicio', filter='todos',query='',page=1,perPage=5,modalProject=null,toastTimer, menuPop=null,profileMenuPop=null,confirmResolver=null;
+let route='inicio', filter='todos',query='',page=1,perPage=5,modalProject=null,toastTimer, menuPop=null,profileMenuPop=null,notificationPop=null,confirmResolver=null;
 const expandedProjects=new Set();
 const statusText={planejamento:'Planejamento',em_andamento:'Em andamento',concluido:'Concluído',atrasado:'Atrasado'};
 const initials=s=>String(s||'NL').trim().split(/\s+/).map(n=>n[0]).slice(0,2).join('').toUpperCase();
 const shortDate=s=>s?new Date(s+'T12:00:00').toLocaleDateString('pt-BR'):'—';
 const dayMonth=s=>s?new Date(s+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).replace('.','').toUpperCase():'—';
 const isLate=s=>{const d=new Date();const local=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');return Boolean(s&&s<local)};
+const localIso=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
+const daysUntil=date=>{
+  if(!date)return null;
+  const today=new Date(localIso()+'T12:00:00');
+  const target=new Date(date+'T12:00:00');
+  return Math.round((target-today)/86400000);
+};
+function buildNotifications(){
+  const items=[];
+  const push=(type,title,message,target,id,date,iconName='calendar')=>items.push({type,title,message,target,id,date,iconName});
+  state.projects.filter(p=>p.status!=='concluido'&&p.due_at).forEach(p=>{
+    const days=daysUntil(p.due_at);
+    if(days<0||p.status==='atrasado')push('critical','Projeto atrasado',p.name+' · prazo '+shortDate(p.due_at),'projetos',p.id,p.due_at,'folder');
+    else if(days===0)push('warning','Entrega hoje',p.name+' vence hoje','projetos',p.id,p.due_at,'folder');
+    else if(days<=3)push('info','Entrega próxima',p.name+' · faltam '+days+' dia(s)','projetos',p.id,p.due_at,'folder');
+  });
+  state.tasks.filter(t=>!t.completed&&t.due_at).forEach(t=>{
+    const days=daysUntil(t.due_at),project=state.projects.find(p=>p.id===t.project_id);
+    const context=project?project.name+' · ':'';
+    if(days<0)push('critical','Tarefa atrasada',context+t.title+' · prazo '+shortDate(t.due_at),'tarefas',t.id,t.due_at,'check-circle');
+    else if(days===0)push('warning','Tarefa vence hoje',context+t.title,'tarefas',t.id,t.due_at,'check-circle');
+    else if(days<=2)push('info','Tarefa próxima do prazo',context+t.title+' · faltam '+days+' dia(s)','tarefas',t.id,t.due_at,'check-circle');
+  });
+  state.meetings.filter(m=>m.status==='agendada'&&m.meeting_date>=localIso()).forEach(m=>{
+    const days=daysUntil(m.meeting_date);
+    if(m.has_conflict)push('warning','Conflito de agenda',m.title+' · '+shortDate(m.meeting_date)+' às '+m.start_time,'reunioes',m.id,m.meeting_date,'calendar');
+    else if(days===0)push('info','Reunião hoje',m.start_time+' · '+m.title,'reunioes',m.id,m.meeting_date,'calendar');
+    else if(days===1)push('info','Reunião amanhã',m.start_time+' · '+m.title,'reunioes',m.id,m.meeting_date,'calendar');
+  });
+  const rank={critical:0,warning:1,info:2};
+  return items.sort((a,b)=>(rank[a.type]-rank[b.type])||String(a.date||'').localeCompare(String(b.date||''))||a.title.localeCompare(b.title));
+}
 function notice(message){const t=$('#toast');t.textContent=message;t.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('visible'),3500)}
 async function api(path,options={}){const r=await fetch('/api'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){location.href='/';throw Error('Sessão encerrada.')}if(!r.ok){let p={};try{p=await r.json()}catch{}const detail=Array.isArray(p.detail)?p.detail.map(x=>x.msg).join('; '):p.detail;throw Error(detail||`Erro ${r.status}`)}return r.headers.get('content-type')?.includes('application/json')?r.json():r}
 const ATRIA_BRAND={primary:'#0B2D4A',secondary:'#14B8A6'};
@@ -75,7 +107,7 @@ function fileAsDataUrl(file){
     reader.readAsDataURL(file);
   });
 }
-async function refresh(){try{Object.assign(state,await api('/state'));$('#display-name').textContent=state.user;const platformContext=Boolean(state.organization?.is_platform);const platformNav=$('#atria-platform-nav');if(platformNav)platformNav.hidden=!state.platform_admin;document.querySelectorAll('.nav-link[data-route]').forEach(link=>{if(link.id==='atria-platform-nav')return;link.hidden=platformContext&&!['configuracoes'].includes(link.dataset.route)});document.querySelectorAll('.nav-section').forEach(section=>section.hidden=platformContext);if(route==='administracao-atria'&&!state.platform_admin){route='inicio';history.replaceState(null,'','#inicio')}if(platformContext&&!['administracao-atria','configuracoes'].includes(route)){route='administracao-atria';history.replaceState(null,'','#administracao-atria')}applyOrganizationBrand();const avatar=$('#avatar');avatar.textContent=initials(state.user);if(state.has_photo){const image=document.createElement('img');image.alt='';image.className='profile-avatar-image';image.onerror=()=>image.remove();image.src='/api/profile/avatar?updated='+Date.now();avatar.appendChild(image);}const alertCount=state.projects.filter(p=>p.status==='atrasado').length+state.tasks.filter(t=>!t.completed&&isLate(t.due_at)).length;$('#bell-dot').hidden=!alertCount;render()}catch(e){notice(e.message)}}
+async function refresh(){try{Object.assign(state,await api('/state'));$('#display-name').textContent=state.user;const platformContext=Boolean(state.organization?.is_platform);const platformNav=$('#atria-platform-nav');if(platformNav)platformNav.hidden=!state.platform_admin;document.querySelectorAll('.nav-link[data-route]').forEach(link=>{if(link.id==='atria-platform-nav')return;link.hidden=platformContext&&!['configuracoes'].includes(link.dataset.route)});document.querySelectorAll('.nav-section').forEach(section=>section.hidden=platformContext);if(route==='administracao-atria'&&!state.platform_admin){route='inicio';history.replaceState(null,'','#inicio')}if(platformContext&&!['administracao-atria','configuracoes'].includes(route)){route='administracao-atria';history.replaceState(null,'','#administracao-atria')}applyOrganizationBrand();const avatar=$('#avatar');avatar.textContent=initials(state.user);if(state.has_photo){const image=document.createElement('img');image.alt='';image.className='profile-avatar-image';image.onerror=()=>image.remove();image.src='/api/profile/avatar?updated='+Date.now();avatar.appendChild(image);}const alertCount=buildNotifications().length;$('#bell-dot').hidden=!alertCount;$('#bell').setAttribute('aria-label',alertCount?'Notificações, '+alertCount+' alerta(s)':'Notificações, nenhum alerta');render()}catch(e){notice(e.message)}}
 function heading(title,description,button=''){return `<div class="simple-head"><div><h1>${esc(title)}</h1><p>${esc(description)}</p></div>${button}</div>`}
 const newProjectButton=()=>`<button class="primary" data-action="new-project">${icon('plus')} Novo projeto</button>`;
 function metric(name,value,type='folder',hint='Dados atuais'){return `<div class="metric"><div class="metric-heading"><div class="micon ${type==='check-circle'?'teal':''}">${icon(type)}</div><div><div class="num">${esc(value)}</div><div class="mlabel">${esc(name)}</div></div></div><div class="metric-foot"><span class="up">${icon('check-circle').replace('<svg','<svg style="width:13px;height:13px;vertical-align:-2px"')} Dados em tempo real</span>${esc(hint)}</div></div>`}
@@ -296,6 +328,24 @@ function memberForm(m){return window.NexonBrandUI.memberForm(m)}
 function formValues(form){return Object.fromEntries(new FormData(form).entries())}
 function closeMenu(){menuPop?.remove();menuPop=null}
 function closeProfileMenu(){profileMenuPop?.remove();profileMenuPop=null}
+function closeNotificationCenter(){notificationPop?.remove();notificationPop=null}
+function notificationCenterFor(target){
+  closeNotificationCenter();closeProfileMenu();closeMenu();
+  const alerts=buildNotifications(),rect=target.getBoundingClientRect();
+  notificationPop=document.createElement('section');
+  notificationPop.className='notification-center';
+  notificationPop.setAttribute('role','dialog');
+  notificationPop.setAttribute('aria-label','Central de notificações');
+  notificationPop.style.top=Math.min(rect.bottom+10,innerHeight-260)+'px';
+  notificationPop.style.right=Math.max(12,innerWidth-rect.right)+'px';
+  notificationPop.innerHTML='<div class="notification-center-head"><div><strong>Notificações</strong><small>'+alerts.length+' alerta(s) ativo(s)</small></div>'+
+    '<button type="button" class="notification-close" data-action="close-notifications" aria-label="Fechar">×</button></div>'+
+    '<div class="notification-center-list">'+(alerts.length?alerts.map(item=>'<button type="button" class="notification-item '+item.type+'" data-action="notification-open" data-target="'+item.target+'" data-id="'+item.id+'">'+
+      '<span class="notification-item-icon">'+icon(item.iconName)+'</span><span class="notification-item-copy"><strong>'+esc(item.title)+'</strong><small>'+esc(item.message)+'</small></span>'+icon('chevron-right')+'</button>').join(''):
+      '<div class="notification-empty">'+icon('check-circle')+'<strong>Tudo em dia</strong><span>Nenhum alerta exige sua atenção agora.</span></div>')+'</div>'+
+    '<div class="notification-center-foot"><button type="button" class="small-link" data-route="cronograma">Abrir cronograma completo</button></div>';
+  document.body.append(notificationPop);
+}
 function profileMenuFor(target){
   closeProfileMenu();
   const rect=target.getBoundingClientRect();
@@ -311,7 +361,7 @@ function profileMenuFor(target){
 }
 function menuFor(target,p){closeMenu();const rect=target.getBoundingClientRect();menuPop=document.createElement('div');menuPop.className='tooltip-menu';menuPop.style.left=Math.max(8,Math.min(rect.left-142,innerWidth-185))+'px';menuPop.style.top=Math.min(rect.bottom+4,innerHeight-105)+'px';menuPop.innerHTML=`<button data-action="edit-project" data-id="${p.id}">Editar projeto</button>${p.client_site?'<a class="project-menu-site" href="'+esc(p.client_site)+'" target="_blank" rel="noopener noreferrer">Abrir site do cliente ↗</a>':''}${p.status==='concluido'?'<button data-action="reopen-project" data-id="'+p.id+'">Reabrir projeto</button>':'<button data-action="complete-project" data-id="'+p.id+'">Concluir projeto</button>'}<button data-action="delete-project" data-id="${p.id}">Excluir projeto</button>`;document.body.append(menuPop)}
 async function safeWrite(callback){try{await callback();closeModal();await refresh()}catch(e){notice(e.message)}}
-document.addEventListener('click',async e=>{const confirmEl=e.target.closest('[data-confirm-choice]');if(confirmEl){finishConfirm(confirmEl.dataset.confirmChoice==='yes');return}const filterEl=e.target.closest('[data-filter]');if(filterEl){filter=filterEl.dataset.filter;page=1;render();return}const pageEl=e.target.closest('[data-page]');if(pageEl){page=Number(pageEl.dataset.page);render();return}const button=e.target.closest('[data-action],[data-route]');if(!button){if(menuPop&&!e.target.closest('.tooltip-menu'))closeMenu();if(profileMenuPop&&!e.target.closest('.profile-menu')&&!e.target.closest('#profile'))closeProfileMenu();return}if(button.dataset.route){go(button.dataset.route);return}const action=button.dataset.action,id=Number(button.dataset.id);if(!button.closest('.tooltip-menu')&&action!=='project-menu')closeMenu();switch(action){case 'close-modal':closeModal();break;case 'profile-settings':closeProfileMenu();go('configuracoes');break;case 'toggle-project-tasks':if(expandedProjects.has(id))expandedProjects.delete(id);else expandedProjects.add(id);render();break;case 'new-project':projectForm(null);break;case 'edit-project':projectForm(state.projects.find(p=>p.id===id));break;case 'project-menu':menuFor(button,state.projects.find(p=>p.id===id));break;case 'new-task':taskForm(null,button.dataset.projectId);break;case 'edit-task':taskForm(state.tasks.find(t=>t.id===id));break;case 'new-member':memberForm();break;case 'complete-project':{const p=state.projects.find(p=>p.id===id);if(!p)break;const pending=state.tasks.filter(t=>t.project_id===id&&!t.completed);if(pending.length){notice('Conclua antes as '+pending.length+' tarefa(s) pendente(s) do projeto.');break;}if(await confirmAction('Concluir o projeto '+p.name+'? Ele sairá dos projetos ativos.','Concluir projeto','Concluir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'PUT',body:JSON.stringify({...p,status:'concluido',progress:100})});notice('Projeto concluído.');});break;}
+document.addEventListener('click',async e=>{const confirmEl=e.target.closest('[data-confirm-choice]');if(confirmEl){finishConfirm(confirmEl.dataset.confirmChoice==='yes');return}const filterEl=e.target.closest('[data-filter]');if(filterEl){filter=filterEl.dataset.filter;page=1;render();return}const pageEl=e.target.closest('[data-page]');if(pageEl){page=Number(pageEl.dataset.page);render();return}const button=e.target.closest('[data-action],[data-route]');if(!button){if(menuPop&&!e.target.closest('.tooltip-menu'))closeMenu();if(profileMenuPop&&!e.target.closest('.profile-menu')&&!e.target.closest('#profile'))closeProfileMenu();if(notificationPop&&!e.target.closest('.notification-center')&&!e.target.closest('#bell'))closeNotificationCenter();return}if(button.dataset.route){go(button.dataset.route);return}const action=button.dataset.action,id=Number(button.dataset.id);if(!button.closest('.tooltip-menu')&&action!=='project-menu')closeMenu();switch(action){case 'close-modal':closeModal();break;case 'close-notifications':closeNotificationCenter();break;case 'notification-open':{const target=button.dataset.target;closeNotificationCenter();go(target);if(target==='projetos'){const project=state.projects.find(p=>p.id===id);if(project)setTimeout(()=>projectForm(project),0)}else if(target==='tarefas'){const task=state.tasks.find(t=>t.id===id);if(task)setTimeout(()=>taskForm(task),0)}break;}case 'profile-settings':closeProfileMenu();go('configuracoes');break;case 'toggle-project-tasks':if(expandedProjects.has(id))expandedProjects.delete(id);else expandedProjects.add(id);render();break;case 'new-project':projectForm(null);break;case 'edit-project':projectForm(state.projects.find(p=>p.id===id));break;case 'project-menu':menuFor(button,state.projects.find(p=>p.id===id));break;case 'new-task':taskForm(null,button.dataset.projectId);break;case 'edit-task':taskForm(state.tasks.find(t=>t.id===id));break;case 'new-member':memberForm();break;case 'complete-project':{const p=state.projects.find(p=>p.id===id);if(!p)break;const pending=state.tasks.filter(t=>t.project_id===id&&!t.completed);if(pending.length){notice('Conclua antes as '+pending.length+' tarefa(s) pendente(s) do projeto.');break;}if(await confirmAction('Concluir o projeto '+p.name+'? Ele sairá dos projetos ativos.','Concluir projeto','Concluir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'PUT',body:JSON.stringify({...p,status:'concluido',progress:100})});notice('Projeto concluído.');});break;}
 case 'reopen-project':{const p=state.projects.find(p=>p.id===id);if(!p)break;if(await confirmAction('Reabrir o projeto '+p.name+'?','Reabrir projeto','Reabrir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'PUT',body:JSON.stringify({...p,status:'em_andamento',progress:Math.min(99,Number(p.progress||0))})});notice('Projeto reaberto.');});break;}
 case 'remove-product-brand-asset':{const kind=button.dataset.kind;if(await confirmAction('Remover este arquivo da identidade oficial do ATRIA?','Remover arquivo oficial','Remover')){try{await api('/product-brand/assets/'+kind,{method:'DELETE'});notice('Arquivo oficial removido.');await refresh()}catch(error){notice(error.message)}}break;}case 'restore-brand-default':if(await confirmAction('Restaurar a identidade visual padrão do ATRIA nesta organização?','Restaurar identidade','Restaurar')){try{for(const kind of ['logo','logo_dark','favicon','watermark'])if(state.organization?.assets?.[kind])await api('/organization/brand/assets/'+kind,{method:'DELETE'});const basePrimary=state.product_brand?.primary_color||ATRIA_BRAND.primary,baseSecondary=state.product_brand?.secondary_color||ATRIA_BRAND.secondary;await api('/organization/brand',{method:'PUT',body:JSON.stringify({primary_color:basePrimary,secondary_color:baseSecondary,use_custom_brand:false})});notice('Identidade padrão do ATRIA restaurada.');await refresh()}catch(error){notice(error.message)}}break;case 'remove-brand-asset':{const kind=button.dataset.kind;if(await confirmAction('Remover este arquivo da identidade visual?','Remover identidade','Remover')){try{await api('/organization/brand/assets/'+kind,{method:'DELETE'});notice('Arquivo removido.');await refresh()}catch(error){notice(error.message)}}break;}case 'delete-project':if(await confirmAction('Excluir o projeto e todas as tarefas dele? Esta ação não pode ser desfeita.','Excluir projeto','Excluir'))await safeWrite(async()=>{await api('/projects/'+id,{method:'DELETE'});notice('Projeto excluído.')});break;case 'delete-task':if(await confirmAction('Excluir esta tarefa?','Excluir tarefa','Excluir'))await safeWrite(async()=>{await api('/tasks/'+id,{method:'DELETE'});notice('Tarefa excluída.')});break;case 'delete-member':if(await confirmAction('Remover integrante da equipe?','Remover integrante','Remover'))await safeWrite(async()=>{await api('/members/'+id,{method:'DELETE'});notice('Integrante removido.')});break;case 'toggle-task':{const t=state.tasks.find(t=>t.id===id);await safeWrite(async()=>{await api('/tasks/'+id,{method:'PUT',body:JSON.stringify({...t,completed:button.checked})});notice('Tarefa atualizada.')});break}case 'export':window.location.assign('/api/export/projects.csv');break;case 'logout':closeProfileMenu();await api('/logout',{method:'POST'});location.assign('/');break;}}
 );
@@ -339,10 +389,10 @@ document.addEventListener('input',e=>{
   if(code)code.textContent=color.value.toUpperCase();
 });
 $('#global-search').addEventListener('input',e=>{query=e.target.value.trim();page=1;if(!['projetos','inicio','tarefas'].includes(route))go('projetos');else render()});
-$('#bell').addEventListener('click',()=>{const count=state.projects.filter(p=>p.status==='atrasado').length+state.tasks.filter(t=>!t.completed&&isLate(t.due_at)).length;notice(count?`${count} prazo(s) exigem atenção. Confira o cronograma.`:'Nenhuma pendência de prazo identificada.');if(count)go('cronograma')});
+$('#bell').addEventListener('click',e=>{e.stopPropagation();if(notificationPop){closeNotificationCenter();return}notificationCenterFor($('#bell'));});
 $('#profile').addEventListener('click',e=>{e.stopPropagation();if(profileMenuPop){closeProfileMenu();return}profileMenuFor($('#profile'));});
 $('#menu-toggle').addEventListener('click',()=>{const side=$('#sidebar');side.classList.toggle('open');if(side.classList.contains('open')){let overlay=document.createElement('div');overlay.className='mobile-overlay show';overlay.onclick=()=>{side.classList.remove('open');overlay.remove()};document.body.append(overlay)}else $('.mobile-overlay')?.remove()});
 window.addEventListener('hashchange',()=>{const target=location.hash.slice(1);if(['inicio','projetos','tarefas','equipe','cronograma','reunioes','orcamentos','chamados','relatorios','configuracoes','administracao-atria'].includes(target)&&target!==route)go(target)});
-window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeMenu();closeProfileMenu()}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeMenu();closeProfileMenu();closeNotificationCenter()}});
 if(['inicio','projetos','tarefas','equipe','cronograma','reunioes','orcamentos','chamados','relatorios','configuracoes','administracao-atria'].includes(location.hash.slice(1)))route=location.hash.slice(1);
 refresh();
