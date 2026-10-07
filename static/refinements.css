@@ -508,7 +508,7 @@ body{
 .meeting-calendar-legend span{display:inline-flex;align-items:center;gap:5px}
 .meeting-calendar-legend .legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .meeting-calendar-legend .legend-dot.meeting{background:#14b8a6}
-.meeting-calendar-legend .legend-dot.delivery{background:#167cdb}
+.meeting-calendar-legend .legend-dot.delivery-type{background:#167cdb}
 .meeting-day.has-delivery{box-shadow:inset 0 -3px 0 rgba(22,124,219,.18)}
 .meeting-delivery{
   display:block;
@@ -535,4 +535,86 @@ body{
   .project-task-footer,.project-task-empty{align-items:flex-start;flex-direction:column}
   .task-page-item{align-items:flex-start}
   .task-page-item>button{flex:none}
+}
+
+
+/* Central de notificações — alertas acionáveis no sino da barra superior. */
+.notification-center{
+  position:fixed;
+  z-index:82;
+  width:min(390px,calc(100vw - 24px));
+  max-height:min(620px,calc(100vh - 96px));
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid #dce6ef;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 22px 60px rgba(8,36,61,.18);
+}
+.notification-center-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:15px 16px 12px;
+  border-bottom:1px solid #edf2f6;
+}
+.notification-center-head>div{display:flex;flex-direction:column;gap:3px}
+.notification-center-head strong{color:var(--navy);font-size:14px}
+.notification-center-head small{color:#7b8da3;font-size:10px}
+.notification-close{
+  width:30px;height:30px;border:0;border-radius:50%;
+  background:#f1f5f8;color:#536d84;font-size:20px;line-height:1;
+}
+.notification-center-list{padding:7px;overflow:auto}
+.notification-item{
+  width:100%;
+  min-height:64px;
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr) 17px;
+  align-items:center;
+  gap:9px;
+  padding:9px 10px;
+  border:0;
+  border-radius:11px;
+  background:transparent;
+  color:#23445f;
+  text-align:left;
+}
+.notification-item:hover,.notification-item:focus-visible{background:#f5f9fc}
+.notification-item-icon{
+  width:34px;height:34px;border-radius:10px;
+  display:grid;place-items:center;
+  background:#edf5fb;color:#167cdb;
+}
+.notification-item-icon svg{width:17px;height:17px}
+.notification-item.critical .notification-item-icon{background:#fff0f2;color:#c43d4d}
+.notification-item.warning .notification-item-icon{background:#fff7e8;color:#b77718}
+.notification-item.info .notification-item-icon{background:#edf8f6;color:#078d78}
+.notification-item-copy{min-width:0}
+.notification-item-copy strong{display:block;font-size:11px;color:#173c5d}
+.notification-item-copy small{
+  display:block;margin-top:3px;color:#73869a;font-size:10px;line-height:1.35;
+  white-space:normal;overflow-wrap:anywhere;
+}
+.notification-item>svg{width:15px;height:15px;color:#9badbd}
+.notification-empty{
+  min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:22px;color:#71879b;
+}
+.notification-empty svg{width:28px;height:28px;color:#0ca58e}
+.notification-empty strong{margin-top:9px;color:#193f5f}
+.notification-empty span{font-size:10px;margin-top:4px}
+.notification-center-foot{
+  padding:10px 14px;
+  border-top:1px solid #edf2f6;
+  background:#fbfcfd;
+  text-align:right;
+}
+.notification-center-foot .small-link{
+  border:0;background:transparent;color:#0871d0;font-size:10px;font-weight:700;
+}
+@media(max-width:520px){
+  .notification-center{left:12px!important;right:12px!important;width:auto}
 }
