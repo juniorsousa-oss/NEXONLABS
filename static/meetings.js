@@ -94,19 +94,27 @@ window.NexonMeetings = (() => {
   function page(){
     const yyyy=month.getFullYear(),mm=month.getMonth(),first=new Date(yyyy,mm,1),offset=(first.getDay()+6)%7,length=new Date(yyyy,mm+1,0).getDate(),today=iso(new Date());
     const meetings=all().slice().sort((a,b)=>(a.meeting_date+a.start_time).localeCompare(b.meeting_date+b.start_time));
-    let calendar='<div class="meeting-weekdays">'+['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(d=>'<span>'+d+'</span>').join('')+'</div><div class="meeting-calendar">';
+    const deliveries=(state.projects||[]).filter(project=>project.due_at&&project.status!=='concluido')
+      .slice().sort((a,b)=>a.due_at.localeCompare(b.due_at));
+    let calendar='<div class="meeting-calendar-legend"><span><i class="legend-dot meeting"></i>Reunião</span><span><i class="legend-dot delivery"></i>Entrega de projeto</span></div>'+
+      '<div class="meeting-weekdays">'+['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(d=>'<span>'+d+'</span>').join('')+'</div><div class="meeting-calendar">';
     for(let i=0;i<offset;i++) calendar+='<span class="meeting-blank" aria-hidden="true"></span>';
     for(let day=1;day<=length;day++){
-      const d=yyyy+'-'+pad(mm+1)+'-'+pad(day),items=meetings.filter(m=>m.meeting_date===d),dayConflict=items.some(m=>m.has_conflict&&m.status!=='cancelada');
-      calendar+='<button type="button" class="meeting-day'+(d===today?' today':'')+(dayConflict?' has-conflict':'')+'" data-meeting-action="new" data-date="'+d+'" aria-label="Agendar reunião para '+display(d)+(dayConflict?' — há conflito de agenda':'')+'"><span class="meeting-number">'+day+'</span>'+
+      const d=yyyy+'-'+pad(mm+1)+'-'+pad(day),
+        items=meetings.filter(m=>m.meeting_date===d),
+        due=deliveries.filter(project=>project.due_at===d),
+        dayConflict=items.some(m=>m.has_conflict&&m.status!=='cancelada');
+      const extraCount=Math.max(0,items.length-2)+Math.max(0,due.length-1);
+      calendar+='<button type="button" class="meeting-day'+(d===today?' today':'')+(dayConflict?' has-conflict':'')+(due.length?' has-delivery':'')+'" data-meeting-action="new" data-date="'+d+'" aria-label="Agendar reunião para '+display(d)+(due.length?' — '+due.length+' entrega(s) de projeto':'')+(dayConflict?' — há conflito de agenda':'')+'"><span class="meeting-number">'+day+'</span>'+
         (dayConflict?'<span class="meeting-day-alert">CONFLITO</span>':'')+
+        due.slice(0,1).map(project=>'<span class="meeting-delivery" title="Entrega do projeto '+text(project.name)+'">Entrega · '+text(project.name)+'</span>').join('')+
         items.slice(0,2).map(m=>'<span class="meeting-dot'+(m.has_conflict?' has-conflict':'')+'" title="'+text(m.has_conflict?conflictText(m):m.title)+'">'+text(m.start_time+' '+m.title)+'</span>').join('')+
-        (items.length>2?'<span class="meeting-more">+'+(items.length-2)+' reuniões</span>':'')+'</button>';
+        (extraCount?'<span class="meeting-more">+'+extraCount+' compromisso(s)</span>':'')+'</button>';
     }
     calendar+='</div>';
     const upcoming=meetings.filter(m=>m.meeting_date>=today&&m.status==='agendada').slice(0,8);
     return heading('Reuniões','Agenda de encontros com clientes, separada do cronograma de projetos.','<button class="primary" data-meeting-action="new">'+icon('plus')+' Nova reunião</button>')+
-      '<div class="meeting-layout"><section class="panel"><div class="meeting-toolbar"><div><h2>Calendário de reuniões</h2><p class="muted">Selecione um dia para agendar um compromisso.</p></div><div class="meeting-month"><button type="button" class="secondary" data-meeting-action="prev" aria-label="Mês anterior">'+icon('chevron-left')+'</button><strong>'+text(label(month))+'</strong><button type="button" class="secondary" data-meeting-action="next" aria-label="Próximo mês">'+icon('chevron-right')+'</button></div></div>'+calendar+'</section><section class="panel"><div class="panel-head"><h2>Próximas reuniões</h2><span class="muted">'+upcoming.length+' agendadas</span></div><div class="meeting-agenda">'+(upcoming.length?upcoming.map(row).join(''):empty('Nenhuma reunião agendada','Clique em Nova reunião ou selecione uma data no calendário.'))+'</div></section></div>'+
+      '<div class="meeting-layout"><section class="panel"><div class="meeting-toolbar"><div><h2>Calendário</h2><p class="muted">Reuniões e datas de entrega dos projetos no mesmo calendário.</p></div><div class="meeting-month"><button type="button" class="secondary" data-meeting-action="prev" aria-label="Mês anterior">'+icon('chevron-left')+'</button><strong>'+text(label(month))+'</strong><button type="button" class="secondary" data-meeting-action="next" aria-label="Próximo mês">'+icon('chevron-right')+'</button></div></div>'+calendar+'</section><section class="panel"><div class="panel-head"><h2>Próximas reuniões</h2><span class="muted">'+upcoming.length+' agendadas</span></div><div class="meeting-agenda">'+(upcoming.length?upcoming.map(row).join(''):empty('Nenhuma reunião agendada','Clique em Nova reunião ou selecione uma data no calendário.'))+'</div></section></div>'+
       '<section class="panel meeting-all"><div class="panel-head"><h2>Todas as reuniões</h2><span class="muted">'+meetings.length+' registros</span></div><div class="meeting-agenda">'+(meetings.length?meetings.map(row).join(''):empty('Agenda vazia','Cadastre reuniões com clientes para visualizá-las aqui.'))+'</div></section>';
   }
   function form(existing,date){

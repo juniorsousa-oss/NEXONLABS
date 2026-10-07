@@ -387,3 +387,152 @@ body{
   .shell>.sidebar{position:fixed;top:0;height:100vh;height:100dvh;border-radius:0 18px 18px 0}
   .shell .topbar{position:relative;top:0;border-radius:0}
 }
+
+
+/* Projetos e tarefas — expansão rápida sem abrir o formulário do projeto. */
+.project-task-count{
+  display:inline-flex!important;
+  width:max-content;
+  margin-top:5px;
+  padding:2px 7px;
+  border-radius:999px;
+  background:#eef6fb;
+  color:#55748f!important;
+  font-size:9px!important;
+  font-weight:700;
+}
+.project-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px}
+.project-expand{
+  border:0;
+  background:#f2f7fb;
+  color:var(--navy);
+  min-width:42px;
+  height:32px;
+  padding:0 7px;
+  border-radius:8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  font-size:10px;
+  font-weight:750;
+}
+.project-expand:hover,.project-expand:focus-visible{background:#e4f2f0;color:#087e74}
+.project-expand svg{width:15px;height:15px}
+.project-row.is-expanded td{border-bottom-color:transparent}
+.project-task-row td{padding:0 8px 12px!important;background:#fbfdff;border-bottom:1px solid #e5ebf4}
+.project-task-panel{
+  border:1px solid #dce7ef;
+  border-radius:12px;
+  background:#f7fafc;
+  padding:12px;
+}
+.project-task-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.project-task-panel-head strong{display:block;color:var(--navy);font-size:12px}
+.project-task-panel-head small{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.project-task-list{display:flex;flex-direction:column;gap:6px}
+.project-task-item{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  padding:8px 10px;
+  border:1px solid #e1e9f1;
+  border-radius:9px;
+  background:#fff;
+}
+.project-task-item input[type="checkbox"]{width:17px;height:17px;accent-color:var(--teal)}
+.project-task-copy{min-width:0}
+.project-task-copy strong{display:block;color:var(--ink);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.project-task-copy strong.is-complete{text-decoration:line-through;color:#8191a4}
+.project-task-copy small{display:block;color:#71849b;font-size:10px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.project-task-edit{font-size:10px;padding:7px 9px}
+.project-task-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px;color:#71849b;font-size:10px}
+.project-task-empty{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#71849b;font-size:11px}
+.project-mobile-task-toggle{
+  margin-top:12px;
+  width:100%;
+  min-height:40px;
+  border:1px solid #dce6ef;
+  border-radius:9px;
+  background:#f8fbfd;
+  color:var(--navy);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-weight:700;
+}
+.project-mobile-task-toggle svg{width:16px;height:16px}
+.project-mobile-task-panel{margin-top:8px}
+.task-page-copy{min-width:0}
+.task-project-context{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:5px 0 4px;
+  color:#74869d;
+  font-size:10px;
+}
+.task-project-context>span{font-weight:650}
+.task-project-button{
+  border:0;
+  background:#edf7f5;
+  color:#087e74;
+  border-radius:999px;
+  padding:4px 8px;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-size:10px;
+  font-weight:750;
+}
+.task-project-button svg{width:13px;height:13px}
+.task-project-context small{color:#7a8da3}
+.task-page-item>aside{min-width:0;flex:1}
+.task-page-item .task-page-copy>p{margin-top:3px}
+
+/* Reuniões v6 — data editável em largura total e entregas demarcadas no calendário. */
+#meeting-form .meeting-form-grid > .full{grid-column:1/-1!important}
+#meeting-form .meeting-schedule{width:100%}
+.meeting-calendar-legend{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:14px;
+  margin:-6px 0 10px;
+  color:#6f8298;
+  font-size:10px;
+}
+.meeting-calendar-legend span{display:inline-flex;align-items:center;gap:5px}
+.meeting-calendar-legend .legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.meeting-calendar-legend .legend-dot.meeting{background:#14b8a6}
+.meeting-calendar-legend .legend-dot.delivery{background:#167cdb}
+.meeting-day.has-delivery{box-shadow:inset 0 -3px 0 rgba(22,124,219,.18)}
+.meeting-delivery{
+  display:block;
+  width:100%;
+  padding:5px 6px;
+  border-radius:6px;
+  border-left:3px solid #167cdb;
+  background:#eaf4ff;
+  color:#155f9f;
+  font-size:9.5px;
+  line-height:1.25;
+  font-weight:700;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+@media(max-width:850px){
+  .meeting-calendar-legend{justify-content:flex-start;flex-wrap:wrap}
+  .meeting-delivery{font-size:8.5px;padding:4px}
+}
+@media(max-width:650px){
+  .project-task-item{grid-template-columns:auto minmax(0,1fr)}
+  .project-task-edit{grid-column:2;justify-self:start}
+  .project-task-footer,.project-task-empty{align-items:flex-start;flex-direction:column}
+  .task-page-item{align-items:flex-start}
+  .task-page-item>button{flex:none}
+}
