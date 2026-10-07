@@ -363,6 +363,14 @@ def test_validation_and_markup():
         assert "this.src='/static/logo.svg'" not in login_html
         assert 'id="login-brand-fallback" class="login-brand-fallback" aria-label="ATRIA by Nexon Labs" hidden' in login_html
         assert 'loadOfficialBrand' in login_html
+        app_js=c.get('/static/app.js').text
+        meetings_js=c.get('/static/meetings.js').text
+        refinements=c.get('/static/refinements.css').text
+        assert "toggle-project-tasks" in app_js
+        assert "Projeto vinculado:" in app_js
+        assert "meeting-delivery" in meetings_js
+        assert "Entrega de projeto" in meetings_js
+        assert "#meeting-form .meeting-form-grid > .full" in refinements
         assert 'DESIGN LOCK v1' in c.get('/static/style.css').text
 
 def test_meetings_calendar_and_client_agenda():
