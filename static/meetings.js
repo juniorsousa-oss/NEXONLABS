@@ -7,7 +7,7 @@ window.NexonMeetings = (() => {
   const pad = n => String(n).padStart(2,'0');
   const iso = d => [d.getFullYear(),pad(d.getMonth()+1),pad(d.getDate())].join('-');
   const display = d => new Date(d+'T12:00:00').toLocaleDateString('pt-BR');
-  const label = d => d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const label = d => {const value=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});return value.charAt(0).toUpperCase()+value.slice(1)};
   const all = () => state.meetings || [];
   const statusLabels={agendada:'Agendada',realizada:'Realizada',cancelada:'Cancelada'};
   const conflictText=m=>{
@@ -96,7 +96,7 @@ window.NexonMeetings = (() => {
     const meetings=all().slice().sort((a,b)=>(a.meeting_date+a.start_time).localeCompare(b.meeting_date+b.start_time));
     const deliveries=(state.projects||[]).filter(project=>project.due_at&&project.status!=='concluido')
       .slice().sort((a,b)=>a.due_at.localeCompare(b.due_at));
-    let calendar='<div class="meeting-calendar-legend"><span><i class="legend-dot meeting"></i>Reunião</span><span><i class="legend-dot delivery"></i>Entrega de projeto</span></div>'+
+    let calendar='<div class="meeting-calendar-legend"><span><i class="legend-dot meeting"></i>Reunião</span><span><i class="legend-dot delivery-type"></i>Entrega de projeto</span></div>'+
       '<div class="meeting-weekdays">'+['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(d=>'<span>'+d+'</span>').join('')+'</div><div class="meeting-calendar">';
     for(let i=0;i<offset;i++) calendar+='<span class="meeting-blank" aria-hidden="true"></span>';
     for(let day=1;day<=length;day++){

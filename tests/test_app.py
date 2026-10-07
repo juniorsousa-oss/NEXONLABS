@@ -370,6 +370,11 @@ def test_validation_and_markup():
         assert "Projeto vinculado:" in app_js
         assert "meeting-delivery" in meetings_js
         assert "Entrega de projeto" in meetings_js
+        assert "legend-dot delivery-type" in meetings_js
+        assert "buildNotifications" in app_js
+        assert "notificationCenterFor" in app_js
+        assert "data-action=\"notification-open\"" in app_js
+        assert "notification-center" in refinements
         assert "#meeting-form .meeting-form-grid > .full" in refinements
         assert 'DESIGN LOCK v1' in c.get('/static/style.css').text
 

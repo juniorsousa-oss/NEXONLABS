@@ -691,8 +691,8 @@ button:active:not(:disabled){transform:translateY(1px)}
   overflow:hidden;
 }
 .meeting-toolbar{
-  margin-bottom:18px;
-  padding-bottom:14px;
+  margin-bottom:12px;
+  padding-bottom:12px;
   border-bottom:1px solid #edf2f6;
 }
 .meeting-toolbar h2{
@@ -720,15 +720,16 @@ button:active:not(:disabled){transform:translateY(1px)}
 .meeting-weekdays{
   color:#72859c;
   letter-spacing:.02em;
+  margin-bottom:5px;
 }
 .meeting-day,.meeting-blank{
-  min-height:112px;
+  min-height:92px;
 }
 .meeting-day{
   position:relative;
-  padding:9px 8px;
-  gap:6px;
-  border-radius:12px;
+  padding:8px 7px;
+  gap:5px;
+  border-radius:11px;
   background:#fdfefe;
 }
 .meeting-day:hover,.meeting-day:focus-visible{
