@@ -7,7 +7,7 @@ window.NexonMeetings = (() => {
   const pad = n => String(n).padStart(2,'0');
   const iso = d => [d.getFullYear(),pad(d.getMonth()+1),pad(d.getDate())].join('-');
   const display = d => new Date(d+'T12:00:00').toLocaleDateString('pt-BR');
-  const label = d => d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const label = d => {const value=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});return value.charAt(0).toUpperCase()+value.slice(1)};
   const all = () => state.meetings || [];
   const statusLabels={agendada:'Agendada',realizada:'Realizada',cancelada:'Cancelada'};
   const conflictText=m=>{
