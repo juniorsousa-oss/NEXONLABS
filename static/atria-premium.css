@@ -1099,3 +1099,294 @@ button:active:not(:disabled){transform:translateY(1px)}
   .brand-product-signature{align-items:flex-start;flex-direction:column}
   .brand-product-signature strong{text-align:left}
 }
+
+
+/* ATRIA Login — Nexon connected identity v1
+   Refinamento aprovado: rede discreta ao fundo, turquesa nos destaques,
+   card responsivo, sem modificar o fluxo de login ou a marca oficial. */
+body.login-page{
+  position:relative;
+  isolation:isolate;
+  display:grid;
+  place-items:center;
+  min-height:100vh;
+  min-height:100svh;
+  overflow-x:hidden;
+  padding:clamp(18px,3.2vw,42px);
+  background:
+    radial-gradient(ellipse at 2% 2%,rgba(17,184,209,.41),transparent 42%),
+    radial-gradient(ellipse at 99% 86%,rgba(30,165,205,.39),transparent 39%),
+    radial-gradient(ellipse at 55% 1%,rgba(20,115,160,.19),transparent 55%),
+    linear-gradient(155deg,#082c49 0%,#0b3657 48%,#092c4b 100%);
+}
+body.login-page::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-image:url('/static/atria-login-network.svg');
+  background-repeat:no-repeat;
+  background-size:max(1150px,100vw) auto;
+  background-position:center center;
+  opacity:.41;
+}
+body.login-page::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 18% 24%,rgba(36,194,216,.07),transparent 25%),
+    radial-gradient(circle at 90% 84%,rgba(40,213,231,.14),transparent 28%);
+}
+.login-page .login-shell{
+  position:relative;
+  z-index:1;
+  width:min(960px,100%);
+  min-height:555px;
+  height:auto;
+  grid-template-columns:minmax(0,.98fr) minmax(0,1.02fr);
+  border:1px solid rgba(213,243,249,.52);
+  border-radius:27px;
+  box-shadow:0 32px 95px rgba(2,17,37,.33),0 3px 14px rgba(1,14,30,.12);
+  background:#fff;
+}
+.login-page .login-brand-panel{
+  position:relative;
+  isolation:isolate;
+  min-width:0;
+  padding:42px 43px 39px;
+  background:
+    radial-gradient(ellipse at 85% 46%,rgba(20,177,204,.21),transparent 46%),
+    radial-gradient(circle at 14% 1%,rgba(21,111,163,.22),transparent 38%),
+    linear-gradient(164deg,#0d395e 0%,#082d4c 61%,#092c4c 100%);
+}
+.login-page .login-brand-panel::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-image:url('/static/atria-login-network.svg');
+  background-repeat:no-repeat;
+  background-size:770px auto;
+  background-position:57% center;
+  opacity:.43;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.38) 40%,#000 100%);
+  mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.38) 40%,#000 100%);
+}
+.login-page .login-brand-panel::after{
+  content:"";
+  position:absolute;
+  width:350px;
+  height:350px;
+  right:-170px;
+  bottom:-146px;
+  border:1px solid rgba(72,221,231,.18);
+  border-radius:50%;
+  box-shadow:
+    0 0 0 54px rgba(72,221,231,.04),
+    0 0 0 110px rgba(72,221,231,.025);
+  pointer-events:none;
+}
+.login-page .login-brand,.login-page .login-brand-copy{
+  position:relative;
+  z-index:1;
+}
+.login-page .login-brand-official{min-height:86px}
+.login-page .login-brand-official img{
+  width:min(270px,100%);
+  max-height:90px;
+  object-fit:contain;
+  object-position:left center;
+}
+.login-page .login-brand-copy h2{
+  max-width:400px;
+  margin:0 0 16px;
+  font-size:clamp(27px,3vw,33px);
+  font-weight:800;
+  line-height:1.15;
+  letter-spacing:-.035em;
+  color:#fff;
+}
+.login-page .login-brand-copy .login-brand-accent{
+  color:#38dce8;
+}
+.login-page .login-brand-copy p{
+  max-width:365px;
+  margin:0;
+  color:#c7d9e6;
+  font-size:13px;
+  line-height:1.7;
+}
+.login-page .login-form-panel{
+  padding:43px clamp(32px,4.6vw,56px);
+  background:linear-gradient(155deg,#fff 0%,#fcfdff 100%);
+}
+.login-page .login-card{
+  width:100%;
+  max-width:395px;
+}
+.login-page .login-card h1{
+  margin:0 0 8px;
+  color:#102943;
+  font-size:clamp(27px,3vw,32px);
+  letter-spacing:-.04em;
+  line-height:1.2;
+}
+.login-page .login-card>p{
+  margin:0 0 32px;
+  font-size:13px;
+  color:#7487a0;
+}
+.login-page .login-card form{gap:12px}
+.login-page .login-card label{
+  font-size:12px;
+  color:#314c69;
+  font-weight:700;
+}
+.login-page .login-input-wrap{
+  position:relative;
+  display:flex;
+  align-items:center;
+  width:100%;
+}
+.login-page .login-input-wrap .login-lock-icon{
+  position:absolute;
+  z-index:1;
+  left:16px;
+  top:50%;
+  transform:translateY(-50%);
+  width:18px;
+  height:18px;
+  color:#7d91aa;
+  pointer-events:none;
+  transition:color .18s ease;
+}
+.login-page .login-input-wrap:focus-within .login-lock-icon{color:#19a9bf}
+.login-page .login-card .login-input-wrap input{
+  display:block;
+  width:100%;
+  min-height:50px;
+  padding:0 15px 0 47px;
+  background:#fff;
+  border:1px solid #d9e4ef;
+  border-radius:11px;
+  color:#233d59;
+  font-size:16px;
+}
+.login-page .login-card .login-input-wrap input:focus{
+  outline:0;
+  border-color:#64d2d9;
+  box-shadow:0 0 0 4px rgba(41,206,218,.13);
+}
+.login-page .login-card .show-password{margin-top:0}
+.login-page .login-card .primary{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-height:49px;
+  margin-top:8px;
+  border-radius:11px;
+  color:#fff;
+  background:linear-gradient(180deg,#14527b 0%,#0b3151 100%);
+  box-shadow:0 12px 24px rgba(13,50,80,.15),inset 0 1px 0 rgba(255,255,255,.13);
+  font-size:12px;
+  font-weight:750;
+}
+.login-page .login-card .primary:not(:disabled):hover{
+  background:linear-gradient(180deg,#18658c 0%,#0f3f63 100%);
+  box-shadow:0 14px 28px rgba(13,50,80,.21);
+}
+.login-page .login-button-arrow{
+  position:absolute;
+  right:17px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#d4f8fc;
+  font-size:19px;
+  font-weight:400;
+}
+.login-page .login-card #login-error{color:#b93f4d}
+.login-page .login-note{
+  margin-top:32px;
+  padding-top:19px;
+  border-top:1px solid #e8edf3;
+  color:#8798ac;
+  font-size:10.5px;
+  line-height:1.55;
+}
+@media(max-width:760px){
+  body.login-page{
+    padding:max(16px,env(safe-area-inset-top)) 14px max(20px,env(safe-area-inset-bottom));
+  }
+  body.login-page::before{background-size:1050px auto;opacity:.32}
+  .login-page .login-shell{
+    width:min(650px,100%);
+    grid-template-columns:1fr;
+    min-height:0;
+    border-radius:25px;
+  }
+  .login-page .login-brand-panel{
+    min-height:307px;
+    padding:27px 30px 31px;
+  }
+  .login-page .login-brand-panel::before{
+    background-size:670px auto;
+    background-position:60% 55%;
+    opacity:.38;
+  }
+  .login-page .login-brand-official{min-height:65px}
+  .login-page .login-brand-official img{
+    width:min(250px,100%);
+    max-height:72px;
+  }
+  .login-page .login-brand-copy h2{
+    font-size:clamp(23px,4.8vw,28px);
+    line-height:1.16;
+    margin-bottom:11px;
+  }
+  .login-page .login-brand-copy p{
+    max-width:500px;
+    font-size:12px;
+    line-height:1.55;
+  }
+  .login-page .login-form-panel{
+    padding:32px 30px 34px;
+  }
+  .login-page .login-card{
+    max-width:500px;
+  }
+  .login-page .login-card>p{margin-bottom:25px}
+  .login-page .login-note{margin-top:25px}
+}
+@media(max-width:520px){
+  body.login-page{padding-left:12px;padding-right:12px}
+  .login-page .login-shell{border-radius:25px}
+  .login-page .login-brand-panel{
+    min-height:296px;
+    padding:24px 24px 27px;
+  }
+  .login-page .login-brand-copy h2{font-size:clamp(23px,6vw,27px)}
+  .login-page .login-form-panel{padding:29px 24px 32px}
+  .login-page .login-card h1{font-size:27px}
+  .login-page .login-card>p{margin-bottom:24px}
+  .login-page .login-card .primary{min-height:49px}
+}
+@media(max-width:360px){
+  .login-page .login-brand-panel{
+    min-height:310px;
+    padding:22px 21px 24px;
+  }
+  .login-page .login-form-panel{padding:26px 21px 29px}
+  .login-page .login-brand-copy h2{font-size:23px}
+  .login-page .login-card h1{font-size:25px}
+}
+@media(prefers-reduced-motion:reduce){
+  .login-page .login-input-wrap .login-lock-icon,
+  .login-page .login-card .primary{transition:none}
+}
