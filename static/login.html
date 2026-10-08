@@ -8,7 +8,7 @@
   <title>ATRIA | Acesso</title>
   <link rel="icon" id="login-favicon">
   <link rel="stylesheet" href="/static/style.css?v=1">
-  <link rel="stylesheet" href="/static/atria-premium.css?v=4">
+  <link rel="stylesheet" href="/static/atria-premium.css?v=login-network-v1">
 </head>
 <body class="login-page">
   <main class="login-shell">
@@ -20,7 +20,7 @@
         </div>
       </div>
       <div class="login-brand-copy">
-        <h2>Gestão integrada para transformar planos em execução.</h2>
+        <h2>Gestão integrada para <span class="login-brand-accent">transformar planos</span> em execução.</h2>
         <p>Projetos, tarefas, equipe, cronogramas, reuniões, chamados e propostas em um único ambiente de trabalho.</p>
       </div>
     </section>
@@ -30,9 +30,15 @@
         <p>Acesse seu ambiente de gestão.</p>
         <form id="login-form">
           <label for="password">Senha de acesso</label>
-          <input id="password" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required autofocus placeholder="Digite sua senha">
+          <div class="login-input-wrap">
+            <svg class="login-lock-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+              <rect x="5" y="10" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            <input id="password" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required autofocus placeholder="Digite sua senha">
+          </div>
           <label class="show-password"><input type="checkbox" id="reveal-password"> Mostrar senha digitada</label>
-          <button class="primary" type="submit">Entrar no ATRIA</button>
+          <button class="primary" type="submit">Entrar no ATRIA <span class="login-button-arrow" aria-hidden="true">→</span></button>
           <small id="login-error" role="alert"></small>
         </form>
         <div class="login-note">Acesso restrito a usuários autorizados.</div>
