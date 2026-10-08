@@ -1,6 +1,6 @@
 # Padrão visual de login — Nexon Labs
 
-**Versão 1.0 · 08/10/2026 · Referência aprovada: ATRIA**
+**Versão 1.1 · 08/10/2026 · Referência estrutural aprovada: ATRIA**
 
 Este documento define a linguagem visual a ser seguida por ATRIA, Opera Hub e futuros produtos. **Padronizar não significa substituir identidades visuais nem mudar fluxos de autenticação já aprovados.**
 
@@ -20,7 +20,16 @@ Este documento define a linguagem visual a ser seguida por ATRIA, Opera Hub e fu
 ## Referências de código existentes
 
 - **ATRIA (layout aprovado, não modificar para padronizar):** repositório `juniorsousa-oss/NEXONLABS`, arquivos `static/login.html` e `static/atria-premium.css`.
-- **Opera Hub:** repositório `juniorsousa-oss/OPERAHUB---NOVA-VERS-O`, arquivos `templates/login.html` e `static/premium.css`. Em 08/10/2026, o CSS mobile recebeu redução localizada de altura e espaçamentos. A versão desktop foi preservada.
+- **Opera Hub:** repositório `juniorsousa-oss/OPERAHUB---NOVA-VERS-O`, arquivos `templates/login.html`, `templates/index.html`, `static/premium.css` e `static/nexon-connections.svg`. Em 08/10/2026, o login mobile foi compactado, e posteriormente a versão desktop teve largura-alvo de 960 px e altura mínima de 535 px, próximas das proporções do ATRIA; o fundo externo ganhou a paleta navy/dourado. A tela inicial usa indicadores coesos e a assinatura discreta **by Nexon Labs**.
+
+## Identidade e assinatura de portfólio
+
+- A identidade de cada produto é prioritária: **ATRIA** permanece em navy/azul e turquesa; **Opera Hub** segue navy com amarelo/dourado. Não copiar a cor do ATRIA para o Opera.
+- A assinatura textual de origem é discreta: `by Nexon Labs`, preferencialmente no rodapé do login e da área principal, sem competir com a marca de cada produto.
+- Textura de conexões da Nexon Labs pode surgir em baixa opacidade e sem interferir em legibilidade ou acesso; no Opera Hub é uma variante dourada em SVG.
+- Indicadores do Opera Hub usam a mesma base de superfícies claras, navy, dourado e neutros quentes; cores funcionais de atenção são subordinadas à paleta.
+- A altura dos cards não deve ser forçada a ficar idêntica: preservar campos extras e mensagens de autenticação em vez de reduzir a acessibilidade.
+- O documento estabelece regras para futuras aplicações. Nenhuma alteração de aparência no ATRIA deve acontecer apenas para adaptar a identidade do Opera Hub.
 
 ## Checklist de validação por entrega
 
