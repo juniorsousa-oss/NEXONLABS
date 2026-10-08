@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" fill="none" role="presentation">
+  <!-- Assinatura ornamental de conexões Nexon Labs. Não representa a logo. -->
+  <defs>
+    <linearGradient id="link" x1="70" y1="60" x2="1325" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#12c5d8" stop-opacity=".62"/>
+      <stop offset=".52" stop-color="#16a5cb" stop-opacity=".36"/>
+      <stop offset="1" stop-color="#27e7e0" stop-opacity=".68"/>
+    </linearGradient>
+    <radialGradient id="node">
+      <stop stop-color="#70eced" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#0ca5d2" stop-opacity=".42"/>
+    </radialGradient>
+  </defs>
+  <g stroke="url(#link)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-45 40 55 67 155 13 224 104 344 49 445 141 513 27"/>
+    <path d="M55 67 110 184 224 104 268 220 445 141 527 290"/>
+    <path d="M-26 302 110 184 208 331 268 220 384 379 527 290 643 401"/>
+    <path d="M-30 515 208 331 164 510 384 379 452 574 643 401"/>
+    <path d="M164 510 258 689 452 574 583 730 682 626"/>
+    <path d="M33 780 258 689 331 885 583 730 642 914"/>
+    <path d="M883 -25 952 100 1080 42 1177 172 1350 76 1436 140"/>
+    <path d="M952 100 1008 268 1177 172 1235 347 1350 76 1475 337"/>
+    <path d="M803 232 1008 268 937 445 1235 347 1366 527 1477 337"/>
+    <path d="M937 445 1051 620 1235 347 1366 527 1434 770"/>
+    <path d="M796 752 1051 620 1194 810 1366 527 1434 770"/>
+    <path d="M883 -25 803 232 937 445 682 626"/>
+    <path d="M513 27 643 401 803 232"/>
+  </g>
+  <g fill="url(#node)">
+    <circle cx="55" cy="67" r="22"/><circle cx="155" cy="13" r="10"/>
+    <circle cx="224" cy="104" r="29"/><circle cx="344" cy="49" r="16"/>
+    <circle cx="110" cy="184" r="18"/><circle cx="268" cy="220" r="11"/>
+    <circle cx="445" cy="141" r="20"/><circle cx="527" cy="290" r="9"/>
+    <circle cx="208" cy="331" r="25"/><circle cx="384" cy="379" r="15"/>
+    <circle cx="164" cy="510" r="12"/><circle cx="452" cy="574" r="23"/>
+    <circle cx="258" cy="689" r="27"/><circle cx="583" cy="730" r="17"/>
+    <circle cx="643" cy="401" r="30"/><circle cx="682" cy="626" r="8"/>
+    <circle cx="952" cy="100" r="15"/><circle cx="1080" cy="42" r="11"/>
+    <circle cx="1177" cy="172" r="28"/><circle cx="1350" cy="76" r="12"/>
+    <circle cx="1008" cy="268" r="22"/><circle cx="1235" cy="347" r="15"/>
+    <circle cx="803" cy="232" r="13"/><circle cx="937" cy="445" r="32"/>
+    <circle cx="1366" cy="527" r="26"/><circle cx="1051" cy="620" r="17"/>
+    <circle cx="1194" cy="810" r="24"/><circle cx="1434" cy="770" r="31"/>
+  </g>
+  <g fill="#3cd6ea" opacity=".32">
+    <circle cx="61" cy="335" r="8"/><circle cx="331" cy="885" r="19"/>
+    <circle cx="796" cy="752" r="12"/><circle cx="1225" cy="604" r="9"/>
+    <circle cx="513" cy="27" r="11"/><circle cx="164" cy="510" r="4"/>
+  </g>
+</svg>
