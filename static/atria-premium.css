@@ -1589,3 +1589,25 @@ body.login-page::after{
     opacity:.56;
   }
 }
+
+
+/* Microassinatura da Nexon Labs nos indicadores do ATRIA mobile,
+   no mesmo princípio dos KPIs do Opera Hub, mas na paleta turquesa. */
+@media(max-width:850px){
+  body:not(.login-page) .home-metrics .metric::after{
+    content:"";
+    position:absolute;
+    top:-24px;
+    right:-20px;
+    width:145px;
+    height:135px;
+    pointer-events:none;
+    background:url('/static/atria-login-network.svg') center/contain no-repeat;
+    opacity:.12;
+  }
+  body:not(.login-page) .home-metrics .metric-heading,
+  body:not(.login-page) .home-metrics .metric-foot{
+    position:relative;
+    z-index:1;
+  }
+}
