@@ -9,7 +9,7 @@ NETWORK = ROOT / "static" / "atria-login-network.svg"
 
 def test_login_approved_identity_uses_dynamic_official_logo():
     html = LOGIN.read_text(encoding="utf-8")
-    assert "atria-premium.css?v=login-network-v1" in html
+    assert "atria-premium.css?v=mobile-frame-v2" in html
     assert 'id="login-product-logo"' in html
     assert "fetch('/api/product-brand'" in html
     assert "login-brand-accent" in html
