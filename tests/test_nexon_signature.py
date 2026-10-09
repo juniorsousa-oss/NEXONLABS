@@ -8,7 +8,7 @@ ROOT=Path(__file__).resolve().parents[1]/"static"
 
 def test_login_has_accessible_monochrome_brand_signature():
     with TestClient(app) as client:
-        response=client.get("/login")
+        response=client.get("/")
         assert response.status_code==200
         assert "nexon-monochrome-dark.svg" in response.text
         assert "login-form" in response.text
