@@ -47,6 +47,33 @@ def test_login_network_repeats_on_mobile_and_login_behavior_is_intact():
 
 
 def test_versioned_stylesheets_and_balanced_css():
-    assert "atria-premium.css?v=mobile-frame-v2" in APP_HTML
+    assert "atria-premium.css?v=mobile-drawer-v3" in APP_HTML
     assert "atria-premium.css?v=mobile-frame-v2" in LOGIN_HTML
     assert CSS.count("{") == CSS.count("}")
+
+
+def test_sidebar_drawer_backdrop_layering_and_accessibility():
+    js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'id="mobile-overlay" hidden' in APP_HTML
+    assert 'aria-controls="sidebar"' in APP_HTML
+    assert 'aria-expanded="false"' in APP_HTML
+    assert "app.js?v=mobile-drawer-v3" in APP_HTML
+
+    assert "ATRIA mobile drawer touch fix v3" in CSS
+    drawer = CSS.split("ATRIA mobile drawer touch fix v3", 1)[1]
+    assert "body:not(.login-page) .shell>.mobile-overlay" in drawer
+    assert "z-index:70" in drawer
+    assert "body:not(.login-page) .shell>.sidebar" in drawer
+    assert "z-index:71" in drawer
+    assert "pointer-events:auto" in drawer
+    assert "overscroll-behavior-y:contain" in drawer
+
+    assert "function setMobileMenuState" in js
+    assert "function closeMobileMenu" in js
+    assert "mobileSidebar.inert=" in js
+    assert "mobileOverlay.hidden=!expanded" in js
+    assert "mobileSidebar.classList.toggle('open',expanded)" in js
+    assert "mobileMenuButton.setAttribute('aria-expanded'" in js
+    assert "mobileOverlay?.addEventListener('click'" in js
+    assert "closeMobileMenu(true);closeModal()" in js
+    assert "document.body.append(overlay)" not in js
