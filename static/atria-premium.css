@@ -1390,3 +1390,202 @@ body.login-page::after{
   .login-page .login-input-wrap .login-lock-icon,
   .login-page .login-card .primary{transition:none}
 }
+
+
+/* ATRIA — Mobile premium frame v2
+   O desktop mantém o acabamento já aprovado. No mobile, a moldura externa
+   recupera a linguagem arredondada do Opera Hub, sem alterar o layout funcional. */
+@media (max-width:850px){
+  html,body:not(.login-page){
+    background:
+      radial-gradient(circle at 7% 6%,rgba(34,187,198,.105),transparent 27%),
+      radial-gradient(circle at 97% 92%,rgba(39,119,181,.095),transparent 30%),
+      #eaf1f7;
+  }
+  body:not(.login-page) .shell{
+    width:calc(100% - 20px);
+    max-width:calc(100% - 20px);
+    min-height:calc(100vh - 20px);
+    min-height:calc(100dvh - 20px);
+    height:auto;
+    margin:10px auto;
+    padding:0;
+    overflow:visible;
+    border:1px solid rgba(190,209,226,.85);
+    border-radius:24px;
+    background:#f7faff;
+    box-shadow:0 18px 47px rgba(16,50,83,.115),0 3px 10px rgba(16,50,83,.045);
+  }
+  body:not(.login-page) .shell>.workspace{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    min-height:calc(100vh - 22px);
+    min-height:calc(100dvh - 22px);
+    height:auto;
+    overflow:visible;
+    border-radius:23px;
+    background:linear-gradient(165deg,#f8fbff 0%,#f1f6fb 60%,#f6faff 100%);
+  }
+  body:not(.login-page) .shell .topbar{
+    position:relative;
+    top:0;
+    z-index:10;
+    min-width:0;
+    border-radius:23px 23px 0 0;
+    border-bottom:1px solid #e2eaf3;
+    background:rgba(255,255,255,.98);
+    box-shadow:0 4px 16px rgba(16,53,89,.035);
+  }
+  body:not(.login-page) .main{
+    min-width:0;
+    width:100%;
+    max-width:100%;
+    padding:19px 14px 29px;
+  }
+  body:not(.login-page) .topbar .mobile-menu{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:40px;
+    min-width:40px;
+    height:40px;
+    border:1px solid #e0e8f2;
+    border-radius:12px;
+    background:#f5f8fc;
+    box-shadow:0 3px 10px rgba(14,41,67,.045);
+  }
+  body:not(.login-page) .topbar .search-wrap{
+    min-width:0;
+    border:1px solid #e0e8f2;
+    border-radius:13px;
+    background:#f3f6fb;
+  }
+  body:not(.login-page) .topbar .icon-button{border-radius:12px}
+  body:not(.login-page) .topbar .avatar{
+    box-shadow:0 0 0 1px #d7e3ee,0 3px 10px rgba(15,54,87,.08);
+  }
+  body:not(.login-page) .hero .slogan-card{
+    border:1px solid #e1eaf2;
+    border-radius:20px;
+    box-shadow:0 10px 28px rgba(15,49,81,.065);
+    overflow:hidden;
+  }
+  body:not(.login-page) .home-metrics .metric,
+  body:not(.login-page) .report-tiles .metric{
+    border:1px solid #e0e9f3;
+    border-radius:18px;
+    background:linear-gradient(160deg,#fff,#fbfdff);
+    box-shadow:0 8px 22px rgba(18,53,86,.06);
+  }
+  body:not(.login-page) .home-metrics .metric:hover{
+    transform:none;
+    box-shadow:0 8px 22px rgba(18,53,86,.06);
+  }
+  body:not(.login-page) .panel{
+    border:1px solid #e0e9f3;
+    border-radius:19px;
+    background:#fff;
+    box-shadow:0 8px 24px rgba(17,51,81,.058);
+  }
+  body:not(.login-page) .home-project-card,
+  body:not(.login-page) .project-mobile-card,
+  body:not(.login-page) .line-item,
+  body:not(.login-page) .home-quick-links button{
+    border-radius:16px;
+    border-color:#e0e8f1;
+    box-shadow:0 3px 12px rgba(19,57,90,.035);
+  }
+  body:not(.login-page) .delivery,
+  body:not(.login-page) .activity,
+  body:not(.login-page) .meeting-entry{
+    border-radius:14px;
+  }
+  body:not(.login-page) .metric-heading .micon{
+    border-radius:13px;
+  }
+  /* O drawer continua ancorado na viewport, fora da moldura visual. */
+  body:not(.login-page) .shell>.sidebar{
+    position:fixed;
+    top:0;
+    height:100vh;
+    height:100dvh;
+    border-radius:0 20px 20px 0;
+  }
+}
+@media (max-width:520px){
+  body:not(.login-page) .shell{
+    width:calc(100% - 18px);
+    max-width:calc(100% - 18px);
+    min-height:calc(100dvh - 18px);
+    margin:9px auto;
+    border-radius:22px;
+  }
+  body:not(.login-page) .shell>.workspace{
+    min-height:calc(100dvh - 20px);
+    border-radius:21px;
+  }
+  body:not(.login-page) .shell .topbar{
+    border-radius:21px 21px 0 0;
+    padding-left:10px;
+    padding-right:10px;
+    gap:6px;
+  }
+  body:not(.login-page) .main{padding:17px 12px 25px}
+  body:not(.login-page) .topbar .mobile-menu{
+    width:38px;
+    min-width:38px;
+    height:38px;
+    border-radius:11px;
+  }
+  body:not(.login-page) .topbar .search-wrap{
+    height:39px;
+    padding:0 10px;
+    border-radius:12px;
+  }
+  body:not(.login-page) .hero .slogan-card{border-radius:18px}
+  body:not(.login-page) .panel{border-radius:18px}
+  body:not(.login-page) .home-metrics .metric{border-radius:17px}
+}
+@media (max-width:370px){
+  body:not(.login-page) .shell{
+    width:calc(100% - 12px);
+    max-width:calc(100% - 12px);
+    margin:6px auto;
+    border-radius:20px;
+  }
+  body:not(.login-page) .shell .topbar{padding:0 7px;gap:4px;border-radius:19px 19px 0 0}
+  body:not(.login-page) .main{padding-left:9px;padding-right:9px}
+  body:not(.login-page) .topbar .mobile-menu{width:34px;min-width:34px;height:36px}
+}
+
+/* ATRIA Login — conexão Nexon no fundo externo também no smartphone.
+   A arte se repete em escala própria: o recorte central anterior ocultava
+   os nós nas margens livres em telas estreitas. */
+@media (max-width:760px){
+  body.login-page{
+    background:
+      radial-gradient(circle at 7% 6%,rgba(44,204,226,.26),transparent 38%),
+      radial-gradient(circle at 95% 86%,rgba(46,203,218,.19),transparent 36%),
+      linear-gradient(160deg,#092d4b 0%,#0b3b5b 52%,#0a2b47 100%);
+  }
+  body.login-page::before{
+    background-image:url('/static/atria-login-network.svg');
+    background-repeat:repeat;
+    background-size:620px auto;
+    background-position:center top;
+    opacity:.53;
+  }
+  body.login-page::after{
+    background:
+      radial-gradient(circle at 4% 3%,rgba(44,218,234,.16),transparent 31%),
+      radial-gradient(circle at 98% 95%,rgba(44,218,234,.14),transparent 34%);
+  }
+}
+@media (max-width:520px){
+  body.login-page::before{
+    background-size:565px auto;
+    background-position:48% top;
+    opacity:.56;
+  }
+}
