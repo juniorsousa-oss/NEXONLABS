@@ -1611,3 +1611,46 @@ body.login-page::after{
     z-index:1;
   }
 }
+
+
+/* ATRIA mobile drawer touch fix v3
+   O antigo backdrop era inserido em <body>, acima de toda a .shell (isolation).
+   Agora overlay e sidebar são irmãos na mesma camada: o menu fica acima,
+   opaco e clicável, inclusive no Safari iOS. */
+@media (max-width:850px){
+  body:not(.login-page) .shell>.mobile-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:70;
+    background:rgba(7,25,44,.52);
+    -webkit-backdrop-filter:blur(2px);
+    backdrop-filter:blur(2px);
+    pointer-events:none;
+    touch-action:manipulation;
+  }
+  body:not(.login-page) .shell>.mobile-overlay[hidden]{display:none!important}
+  body:not(.login-page) .shell>.mobile-overlay.show:not([hidden]){
+    display:block;
+    pointer-events:auto;
+  }
+  body:not(.login-page) .shell>.sidebar{
+    position:fixed;
+    z-index:71;
+    opacity:1;
+    background:#0b2d4a;
+    isolation:isolate;
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+    pointer-events:auto;
+  }
+  body:not(.login-page) .shell>.sidebar.open{
+    left:0;
+    opacity:1;
+    pointer-events:auto;
+  }
+  body.mobile-nav-open{overflow:hidden}
+}
