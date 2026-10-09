@@ -417,6 +417,7 @@ mobileMenuButton?.addEventListener('click',e=>{
   setMobileMenuState(!mobileSidebar.classList.contains('open'));
 });
 mobileOverlay?.addEventListener('click',()=>closeMobileMenu(true));
+mobileSidebar?.querySelector('.brand')?.addEventListener('click',()=>closeMobileMenu());
 window.addEventListener('resize',()=>{
   if(window.innerWidth>850)closeMobileMenu();
   else if(!mobileSidebar.classList.contains('open'))mobileSidebar.inert=true;
