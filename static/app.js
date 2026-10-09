@@ -293,10 +293,10 @@ function settingsPage(){
   '<button type="button" class="secondary" data-action="logout">'+icon('logout')+' Sair da conta</button></section>';
 }
 function render(){document.querySelectorAll('.nav-link[data-route]').forEach(e=>{const active=e.dataset.route===route;e.classList.toggle('active',active);if(active)e.setAttribute('aria-current','page');else e.removeAttribute('aria-current');});const views={inicio:dashboard,projetos:projectsPage,tarefas:tasksPage,equipe:teamPage,cronograma:schedulePage,reunioes:window.NexonMeetings.page,orcamentos:window.NexonQuotes.page,chamados:window.NexonTickets.page,relatorios:reportsPage,configuracoes:settingsPage};if(state.platform_admin)views['administracao-atria']=platformAdminPage;$('#main').innerHTML=(views[route]||dashboard)();}
-function go(target){if(target==='administracao-atria'&&!state.platform_admin){notice('Área restrita à administração da plataforma ATRIA.');target='inicio'}route=target;filter='todos';page=1;window.location.hash=route;$('#sidebar').classList.remove('open');$('.mobile-overlay')?.remove();render();window.scrollTo({top:0,behavior:'instant'})}
+function go(target){if(target==='administracao-atria'&&!state.platform_admin){notice('Área restrita à administração da plataforma ATRIA.');target='inicio'}route=target;filter='todos';page=1;window.location.hash=route;closeMobileMenu();render();window.scrollTo({top:0,behavior:'instant'})}
 function field(label,name,value='',type='text',extra=''){return `<label>${esc(label)}<input name="${name}" type="${type}" value="${esc(value)}" ${extra}></label>`}
 function selectField(label,name,values,current){return `<label>${esc(label)}<select name="${name}">${values.map(([v,s])=>`<option value="${esc(v)}" ${v===current?'selected':''}>${esc(s)}</option>`).join('')}</select></label>`}
-function modal(title,body,actions=''){closeMenu();$('#modal-root').innerHTML=`<div class="modal-cover" id="modal-cover"><section class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-top"><h2>${esc(title)}</h2><button type="button" class="close-btn" data-action="close-modal" aria-label="Fechar">×</button></div>${body}${actions}</section></div>`;$('#modal-cover').addEventListener('click',e=>{if(e.target.id==='modal-cover')closeModal()});$('#modal-root').querySelector('input:not([type=hidden]),select')?.focus()}
+function modal(title,body,actions=''){closeMenu();closeMobileMenu();$('#modal-root').innerHTML=`<div class="modal-cover" id="modal-cover"><section class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-top"><h2>${esc(title)}</h2><button type="button" class="close-btn" data-action="close-modal" aria-label="Fechar">×</button></div>${body}${actions}</section></div>`;$('#modal-cover').addEventListener('click',e=>{if(e.target.id==='modal-cover')closeModal()});$('#modal-root').querySelector('input:not([type=hidden]),select')?.focus()}
 function finishConfirm(value){
   if(!confirmResolver)return;
   const resolve=confirmResolver;confirmResolver=null;
@@ -391,8 +391,38 @@ document.addEventListener('input',e=>{
 $('#global-search').addEventListener('input',e=>{query=e.target.value.trim();page=1;if(!['projetos','inicio','tarefas'].includes(route))go('projetos');else render()});
 $('#bell').addEventListener('click',e=>{e.stopPropagation();if(notificationPop){closeNotificationCenter();return}notificationCenterFor($('#bell'));});
 $('#profile').addEventListener('click',e=>{e.stopPropagation();if(profileMenuPop){closeProfileMenu();return}profileMenuFor($('#profile'));});
-$('#menu-toggle').addEventListener('click',()=>{const side=$('#sidebar');side.classList.toggle('open');if(side.classList.contains('open')){let overlay=document.createElement('div');overlay.className='mobile-overlay show';overlay.onclick=()=>{side.classList.remove('open');overlay.remove()};document.body.append(overlay)}else $('.mobile-overlay')?.remove()});
+// Drawer mobile: backdrop and sidebar stay inside the same stacking context.
+// This fixes iOS Safari placing the dark overlay above the actual navigation.
+const mobileMenuButton=$('#menu-toggle');
+const mobileSidebar=$('#sidebar');
+const mobileOverlay=$('#mobile-overlay');
+function setMobileMenuState(open,restoreFocus=false){
+  if(!mobileMenuButton||!mobileSidebar||!mobileOverlay)return;
+  const expanded=Boolean(open)&&window.innerWidth<=850;
+  mobileSidebar.classList.toggle('open',expanded);
+  mobileOverlay.classList.toggle('show',expanded);
+  mobileOverlay.hidden=!expanded;
+  document.body.classList.toggle('mobile-nav-open',expanded);
+  mobileMenuButton.setAttribute('aria-expanded',String(expanded));
+  mobileMenuButton.setAttribute('aria-label',expanded?'Fechar menu':'Abrir menu');
+  // The hidden drawer must not intercept taps or tab navigation.
+  mobileSidebar.inert=!expanded&&window.innerWidth<=850;
+  if(restoreFocus&&!expanded&&window.innerWidth<=850){
+    mobileMenuButton.focus({preventScroll:true});
+  }
+}
+function closeMobileMenu(restoreFocus=false){setMobileMenuState(false,restoreFocus)}
+mobileMenuButton?.addEventListener('click',e=>{
+  e.stopPropagation();
+  setMobileMenuState(!mobileSidebar.classList.contains('open'));
+});
+mobileOverlay?.addEventListener('click',()=>closeMobileMenu(true));
+window.addEventListener('resize',()=>{
+  if(window.innerWidth>850)closeMobileMenu();
+  else if(!mobileSidebar.classList.contains('open'))mobileSidebar.inert=true;
+});
+setMobileMenuState(false);
 window.addEventListener('hashchange',()=>{const target=location.hash.slice(1);if(['inicio','projetos','tarefas','equipe','cronograma','reunioes','orcamentos','chamados','relatorios','configuracoes','administracao-atria'].includes(target)&&target!==route)go(target)});
-window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeMenu();closeProfileMenu();closeNotificationCenter()}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMobileMenu(true);closeModal();closeMenu();closeProfileMenu();closeNotificationCenter()}});
 if(['inicio','projetos','tarefas','equipe','cronograma','reunioes','orcamentos','chamados','relatorios','configuracoes','administracao-atria'].includes(location.hash.slice(1)))route=location.hash.slice(1);
 refresh();
