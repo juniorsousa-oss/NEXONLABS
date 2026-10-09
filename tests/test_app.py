@@ -1135,3 +1135,61 @@ def test_reference_png_can_be_uploaded_after_visual_confirmation():
         assert pdf.status_code==200
         assert len(PdfReader(io.BytesIO(pdf.content)).pages)==2
         assert c.delete(f'/api/members/{mid}').status_code==200
+
+
+def test_avatar_accepts_larger_than_old_2mb_limit_and_normalizes():
+    """Fotos de 2-15 MB podem entrar, mas ficam pequenas no banco."""
+    import base64
+    import io
+    from PIL import Image
+
+    photo = Image.frombytes('RGB', (960, 800), os.urandom(960 * 800 * 3))
+    buffer = io.BytesIO()
+    photo.save(buffer, format='PNG')
+    raw = buffer.getvalue()
+    assert 2_000_000 < len(raw) <= 15_000_000
+    with TestClient(app) as client:
+        assert client.post('/api/login', json={'password': 'test-password'}).status_code == 200
+        payload = 'data:image/png;base64,' + base64.b64encode(raw).decode()
+        saved = client.put('/api/profile/avatar', json={'photo_data': payload})
+        assert saved.status_code == 200, saved.text
+        response = client.get('/api/profile/avatar')
+        assert response.status_code == 200
+        assert response.headers['content-type'].startswith('image/jpeg')
+        assert max(Image.open(io.BytesIO(response.content)).size) <= 320
+        assert len(response.content) < len(raw)
+        assert client.delete('/api/profile/avatar').status_code == 200
+
+
+def test_only_platform_tenant_may_use_platform_admin_privileges():
+    """Mesmo um flag de plataforma indevido num usuario cliente nao da acesso global."""
+    import pytest
+    from fastapi import HTTPException
+    from app import product_brand_admin
+
+    with patch('app.authorized', return_value={
+        'id': 12345, 'organization_id': NEXON_LABS_ORG_ID,
+        'platform_admin': True, 'role': 'admin'
+    }):
+        with pytest.raises(HTTPException) as forbidden:
+            product_brand_admin(None)
+        assert forbidden.value.status_code == 404
+
+    with patch('app.authorized', return_value={
+        'id': 12345, 'organization_id': ATRIA_PLATFORM_ORG_ID,
+        'platform_admin': True, 'role': 'admin'
+    }):
+        assert product_brand_admin(None)['platform_admin'] is True
+
+
+def test_platform_menu_stays_hidden_outside_admin_tenant():
+    from pathlib import Path
+    files = Path(__file__).resolve().parents[1] / 'static'
+    html = (files / 'index.html').read_text(encoding='utf-8')
+    js = (files / 'app.js').read_text(encoding='utf-8')
+    users = (files / 'users.js').read_text(encoding='utf-8')
+    assert 'id="atria-platform-nav" data-route="administracao-atria" hidden' in html
+    assert "state.platform_admin && platformContext" in js
+    assert "platformNav.style.display=canManagePlatform?'':'none'" in js
+    assert "if(target==='administracao-atria'&&!state.platform_admin)" in js
+    assert "file.size>15_000_000" in users
