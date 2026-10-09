@@ -490,7 +490,7 @@ def update_my_profile(data: ProfileUpdate, request: Request, db: Session = Depen
 
 class ProfilePhotoIn(BaseModel):
     # Base64 do arquivo original; limite validado novamente após decodificação.
-    photo_data: str = Field(min_length=24, max_length=2_800_000)
+    photo_data: str = Field(min_length=24, max_length=20_000_128)  # Ate 15 MB originais em base64
 
 class OrganizationBrandSettingsIn(BaseModel):
     primary_color: str = Field(pattern=r'^#[0-9A-Fa-f]{6}$')
@@ -539,8 +539,8 @@ def save_my_avatar(data: ProfilePhotoIn, request: Request, db: Session = Depends
         original = base64.b64decode(data.photo_data.partition(',')[2], validate=True)
     except (ValueError, binascii.Error):
         raise HTTPException(422, 'Não foi possível ler a imagem.')
-    if len(original) > 2_000_000:
-        raise HTTPException(413, 'A foto original deve ter no máximo 2 MB.')
+    if len(original) > 15_000_000:
+        raise HTTPException(413, 'A foto original deve ter no máximo 15 MB.')
     try:
         from PIL import Image
         with Image.open(io.BytesIO(original)) as candidate:
@@ -713,7 +713,7 @@ def decode_brand_asset(kind: str, image_data: str):
 
 def product_brand_admin(request: Request):
     current = authorized(request)
-    if not current.get('platform_admin'):
+    if not (current.get('platform_admin') and current.get('organization_id') == ATRIA_PLATFORM_ORG_ID):
         raise HTTPException(404, 'Recurso não encontrado.')
     return current
 
@@ -1022,7 +1022,7 @@ def state(request: Request, db: Session = Depends(session)):
         user=current['name'],
         user_id=current['id'],
         user_role=current['role'],
-        platform_admin=bool(current.get('platform_admin')),
+        platform_admin=bool(current.get('platform_admin') and current.get('organization_id') == ATRIA_PLATFORM_ORG_ID),
         organization=organization_brand_payload(db, organization) if organization else None,
         product_brand=product_brand_payload(db),
         has_photo=has_photo,
