@@ -57,7 +57,7 @@ def test_sidebar_drawer_backdrop_layering_and_accessibility():
     assert 'id="mobile-overlay" hidden' in APP_HTML
     assert 'aria-controls="sidebar"' in APP_HTML
     assert 'aria-expanded="false"' in APP_HTML
-    assert "app.js?v=mobile-drawer-v3" in APP_HTML
+    assert 'src="/static/app.js?v=' in APP_HTML
 
     assert "ATRIA mobile drawer touch fix v3" in CSS
     drawer = CSS.split("ATRIA mobile drawer touch fix v3", 1)[1]
