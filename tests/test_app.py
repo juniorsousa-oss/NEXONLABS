@@ -1269,3 +1269,70 @@ def test_institutional_logo_upload_validation_and_scope():
         assert asset.headers['content-type'].startswith('image/png')
         assert platform.delete('/api/product-brand/assets/institutional_logo').status_code==200
         assert platform.get('/api/product-brand/assets/institutional_logo').status_code==404
+
+
+def test_favicon_large_non_square_png_is_normalized_without_client_brand_leak():
+    """Favicon >1 MB e retangular deve ser aceito e reduzido a PNG transparente."""
+    import base64
+    import io
+    import random
+    from PIL import Image
+    # PNG aleatório tem mais de 1 MB, mas permanece no limite de 2,5 MB da API.
+    w,h=800,650
+    original=Image.frombytes('RGB',(w,h),random.Random(2502).randbytes(w*h*3))
+    raw=io.BytesIO()
+    original.save(raw,format='PNG')
+    assert 1_000_000 < raw.tell() <= 2_500_000
+    payload={'image_data':'data:image/png;base64,'+base64.b64encode(raw.getvalue()).decode()}
+    try:
+        with TestClient(app) as platform:
+            assert platform.post('/api/login',json={'password':'platform-test-password'}).status_code==200
+            uploaded=platform.put('/api/product-brand/assets/favicon',json=payload)
+            assert uploaded.status_code==200,uploaded.text
+            img=platform.get('/api/product-brand/assets/favicon')
+            assert img.status_code==200
+            assert img.headers['content-type'].startswith('image/png')
+            with Image.open(io.BytesIO(img.content)) as result:
+                assert result.size==(512,512)
+                assert result.mode=='RGBA'
+                assert result.getpixel((0,0))[3]==0
+        with TestClient(app) as demo:
+            assert demo.post('/api/login',json={'password':'demo-test-password'}).status_code==200
+            state=demo.get('/api/state').json()
+            assert state['product_brand']['assets']['favicon'] is True
+    finally:
+        with DB() as db:
+            entry=db.get(ProductBrandAsset,'favicon')
+            if entry:
+                db.delete(entry)
+                db.commit()
+
+
+def test_favicon_wide_jpeg_and_product_access_permissions():
+    import io
+    import base64
+    from PIL import Image
+    source=io.BytesIO()
+    Image.new('RGB',(1000,400),(18,98,152)).save(source,format='JPEG',quality=93)
+    payload={'image_data':'data:image/jpeg;base64,'+base64.b64encode(source.getvalue()).decode()}
+    with TestClient(app) as client:
+        assert client.post('/api/login',json={'password':'test-password'}).status_code==200
+        assert client.put('/api/product-brand/assets/favicon',json=payload).status_code==404
+    try:
+        with TestClient(app) as platform:
+            assert platform.post('/api/login',json={'password':'platform-test-password'}).status_code==200
+            put=platform.put('/api/product-brand/assets/favicon',json=payload)
+            assert put.status_code==200,put.text
+            result=platform.get('/api/product-brand/assets/favicon')
+            assert result.status_code==200
+            with Image.open(io.BytesIO(result.content)) as img:
+                assert img.size==(512,512)
+                assert img.mode=='RGBA'
+                assert img.getpixel((0,0))[3]==0
+                assert img.getpixel((256,256))[3]==255
+    finally:
+        with DB() as db:
+            row=db.get(ProductBrandAsset,'favicon')
+            if row:
+                db.delete(row)
+                db.commit()
