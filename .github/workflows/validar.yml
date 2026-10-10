@@ -48,3 +48,17 @@ jobs:
           python -m pip install -r requirements.txt pytest httpx pypdf
           python -m py_compile app.py quotes_module.py tickets_module.py accounts_module.py tenant_module.py demo_seed.py brand_kit.py approved_template.py
           python -m pytest -q
+      - name: Instalar navegador para validar a moldura externa
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Conferir fundo, zoom 90% e menu mobile no Chromium real
+        run: node tests/ui_axora_exterior.cjs
+      - name: Guardar evidências desktop e celular
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atria-axora-desktop-mobile
+          path: test-artifacts/*.png
+          if-no-files-found: ignore
+          retention-days: 14
