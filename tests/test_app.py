@@ -1193,3 +1193,79 @@ def test_platform_menu_stays_hidden_outside_admin_tenant():
     assert "platformNav.style.display=canManagePlatform?'':'none'" in js
     assert "if(target==='administracao-atria'&&!state.platform_admin)" in js
     assert "file.size>15_000_000" in users
+
+
+def test_institutional_logo_is_global_and_inherited_by_all_tenants():
+    """A assinatura Nexon é do produto, não da organização cliente."""
+    import io
+    import base64
+    from PIL import Image
+
+    img=Image.new('RGBA',(320,120),(13,116,170,255))
+    buf=io.BytesIO()
+    img.save(buf,format='PNG')
+    payload='data:image/png;base64,'+base64.b64encode(buf.getvalue()).decode('ascii')
+    with TestClient(app) as regular:
+        assert regular.post('/api/login',json={'password':'test-password'}).status_code==200
+        blocked=regular.put('/api/product-brand/assets/institutional_logo',json={'image_data':payload})
+        assert blocked.status_code==404
+        client_before=regular.get('/api/state').json()['organization']
+
+    try:
+        with TestClient(app) as platform:
+            login=platform.post('/api/login',json={'password':'platform-test-password'})
+            assert login.status_code==200,login.text
+            put=platform.put('/api/product-brand/assets/institutional_logo',json={'image_data':payload})
+            assert put.status_code==200,put.text
+            product=platform.get('/api/product-brand').json()
+            assert product['assets']['institutional_logo'] is True
+            uri=product['asset_urls']['institutional_logo']
+            assert '?v=' in uri
+            fetched=platform.get(uri)
+            assert fetched.status_code==200
+            assert fetched.headers['content-type'].startswith('image/png')
+            assert fetched.content.startswith(b'\\x89PNG\\r\\n\\x1a\\n'.decode('unicode_escape').encode('latin1'))
+            assert 'immutable' in fetched.headers.get('cache-control','')
+
+        with TestClient(app) as demo:
+            assert demo.post('/api/login',json={'password':'demo-test-password'}).status_code==200
+            state=demo.get('/api/state').json()
+            assert state['product_brand']['asset_urls']['institutional_logo']==uri
+            assert state['organization']['is_demo'] is True
+            assert demo.put('/api/product-brand/assets/institutional_logo',json={'image_data':payload}).status_code==404
+
+        with TestClient(app) as client:
+            assert client.post('/api/login',json={'password':'test-password'}).status_code==200
+            state=client.get('/api/state').json()
+            assert state['product_brand']['asset_urls']['institutional_logo']==uri
+            assert state['organization']['asset_urls']==client_before['asset_urls']
+            assert state['organization']['use_custom_brand']==client_before['use_custom_brand']
+            assert client.get(uri).status_code==200
+    finally:
+        # Isola teste dos outros casos; dados reais nunca são usados.
+        with DB() as db:
+            entry=db.get(ProductBrandAsset,'institutional_logo')
+            if entry:
+                db.delete(entry)
+                db.commit()
+
+
+def test_institutional_logo_upload_validation_and_scope():
+    import io
+    import base64
+    from PIL import Image
+    with TestClient(app) as platform:
+        assert platform.post('/api/login',json={'password':'platform-test-password'}).status_code==200
+        assert platform.get('/api/product-brand/assets/institutional_logo').status_code==404
+        assert platform.put('/api/product-brand/assets/institutional_logo',json={'image_data':'data:image/svg+xml;base64,PHN2Zz4='}).status_code==422
+        assert platform.put('/api/organization/brand/assets/institutional_logo',json={'image_data':'data:image/png;base64,AAAA'}).status_code==404
+        png=io.BytesIO()
+        Image.new('RGBA',(220,80),(21,39,60)).save(png,format='PNG')
+        data='data:image/png;base64,'+base64.b64encode(png.getvalue()).decode()
+        upload=platform.put('/api/product-brand/assets/institutional_logo',json={'image_data':data})
+        assert upload.status_code==200,upload.text
+        asset=platform.get('/api/product-brand/assets/institutional_logo')
+        assert asset.status_code==200
+        assert asset.headers['content-type'].startswith('image/png')
+        assert platform.delete('/api/product-brand/assets/institutional_logo').status_code==200
+        assert platform.get('/api/product-brand/assets/institutional_logo').status_code==404
