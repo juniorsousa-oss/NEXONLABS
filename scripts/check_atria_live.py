@@ -14,8 +14,8 @@ import sys
 
 BASE = os.getenv("ATRIA_PUBLIC_URL", "https://atria.nexonlabs.com.br").rstrip("/")
 FILES = {
-    "/static/atria-axora-exterior.css?v=axora-network-desktop-mobile-r1":
-        b"ATRIA | Moldura externa inspirada no AXORA",
+    "/static/atria-axora-exterior.css?v=axora-frame-uniform-r2":
+        "contorno contínuo, referência visual AXORA".encode("utf-8"),
     "/static/nexon-app-atmosphere.svg":
         b"Atmosfera de conex",
 }
