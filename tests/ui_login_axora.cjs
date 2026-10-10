@@ -52,7 +52,7 @@ async function inspect(page){
    // Mesma área útil 1440x900 dos testes existentes, navegador a 100%.
    const desktop=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
    await desktop.goto(base,{waitUntil:'networkidle'});
-   await desktop.waitForFunction(()=>document.querySelector('link[href*="login-scale-r2"]')?.sheet);
+   await desktop.waitForFunction(()=>document.querySelector('link[href*="login-scale-r3"]')?.sheet);
    const a=await inspect(desktop);
    assert.ok(a.shell.width>=950 && a.shell.width<=965,JSON.stringify(a));
    assert.ok(a.shell.height>=670 && a.shell.height<=690,JSON.stringify(a));
@@ -80,7 +80,30 @@ async function inspect(page){
    const b=await inspect(short);
    assert.ok(b.docWidth<=b.viewport.width+1,JSON.stringify(b));
    assert.ok(b.note.bottom<=b.bodyHeight+1,JSON.stringify(b));
-   assert.ok(b.shell.height>=420,JSON.stringify(b));
+   assert.ok(b.shell.height>=550 && b.shell.height<=600,JSON.stringify(b));
+
+   // Reprodução da proporção do usuário: 600 CSS px de altura útil
+   // (monitor 1708x896 com escala de exibição do Windows / navegador).
+   // AXORA nessa faixa usa card de 510px; ATRIA não deve cair para 480px.
+   const compact=await browser.newPage({viewport:{width:1280,height:600},deviceScaleFactor:1});
+   await compact.goto(base,{waitUntil:'networkidle'});
+   const c=await inspect(compact);
+   assert.ok(Math.abs(c.shell.height-510)<=2,JSON.stringify(c));
+   assert.ok(Math.abs(c.shell.y-(600-510)/2)<=3,JSON.stringify(c));
+   assert.ok(c.shell.bottom<=600-30,JSON.stringify(c));
+   assert.ok(c.blue.bottom<=c.shell.bottom+1 && c.white.bottom<=c.shell.bottom+1,JSON.stringify(c));
+   assert.ok(c.action.bottom<c.note.y && c.note.bottom<c.shell.bottom-12,JSON.stringify(c));
+   assert.ok(c.slogan.bottom+10<c.leftFoot.y,JSON.stringify(c));
+   assert.ok(c.docWidth<=1281,JSON.stringify(c));
+   await compact.screenshot({path:path.join(artifacts,'atria-login-desktop-short-600.png'),fullPage:false});
+
+   // Em alturas extremamente pequenas, o formulário continua acessível
+   // por rolagem, sem aplicar overflow:hidden no corpo.
+   const tiny=await browser.newPage({viewport:{width:1280,height:465},deviceScaleFactor:1});
+   await tiny.goto(base,{waitUntil:'networkidle'});
+   const small=await inspect(tiny);
+   assert.ok(small.shell.height>=400,JSON.stringify(small));
+   assert.ok(small.action.bottom<=small.bodyHeight,JSON.stringify(small));
 
    const tablet=await browser.newPage({viewport:{width:820,height:950}});
    await tablet.goto(base,{waitUntil:'networkidle'});
@@ -99,7 +122,7 @@ async function inspect(page){
    assert.ok(m.note.bottom<=m.bodyHeight+1,JSON.stringify(m));
    await mobile.screenshot({path:path.join(artifacts,'atria-login-mobile-390.png'),fullPage:true});
 
-   console.log('ATRIA_LOGIN_AXORA_SCALE_OK desktop100 desktop90 laptop650 tablet820 mobile390');
+   console.log('ATRIA_LOGIN_AXORA_SCALE_OK desktop100 desktop90 laptop650 desktop600 card510 tablet820 mobile390');
  }finally{
    await browser.close();
    server.close();
