@@ -590,13 +590,13 @@ def delete_my_avatar(request: Request, db: Session = Depends(session)):
     return {'ok': True, 'has_photo': False}
 
 BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark'}
-PRODUCT_BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark'}
+PRODUCT_BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark', 'institutional_logo'}
 
 def _brand_asset_version(updated_at: datetime | None) -> str:
     if updated_at is None:
         return '1'
     try:
-        return str(int(updated_at.timestamp()))
+        return str(int(updated_at.timestamp() * 1_000_000))
     except (ValueError, OSError, OverflowError):
         return updated_at.isoformat().replace(':','').replace('+','').replace('-','')
 
@@ -646,7 +646,7 @@ def organization_brand_payload(db: Session, organization):
 
 def normalize_brand_logo(kind: str, raw: bytes, mime_type: str):
     """Recorta margens transparentes de logos para que ocupem corretamente a sidebar."""
-    if kind not in {'logo', 'logo_dark'} or mime_type not in {'image/png', 'image/webp'}:
+    if kind not in {'logo', 'logo_dark', 'institutional_logo'} or mime_type not in {'image/png', 'image/webp'}:
         return raw, mime_type
     try:
         from PIL import Image, ImageOps
@@ -681,7 +681,7 @@ def decode_brand_asset(kind: str, image_data: str):
     import base64
     import binascii
     from PIL import Image, UnidentifiedImageError
-    if kind not in BRAND_ASSET_KINDS:
+    if kind not in BRAND_ASSET_KINDS | PRODUCT_BRAND_ASSET_KINDS:
         raise HTTPException(404, 'Tipo de identidade visual não encontrado.')
     prefixes = {
         'data:image/png;base64,': 'image/png',
