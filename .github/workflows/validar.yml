@@ -57,7 +57,7 @@ jobs:
       - name: Conferir fundo, zoom 90% e menu mobile no Chromium real
         run: node tests/ui_axora_exterior.cjs
       - name: Conferir login ATRIA vs AXORA no Chromium a 100% e mobile
-        run: node tests/ui_atria_login_scale.cjs
+        run: node tests/ui_login_axora.cjs
       - name: Guardar evidências desktop e celular
         if: always()
         uses: actions/upload-artifact@v4
