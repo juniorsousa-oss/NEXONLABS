@@ -135,13 +135,38 @@ async function prepareFavicon(file){
     canvas.height=512;
     const context=canvas.getContext('2d');
     if(!context)throw Error('Não foi possível preparar o favicon neste navegador.');
+    // Recorta a área alfa realmente visível: um PNG 512x512 pode ter
+    // um desenho ocupando só 25% da tela e produzir favicon minúsculo.
+    const sample=document.createElement('canvas');
+    const ratio=Math.min(1,1024/Math.max(w,h));
+    sample.width=Math.max(1,Math.round(w*ratio));
+    sample.height=Math.max(1,Math.round(h*ratio));
+    const sc=sample.getContext('2d',{willReadFrequently:true});
+    if(!sc)throw Error('Não foi possível inspecionar a transparência da imagem.');
+    sc.drawImage(picture,0,0,sample.width,sample.height);
+    const pixels=sc.getImageData(0,0,sample.width,sample.height).data;
+    let left=sample.width,top=sample.height,right=-1,bottom=-1;
+    for(let y=0;y<sample.height;y++){
+      for(let x=0;x<sample.width;x++){
+        if(pixels[(y*sample.width+x)*4+3]<20)continue;
+        left=Math.min(left,x);top=Math.min(top,y);
+        right=Math.max(right,x);bottom=Math.max(bottom,y);
+      }
+    }
+    if(right<left||bottom<top)throw Error('A imagem está completamente transparente.');
+    const pad=Math.max(2,Math.round(Math.max(right-left+1,bottom-top+1)*.015));
+    left=Math.max(0,left-pad);top=Math.max(0,top-pad);
+    right=Math.min(sample.width,right+1+pad);bottom=Math.min(sample.height,bottom+1+pad);
+    const sourceX=left/ratio,sourceY=top/ratio;
+    const sourceW=(right-left)/ratio,sourceH=(bottom-top)/ratio;
     const safeArea=476;
-    const scale=Math.min(safeArea/w,safeArea/h);
-    const width=w*scale,height=h*scale;
+    const scale=Math.min(safeArea/sourceW,safeArea/sourceH);
+    const width=sourceW*scale,height=sourceH*scale;
     context.clearRect(0,0,512,512);
     context.imageSmoothingEnabled=true;
     context.imageSmoothingQuality='high';
-    context.drawImage(picture,(512-width)/2,(512-height)/2,width,height);
+    context.drawImage(picture,sourceX,sourceY,sourceW,sourceH,
+      (512-width)/2,(512-height)/2,width,height);
     const blob=await new Promise((resolve,reject)=>canvas.toBlob(
       value=>value?resolve(value):reject(Error('Não foi possível converter o favicon.')),
       'image/png'
