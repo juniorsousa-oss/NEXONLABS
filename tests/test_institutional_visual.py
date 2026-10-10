@@ -31,7 +31,7 @@ def test_login_and_app_use_one_global_image_with_fallback():
     assert 'id="sidebar-institutional-logo"' in html
     assert 'id="sidebar-footer-decoration"' in html
     assert "const institutionalUrl=productBrandAssetUrl('institutional_logo')" in app
-    assert "institutionDecoration.hidden=true" in app
+    assert "sidebarDecoration.hidden=true" in app
     assert "productBrandAssetUrl('institutional_logo')||'/static/nexon-monochrome-dark.svg'" in app
     assert "organization-brand-image" in html
     assert "const logo=custom?brandAssetUrl('logo_dark'):officialLogo" in app
