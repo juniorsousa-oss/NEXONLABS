@@ -62,3 +62,16 @@ jobs:
           path: test-artifacts/*.png
           if-no-files-found: ignore
           retention-days: 14
+
+  production:
+    name: Verificar publicação real na Hostinger
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Confirmar arquivos visuais disponíveis no domínio publicado
+        run: python scripts/check_atria_live.py
