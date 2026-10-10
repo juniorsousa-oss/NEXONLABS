@@ -1224,7 +1224,7 @@ def test_institutional_logo_is_global_and_inherited_by_all_tenants():
             fetched=platform.get(uri)
             assert fetched.status_code==200
             assert fetched.headers['content-type'].startswith('image/png')
-            assert fetched.content.startswith(b'\\x89PNG\\r\\n\\x1a\\n'.decode('unicode_escape').encode('latin1'))
+            assert fetched.content[:4] == bytes((137,80,78,71))
             assert 'immutable' in fetched.headers.get('cache-control','')
 
         with TestClient(app) as demo:
