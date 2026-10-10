@@ -70,6 +70,18 @@ const server=http.createServer((req,res)=>{
     assert.ok(parseFloat(layout.shellRadius)>=20);
     assert.ok(Math.abs(layout.shellX-layout.sidebarX)<=2);
     assert.ok(layout.docWidth<=layout.winWidth+2,JSON.stringify(layout));
+    const nav=await desktop.evaluate(()=>{
+      const links=[...document.querySelectorAll('.sidebar .nav-link')].filter(x=>!x.hidden&&getComputedStyle(x).display!=='none');
+      return {height:links[0].getBoundingClientRect().height,
+        iconWidth:links[0].querySelector('svg')?.getBoundingClientRect().width,
+        menuOverflow:getComputedStyle(document.querySelector('.sidebar .menu')).overflowY,
+        logo:!!document.querySelector('#sidebar-institutional-logo')};
+    });
+    assert.ok(nav.height>=49,JSON.stringify(nav));
+    assert.ok(nav.iconWidth>=22,JSON.stringify(nav));
+    assert.equal(nav.menuOverflow,'auto');
+    assert.ok(nav.logo);
+
     // A falha reportada pelo usuário: a rolagem vertical não pode arrastar a
     // moldura de 4 cantos para fora do viewport (como ocorria no ATRIA).
     await desktop.evaluate(()=>{
@@ -143,6 +155,11 @@ const server=http.createServer((req,res)=>{
     assert.ok(frame.drawerLeft<0,JSON.stringify(frame));
     assert.match(frame.background,/nexon-app-atmosphere\.svg/);
     assert.ok(frame.docWidth<=frame.winWidth+2,JSON.stringify(frame));
+    const mobileLinks=await mobile.evaluate(()=>[...document.querySelectorAll('.sidebar .nav-link')]
+      .filter(x=>!x.hidden&&getComputedStyle(x).display!=='none')
+      .map(x=>x.getBoundingClientRect().height));
+    assert.ok(mobileLinks.every(height=>height>=48),JSON.stringify(mobileLinks));
+
     await mobile.evaluate(()=>{
       const side=document.querySelector('#sidebar'),overlay=document.querySelector('#mobile-overlay');
       overlay.hidden=false;overlay.classList.add('show');
