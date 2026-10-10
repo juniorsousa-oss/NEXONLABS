@@ -1,210 +1,256 @@
-/* ATRIA | Moldura externa inspirada no AXORA, design Nexon Labs.
-   Camada FINAL do aplicativo autenticado; não afeta login nem lógica.
-   Referência visual: AXORA shell-finish + mobile-frame-login-v2.
-   Dimensões em CSS px: responsivo com zoom 90% ou 100%. */
-
+/* ATRIA / Nexon Labs · contorno contínuo, referência visual AXORA.
+   Desktop: quadro único dentro da viewport e rolagem SOMENTE no conteúdo.
+   Mobile: quadro arredondado e rolagem natural, menu acima do overlay.
+   Wallpaper aparece EXCLUSIVAMENTE fora da moldura — nunca no sidebar.
+   CSS final: vence as regras legadas II.8/II.9/II.10 sem alterar seus arquivos. */
 :root{
   --atria-shell-gutter:12px;
-  --atria-shell-radius:25px;
-  --atria-shell-atmosphere:url("/static/nexon-app-atmosphere.svg");
-  --atria-shell-surface:linear-gradient(150deg,#F9FCFE 0%,#F1F7FA 58%,#F6FAFC 100%);
+  --atria-shell-radius:27px;
+  --atria-shell-background:url("/static/nexon-app-atmosphere.svg");
+  --atria-inner-surface:linear-gradient(156deg,#FAFCFE 0%,#F3F8FB 57%,#F6FAFC 100%);
 }
 
-/* O fundo do AXORA volta a aparecer FORA da interface principal. */
-html{background-color:#062c45!important;}
-body:not(.login-page){
-  min-height:100vh;
-  min-height:100dvh;
-  /* A regra legacy II.10 usa background:...!important. */
-  background-color:#062c45!important;
-  background-image:var(--atria-shell-atmosphere)!important;
-  background-position:center center;
-  background-repeat:no-repeat;
-  background-size:cover;
-  background-attachment:fixed;
+/* O mesmo fundo visto em todas as quatro bordas; nenhuma camada
+   com tamanho diferente pode se sobrepor por dentro da interface. */
+html:has(body:not(.login-page) .shell){
+  background:#06344B!important;
+}
+body:not(.login-page):has(.shell){
+  margin:0!important;
+  padding:0!important;
+  min-width:0;
+  background-color:#06344B!important;
+  background-image:var(--atria-shell-background)!important;
+  background-position:center center!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
+  background-attachment:fixed!important;
 }
 
-/* Mesmo enquadramento de produto do AXORA, sem dimensionar a 90% artificialmente. */
-body:not(.login-page) .shell{
-  display:flex;
-  width:calc(100% - 2 * var(--atria-shell-gutter))!important;
-  max-width:none!important;
-  min-width:0;
-  min-height:calc(100dvh - 2 * var(--atria-shell-gutter))!important;
-  height:auto;
-  margin:var(--atria-shell-gutter) auto!important;
-  padding:0;
-  overflow:clip;
-  border:1px solid rgba(206,227,237,.62);
-  border-radius:var(--atria-shell-radius)!important;
-  background:transparent;
-  box-shadow:0 24px 68px rgba(0,14,35,.25),0 3px 14px rgba(0,29,52,.11)!important;
-  isolation:isolate;
-}
-body:not(.login-page) .shell>.workspace{
-  flex:1 1 0;
-  width:auto;
-  min-width:0;
-  min-height:calc(100dvh - 2 * var(--atria-shell-gutter) - 2px)!important;
-  max-width:100%;
-  background:var(--atria-shell-surface);
-  border-radius:0 calc(var(--atria-shell-radius) - 1px) calc(var(--atria-shell-radius) - 1px) 0;
-  overflow:visible;
-}
-body:not(.login-page) .shell .topbar{
-  min-width:0;
-  border-radius:0 calc(var(--atria-shell-radius) - 1px) 0 0;
-  border-bottom:1px solid rgba(214,226,237,.92);
-  background:rgba(255,255,255,.96);
-  box-shadow:0 5px 20px rgba(7,38,64,.04);
-}
-body:not(.login-page) .shell .main{
-  min-width:0;
-  max-width:min(1720px,100%);
+/* Igual ao AXORA: moldura contínua com os quatro cantos na viewport.
+   O scroll da página inteira causava o contorno interminável no ATRIA. */
+@media (min-width:851px){
+  html:has(body:not(.login-page) .shell),
+  body:not(.login-page):has(.shell){
+    width:100%;
+    height:100%!important;
+    max-height:100dvh!important;
+    overflow:hidden!important;
+    overscroll-behavior:none;
+  }
+  body:not(.login-page) .shell{
+    display:flex!important;
+    align-items:stretch!important;
+    width:calc(100% - 2 * var(--atria-shell-gutter))!important;
+    max-width:none!important;
+    height:calc(100dvh - 2 * var(--atria-shell-gutter))!important;
+    min-height:0!important;
+    max-height:calc(100dvh - 2 * var(--atria-shell-gutter))!important;
+    margin:var(--atria-shell-gutter) auto!important;
+    padding:0!important;
+    overflow:hidden!important;
+    border:1px solid rgba(188,224,232,.84)!important;
+    border-radius:var(--atria-shell-radius)!important;
+    background:transparent!important;
+    box-shadow:0 14px 42px rgba(0,16,37,.22)!important;
+    isolation:isolate;
+  }
+  body:not(.login-page) .shell>.sidebar{
+    position:relative!important;
+    top:auto!important;
+    left:auto!important;
+    bottom:auto!important;
+    align-self:stretch!important;
+    flex-shrink:0!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    overflow:hidden!important;
+    border-right:1px solid rgba(166,226,234,.13)!important;
+    border-radius:calc(var(--atria-shell-radius) - 1px) 0 0 calc(var(--atria-shell-radius) - 1px)!important;
+  }
+  body:not(.login-page) .shell>.workspace{
+    display:flex!important;
+    flex:1 1 0!important;
+    flex-direction:column!important;
+    width:0!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    overflow:hidden!important;
+    border-radius:0 calc(var(--atria-shell-radius) - 1px) calc(var(--atria-shell-radius) - 1px) 0!important;
+    background:var(--atria-inner-surface)!important;
+  }
+  body:not(.login-page) .shell .topbar{
+    position:relative!important;
+    top:auto!important;
+    left:auto!important;
+    right:auto!important;
+    display:flex!important;
+    flex:0 0 82px!important;
+    width:100%!important;
+    height:82px!important;
+    min-height:82px!important;
+    border-radius:0 calc(var(--atria-shell-radius) - 1px) 0 0!important;
+    border-bottom:1px solid #DEE9EF!important;
+    background:rgba(255,255,255,.97)!important;
+  }
+  body:not(.login-page) .shell .main{
+    flex:1 1 auto!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:0!important;
+    min-height:0!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+    scrollbar-color:#BFD2DF transparent;
+    -webkit-overflow-scrolling:touch;
+  }
 }
 
-/* A MESMA textura externa também dialoga com o menu principal, sem perder
-   contraste e sem substituir o branding ATRIA/logo personalizada do cliente. */
+/* Sidebar homogênea: sem papel de parede, sem cortes e sem faixas.
+   O exterior permanece decorativo; os elementos do menu ficam legíveis. */
 body:not(.login-page) .shell>.sidebar{
-  position:relative;
-  top:auto;
-  left:auto;
-  align-self:stretch;
-  flex-shrink:0;
-  height:auto;
-  min-height:0;
-  overflow:hidden;
-  border-radius:calc(var(--atria-shell-radius) - 1px) 0 0 calc(var(--atria-shell-radius) - 1px);
-  border-right:1px solid rgba(121,213,225,.15);
-  background-color:#071d36;
-  background-image:
-    linear-gradient(180deg,rgba(5,25,47,.92),rgba(7,35,58,.95)),
-    var(--atria-shell-atmosphere)!important;
-  background-position:center center,31% center;
-  background-size:cover,auto 100%;
-  background-repeat:no-repeat;
-  box-shadow:inset -1px 0 rgba(255,255,255,.035);
+  background:#0B2D4A!important;
+  background-image:none!important;
+  box-shadow:inset -1px 0 rgba(255,255,255,.04)!important;
 }
 body:not(.login-page) .shell>.sidebar .brand{
-  border-bottom:1px solid rgba(173,224,232,.13);
+  border-bottom:1px solid rgba(169,225,233,.12);
 }
 body:not(.login-page) .shell>.sidebar .nav-section{
-  color:#91B4C6;
+  color:#9BBCCA;
 }
 body:not(.login-page) .shell>.sidebar .nav-link{
   min-width:0;
-  border-radius:13px;
   border:1px solid transparent;
+  border-radius:13px;
   color:#DCEAF4;
 }
 body:not(.login-page) .shell>.sidebar .nav-link:hover{
-  background:rgba(99,207,218,.095);
-  border-color:rgba(121,222,225,.14);
-  color:#fff;
+  background:rgba(109,208,219,.09);
+  border-color:rgba(121,222,225,.12);
+  color:#FFF;
 }
 body:not(.login-page) .shell>.sidebar .nav-link.active{
-  background:linear-gradient(105deg,rgba(7,142,160,.34),rgba(35,97,148,.24));
-  border-color:rgba(114,227,223,.20);
-  box-shadow:inset 3px 0 #37D5C7,0 8px 23px rgba(0,13,38,.15);
-  color:#fff;
+  background:linear-gradient(100deg,rgba(8,142,161,.34),rgba(25,91,140,.25));
+  border-color:rgba(114,227,223,.2);
+  box-shadow:inset 3px 0 #37D5C7;
+  color:#FFF;
 }
 body:not(.login-page) .shell>.sidebar .nav-link.active svg{
   color:#73F1E6;
 }
 body:not(.login-page) .shell>.sidebar .sidebar-footer{
-  border-top-color:rgba(174,226,229,.18);
+  border-top-color:rgba(169,225,233,.12);
 }
-
-/* Tablet: mantém sidebar integrada, sem sobrepor conteúdo. */
+body:not(.login-page) .shell>.sidebar .menu{
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
 @media (min-width:851px) and (max-width:1180px){
-  :root{--atria-shell-gutter:10px;--atria-shell-radius:22px;}
-  body:not(.login-page) .shell>.workspace{min-width:0;width:auto;}
+  :root{--atria-shell-gutter:10px;--atria-shell-radius:24px;}
 }
 
-/* Smartphone: wallpaper do AXORA visível nas margens, cartões arredondados
-   e drawer realmente acima de overlay e moldura. */
+/* Smartphone: mantém as bordas exteriores, com scroll natural na página
+   e não no card. A navegação móvel continua fixa e clicável. */
 @media (max-width:850px){
-  :root{--atria-shell-gutter:11px;--atria-shell-radius:24px;}
-  html{background-color:#062c45!important;}
-  body:not(.login-page){
-    background-image:var(--atria-shell-atmosphere)!important;
-    background-size:cover;
-    background-position:center top;
-    background-attachment:scroll;
+  :root{--atria-shell-gutter:10px;--atria-shell-radius:24px;}
+  html:has(body:not(.login-page) .shell),
+  body:not(.login-page):has(.shell){
+    height:auto!important;
+    max-height:none!important;
+    overflow-x:clip!important;
+    overflow-y:auto!important;
+  }
+  body:not(.login-page):has(.shell){
+    min-height:100dvh!important;
+    background-position:center top!important;
+    background-size:cover!important;
+    background-attachment:scroll!important;
   }
   body:not(.login-page) .shell{
-    display:block;
-    width:calc(100% - 2 * var(--atria-shell-gutter));
+    display:block!important;
+    width:calc(100% - 2 * var(--atria-shell-gutter))!important;
     max-width:calc(100% - 2 * var(--atria-shell-gutter))!important;
-    min-height:calc(100dvh - 2 * var(--atria-shell-gutter));
-    height:auto;
+    min-height:calc(100dvh - 2 * var(--atria-shell-gutter))!important;
+    height:auto!important;
     margin:var(--atria-shell-gutter) auto!important;
-    overflow:visible;
-    border:1px solid rgba(206,227,237,.83);
+    padding:0!important;
+    overflow:visible!important;
+    border:1px solid rgba(195,225,234,.86)!important;
     border-radius:var(--atria-shell-radius)!important;
-    box-shadow:0 18px 48px rgba(0,16,37,.29),0 3px 12px rgba(0,29,53,.11)!important;
+    background:transparent!important;
+    box-shadow:0 15px 36px rgba(0,16,37,.25)!important;
+    isolation:isolate;
   }
   body:not(.login-page) .shell>.workspace{
-    width:100%;
-    max-width:100%;
+    display:flex!important;
+    flex-direction:column!important;
+    width:100%!important;
+    max-width:100%!important;
     min-height:calc(100dvh - 2 * var(--atria-shell-gutter) - 2px)!important;
-    height:auto;
-    overflow:visible;
-    border-radius:calc(var(--atria-shell-radius) - 1px);
-    background:linear-gradient(156deg,#F9FCFE 0%,#F1F7FA 58%,#F6FAFC 100%);
+    height:auto!important;
+    overflow:visible!important;
+    border-radius:calc(var(--atria-shell-radius) - 1px)!important;
+    background:var(--atria-inner-surface)!important;
   }
   body:not(.login-page) .shell .topbar{
-    position:relative;
-    top:0;
+    position:relative!important;
+    top:0!important;
     z-index:10;
-    border-radius:calc(var(--atria-shell-radius) - 1px) calc(var(--atria-shell-radius) - 1px) 0 0;
+    border-radius:calc(var(--atria-shell-radius) - 1px) calc(var(--atria-shell-radius) - 1px) 0 0!important;
+    background:rgba(255,255,255,.98)!important;
   }
   body:not(.login-page) .shell .main{
-    width:100%;
-    min-width:0;
-    max-width:100%;
-    padding:19px 14px 28px;
+    flex:1 1 auto;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    padding:19px 14px 28px!important;
   }
   body:not(.login-page) .shell>.mobile-overlay{
     z-index:70;
   }
   body:not(.login-page) .shell>.sidebar{
-    position:fixed;
-    left:-265px;
-    top:0;
-    bottom:0;
-    z-index:71;
-    width:265px;
-    max-width:calc(100vw - 30px);
-    height:100vh;
-    height:100dvh;
-    min-height:0;
-    overflow-x:hidden;
-    overflow-y:auto;
-    border-radius:0 24px 24px 0;
+    position:fixed!important;
+    top:0!important;
+    bottom:0!important;
+    left:-265px!important;
+    z-index:71!important;
+    width:265px!important;
+    max-width:calc(100vw - 30px)!important;
+    height:100dvh!important;
+    min-height:0!important;
+    max-height:100dvh!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    border-radius:0 24px 24px 0!important;
     pointer-events:auto;
-    isolation:isolate;
     -webkit-overflow-scrolling:touch;
     overscroll-behavior-y:contain;
-    background-image:
-      linear-gradient(180deg,rgba(5,25,47,.90),rgba(7,35,58,.94)),
-      var(--atria-shell-atmosphere)!important;
-    box-shadow:18px 0 44px rgba(0,17,39,.22);
+    background:#0B2D4A!important;
+    background-image:none!important;
+    box-shadow:16px 0 42px rgba(0,16,38,.23)!important;
   }
   body:not(.login-page) .shell>.sidebar.open{
-    left:0;
-    z-index:71;
+    left:0!important;
+    z-index:71!important;
     pointer-events:auto;
-    box-shadow:18px 0 58px rgba(0,15,37,.37);
   }
 }
 @media(max-width:520px){
-  :root{--atria-shell-gutter:10px;--atria-shell-radius:23px;}
-  body:not(.login-page) .shell .main{padding:17px 12px 25px;}
+  body:not(.login-page) .shell .main{padding:17px 12px 25px!important;}
 }
 @media(max-width:370px){
   :root{--atria-shell-gutter:7px;--atria-shell-radius:21px;}
-  body:not(.login-page) .shell .main{padding-left:9px;padding-right:9px;}
+  body:not(.login-page) .shell .main{padding-left:9px!important;padding-right:9px!important;}
 }
 @media(prefers-reduced-motion:reduce){
   body:not(.login-page) .shell>.sidebar .nav-link{transition:none!important;}
