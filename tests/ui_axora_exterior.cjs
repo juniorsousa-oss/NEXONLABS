@@ -220,6 +220,12 @@ const server=http.createServer((req,res)=>{
       overlay.hidden=false;overlay.classList.add('show');
       side.classList.add('open');side.inert=false;
     });
+    // Drawer animates from -265px to 0 over ~200ms. Wait for the final
+    // visual state instead of sampling the first paint after .open.
+    await mobile.waitForFunction(
+      ()=>document.querySelector('#sidebar').getBoundingClientRect().left>=-2,
+      null,{timeout:2500}
+    );
     const drawer=await mobile.evaluate(()=>{
       const side=document.querySelector('#sidebar'),overlay=document.querySelector('#mobile-overlay');
       const rect=side.getBoundingClientRect(),overlayStyle=getComputedStyle(overlay);
