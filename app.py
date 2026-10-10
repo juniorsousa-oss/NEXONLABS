@@ -668,7 +668,13 @@ def normalize_favicon_image(raw: bytes, mime_type: str):
             bbox=(max(0,x1-guard),max(0,y1-guard),
                   min(image.width,x2+guard),min(image.height,y2+guard))
             mark=image.crop(bbox)
-            mark.thumbnail((476,476),Image.Resampling.LANCZOS)
+            # thumbnail() apenas reduz: um símbolo pequeno continuaria
+            # pequeno. Aqui ampliamos também imagens com muita margem.
+            scale=476/max(mark.width,mark.height)
+            mark=mark.resize(
+                (max(1,round(mark.width*scale)),max(1,round(mark.height*scale))),
+                Image.Resampling.LANCZOS,
+            )
             if mark.width < 1 or mark.height < 1:
                 raise HTTPException(422,'O favicon não contém uma imagem válida.')
             canvas=Image.new('RGBA',(512,512),(0,0,0,0))
