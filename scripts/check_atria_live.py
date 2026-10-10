@@ -18,8 +18,12 @@ FILES = {
         "contorno contínuo, referência visual AXORA".encode("utf-8"),
     "/static/nexon-app-atmosphere.svg":
         b"Atmosfera de conex",
-    "/static/atria-login-axora-scale.css?v=login-scale-r1":
-        b"width:min(960px,calc(100vw - 56px))",
+    # A query string isolada não indica a versão: verificar a própria regra,
+    # e a referência nova no HTML de login para detectar deploy incompleto.
+    "/static/atria-login-axora-scale.css?v=login-scale-r3":
+        b"height:min(510px,calc(100dvh - 20px))",
+    "/":
+        b"atria-login-axora-scale.css?v=login-scale-r3",
     "/static/app.js?v=compact-favicon-r3":
         b"let left=sample.width,top=sample.height,right=-1,bottom=-1;",
 }
