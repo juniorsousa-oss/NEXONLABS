@@ -92,6 +92,19 @@ function applyOrganizationBrand(){
     signature.hidden=false;
     signature.innerHTML=custom?'POWERED BY ATRIA<br>BY NEXON LABS':'GESTÃO INTEGRADA';
   }
+  // O ativo institucional é global e não substitui a logo personalizada do cliente.
+  const institutionalUrl=productBrandAssetUrl('institutional_logo');
+  const sidebarInstitution=$('#sidebar-institutional-logo');
+  const sidebarDecoration=$('#sidebar-footer-decoration');
+  if(sidebarInstitution&&sidebarDecoration){
+    sidebarInstitution.hidden=true;
+    sidebarDecoration.hidden=false;
+    if(institutionalUrl){
+      sidebarInstitution.onload=()=>{sidebarInstitution.hidden=false;sidebarDecoration.hidden=true};
+      sidebarInstitution.onerror=()=>{sidebarInstitution.hidden=true;sidebarDecoration.hidden=false};
+      sidebarInstitution.src=institutionalUrl;
+    }else sidebarInstitution.removeAttribute('src');
+  }
   const favicon=document.querySelector('link[rel="icon"]');
   const faviconUrl=custom&&brandAssetUrl('favicon')?brandAssetUrl('favicon'):productBrandAssetUrl('favicon');
   if(favicon){
@@ -249,9 +262,10 @@ function platformAdminPage(){
       productBrandAssetCard('logo','Logo principal ATRIA','Uso padrão em fundos claros, documentos, assinatura e cartão.')+
       productBrandAssetCard('logo_dark','Logo ATRIA para fundo escuro','Uso padrão no login e na barra lateral.')+
       productBrandAssetCard('favicon','Favicon oficial ATRIA','Símbolo padrão do navegador e atalhos.')+
+       productBrandAssetCard('institutional_logo','Logo institucional Nexon Labs','Assinatura global no login, início e rodapé do menu. Herdada pelo Demo e por todos os clientes sem substituir a logo própria.')+
       productBrandAssetCard('watermark','Marca d’água ATRIA','Padrão disponível para PDFs, relatórios e documentos.')+
     '</div>'+
-    '<div class="brand-product-signature"><span>Herança do produto</span><strong>ATRIA Demo = padrão global · Clientes = padrão global + personalizações próprias</strong></div>'+
+    '<div class="brand-product-signature"><span>Herança do produto</span><strong>Logo institucional Nexon Labs = global · ATRIA Demo = padrão global · Clientes = padrão global + personalizações próprias</strong></div>'+
     '</section>'+
     '<section class="panel" style="margin-top:16px"><div class="panel-head"><div><h2>Regra de replicação</h2><p class="muted">Alterações no layout-base e nos ativos oficiais passam a valer automaticamente para todas as organizações que não tenham sobrescrito aquele item.</p></div></div>'+
     '<div class="list-stack"><div class="line-item"><div><h3>ATRIA Demo</h3><p>Referência oficial de como um ambiente novo sai de fábrica.</p></div><strong>Padrão integral</strong></div>'+
@@ -292,7 +306,7 @@ function settingsPage(){
   '<p class="muted">Cada organização mantém usuários e dados isolados no ATRIA.</p>'+
   '<button type="button" class="secondary" data-action="logout">'+icon('logout')+' Sair da conta</button></section>';
 }
-function render(){document.querySelectorAll('.nav-link[data-route]').forEach(e=>{const active=e.dataset.route===route;e.classList.toggle('active',active);if(active)e.setAttribute('aria-current','page');else e.removeAttribute('aria-current');});const views={inicio:dashboard,projetos:projectsPage,tarefas:tasksPage,equipe:teamPage,cronograma:schedulePage,reunioes:window.NexonMeetings.page,orcamentos:window.NexonQuotes.page,chamados:window.NexonTickets.page,relatorios:reportsPage,configuracoes:settingsPage};if(state.platform_admin)views['administracao-atria']=platformAdminPage;$('#main').innerHTML=(views[route]||dashboard)()+(route==='inicio'?'<footer class="atria-nexon-footer" aria-label="Desenvolvido pela Nexon Labs"><img src="/static/nexon-monochrome-dark.svg" alt="Nexon Labs — Soluções Digitais" width="165" height="33"></footer>':'');}
+function render(){document.querySelectorAll('.nav-link[data-route]').forEach(e=>{const active=e.dataset.route===route;e.classList.toggle('active',active);if(active)e.setAttribute('aria-current','page');else e.removeAttribute('aria-current');});const views={inicio:dashboard,projetos:projectsPage,tarefas:tasksPage,equipe:teamPage,cronograma:schedulePage,reunioes:window.NexonMeetings.page,orcamentos:window.NexonQuotes.page,chamados:window.NexonTickets.page,relatorios:reportsPage,configuracoes:settingsPage};if(state.platform_admin)views['administracao-atria']=platformAdminPage;$('#main').innerHTML=(views[route]||dashboard)()+(route==='inicio'?'<footer class="atria-nexon-footer" aria-label="Desenvolvido pela Nexon Labs"><img src="'+esc(productBrandAssetUrl('institutional_logo')||'/static/nexon-monochrome-dark.svg')+'" alt="Nexon Labs — Logo institucional" width="165" height="33" onerror="this.onerror=null;this.src=\'/static/nexon-monochrome-dark.svg\'"></footer>':'');}
 function go(target){if(target==='administracao-atria'&&!state.platform_admin){notice('Área restrita à administração da plataforma ATRIA.');target='inicio'}route=target;filter='todos';page=1;window.location.hash=route;closeMobileMenu();render();window.scrollTo({top:0,behavior:'instant'})}
 function field(label,name,value='',type='text',extra=''){return `<label>${esc(label)}<input name="${name}" type="${type}" value="${esc(value)}" ${extra}></label>`}
 function selectField(label,name,values,current){return `<label>${esc(label)}<select name="${name}">${values.map(([v,s])=>`<option value="${esc(v)}" ${v===current?'selected':''}>${esc(s)}</option>`).join('')}</select></label>`}
