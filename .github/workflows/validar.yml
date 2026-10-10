@@ -5,6 +5,7 @@ on:
       - 'app.py'
       - 'static/**'
       - 'tests/**'
+      - 'scripts/**'
       - '.github/workflows/validar.yml'
   push:
     branches: [main, feature/multi-tenant-foundation, fix/session-performance, feature/organization-branding, fix/sidebar-logo-normalization, fix/sidebar-logo-fit-v2, feature/atria-official-identity-v2, feature/atria-product-standard-layer, fix/dedicated-atria-platform-admin, fix/brand-default-loading-cache, fix/brand-loading-flash, feature/project-task-calendar-refinements, feature/notification-center-calendar-ui]
@@ -18,6 +19,7 @@ on:
       - 'approved_template.py'
       - 'static/**'
       - 'tests/**'
+      - 'scripts/**'
       - 'requirements.txt'
       - '.github/workflows/validar.yml'
   workflow_dispatch:
