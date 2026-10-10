@@ -262,9 +262,13 @@ body.login-page .login-overline{
    conteúdo acessível sem cortar a assinatura nem a entrada de senha. */
 @media (max-width:760px){
   body.login-page{
-    min-height:100dvh;
+    /* Centraliza o conjunto na area util do smartphone.
+       Se o card exceder a altura disponivel, "safe" preserva o topo
+       acessivel e a rolagem natural, inclusive no Safari iOS. */
+    min-height:100svh;
     height:auto;
-    align-items:start;
+    align-items:safe center;
+    justify-items:center;
   }
   body.login-page .login-shell{
     height:auto;
