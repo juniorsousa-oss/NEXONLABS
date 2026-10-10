@@ -1,7 +1,7 @@
 """Verifica se a versão visual do ATRIA chegou à hospedagem, sem login.
 
 Saída:
-  PUBLICADO — os arquivos da moldura AXORA estão acessíveis na produção.
+  PUBLICADO — a moldura, o login proporcional e a preparação do favicon estão na produção.
   DESATUALIZADO — a versão ativa não contém os arquivos novos.
   INACESSÍVEL — a hospedagem não respondeu; não comprova versão.
 """
@@ -18,6 +18,10 @@ FILES = {
         "contorno contínuo, referência visual AXORA".encode("utf-8"),
     "/static/nexon-app-atmosphere.svg":
         b"Atmosfera de conex",
+    "/static/atria-login-axora-scale.css?v=login-scale-r1":
+        b"width:min(960px,calc(100vw - 56px))",
+    "/static/app.js?v=compact-favicon-r3":
+        b"async function prepareFavicon(file){",
 }
 failures = []
 for path, expected in FILES.items():
@@ -41,4 +45,4 @@ for msg in failures:
 if failures:
     print("AÇÃO NECESSÁRIA: publicar/recriar o contêiner ATRIA na Hostinger.", file=sys.stderr)
     sys.exit(1)
-print("ATRIA_PRODUCAO_ARTE_EXTERNA_CONFIRMADA")
+print("ATRIA_PRODUCAO_VISUAL_E_FAVICON_CONFIRMADOS")
