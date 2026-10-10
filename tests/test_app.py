@@ -1258,10 +1258,10 @@ def test_institutional_logo_upload_validation_and_scope():
         assert platform.post('/api/login',json={'password':'platform-test-password'}).status_code==200
         assert platform.get('/api/product-brand/assets/institutional_logo').status_code==404
         assert platform.put('/api/product-brand/assets/institutional_logo',json={'image_data':'data:image/svg+xml;base64,PHN2Zz4='}).status_code==422
-        assert platform.put('/api/organization/brand/assets/institutional_logo',json={'image_data':'data:image/png;base64,AAAA'}).status_code==404
         png=io.BytesIO()
         Image.new('RGBA',(220,80),(21,39,60)).save(png,format='PNG')
         data='data:image/png;base64,'+base64.b64encode(png.getvalue()).decode()
+        assert platform.put('/api/organization/brand/assets/institutional_logo',json={'image_data':data}).status_code==404
         upload=platform.put('/api/product-brand/assets/institutional_logo',json={'image_data':data})
         assert upload.status_code==200,upload.text
         asset=platform.get('/api/product-brand/assets/institutional_logo')
