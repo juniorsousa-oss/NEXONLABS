@@ -803,6 +803,8 @@ def update_organization_brand(data: OrganizationBrandSettingsIn, request: Reques
 @app.put('/api/organization/brand/assets/{kind}', dependencies=[Depends(admin_only)])
 def upload_organization_brand_asset(kind: str, data: OrganizationBrandAssetIn, request: Request, db: Session = Depends(session)):
     current = authorized(request)
+    if kind not in BRAND_ASSET_KINDS:
+        raise HTTPException(404, 'Este arquivo é exclusivo da identidade global do ATRIA.')
     if current['organization_id'] == ATRIA_DEMO_ORG_ID:
         raise HTTPException(409, 'O ambiente ATRIA Demo mantém a identidade oficial do ATRIA.')
     raw, mime_type = decode_brand_asset(kind, data.image_data)
