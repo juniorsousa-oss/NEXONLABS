@@ -24,7 +24,7 @@ def test_external_atmosphere_comes_from_axora_reference():
     assert "nexon-app-atmosphere.svg" in css
 
 def test_approved_app_css_is_final_and_login_is_not_affected():
-    stylesheet='/static/atria-axora-exterior.css?v=axora-network-desktop-mobile-r1'
+    stylesheet='/static/atria-axora-exterior.css?v=axora-frame-uniform-r2'
     assert stylesheet in html
     assert html.index(stylesheet)>html.index('/static/nexon-signature.css')
     assert stylesheet not in login
@@ -32,16 +32,16 @@ def test_approved_app_css_is_final_and_login_is_not_affected():
     assert "body:not(.login-page)" in css
     assert ".shell>.workspace" in css
     assert ".shell>.sidebar" in css
-    assert "background-image:var(--atria-shell-atmosphere)" in css
-    assert "background-image:" in css and "var(--atria-shell-atmosphere)" in css
-    assert "background:var(--atria-shell-surface)" in css
+    assert "background-image:var(--atria-shell-background)" in css
+    assert "background-image:none!important" in css
+    assert "background:var(--atria-inner-surface)" in css
     assert "background-attachment:fixed" in css
     assert "background-attachment:scroll" in css
     assert 'zoom:.9' not in css and 'transform:scale(.9)' not in css
 
 def test_mobile_same_wallpaper_and_drawer_above_overlay():
     media=css.split("@media (max-width:850px)",1)[1]
-    assert "background-image:var(--atria-shell-atmosphere)" in media
+    assert "background-attachment:scroll!important" in media
     assert "background-size:cover" in media
     assert "body:not(.login-page) .shell>.sidebar.open" in media
     assert "z-index:71" in media
@@ -61,12 +61,27 @@ def test_mobile_same_wallpaper_and_drawer_above_overlay():
 
 def test_sidebar_and_card_language_remains_atria_brand():
     assert ".nav-link.active" in css
-    assert "background:linear-gradient(105deg" in css
+    assert "background:linear-gradient(100deg" in css
     assert "nav-section" in css
     assert 'id="organization-brand-image"' in html
     assert 'id="default-brand-lockup"' in html
     assert "body:not(.login-page) .shell .main" in css
-    assert "rgba(255,255,255,.96)" in css
+    assert "rgba(255,255,255,.97)" in css
     assert re.search(r"@media\s*\(min-width:851px\)",css)
     assert "@media(max-width:520px)" in css
     assert "@media(max-width:370px)" in css
+
+def test_desktop_must_not_scroll_the_entire_frame():
+    assert "height:calc(100dvh - 2 * var(--atria-shell-gutter))!important" in css
+    assert "body:not(.login-page):has(.shell)" in css
+    assert "overflow:hidden!important" in css
+    assert "overflow-y:auto!important" in css
+    assert "flex-direction:column!important" in css
+    assert "height:0!important" in css
+    assert "max-height:100dvh!important" in css
+
+def test_menu_has_one_homogeneous_background():
+    assert "background:#0B2D4A!important" in css
+    assert "background-image:none!important" in css
+    assert "background-size:cover,auto 100%" not in css
+    assert ".shell>.sidebar" in css
