@@ -92,19 +92,6 @@ function applyOrganizationBrand(){
     signature.hidden=false;
     signature.innerHTML=custom?'POWERED BY ATRIA<br>BY NEXON LABS':'GESTÃO INTEGRADA';
   }
-  // O ativo institucional é global e não substitui a logo personalizada do cliente.
-  const institutionalUrl=productBrandAssetUrl('institutional_logo');
-  const sidebarInstitution=$('#sidebar-institutional-logo');
-  const sidebarDecoration=$('#sidebar-footer-decoration');
-  if(sidebarInstitution&&sidebarDecoration){
-    sidebarInstitution.hidden=true;
-    sidebarDecoration.hidden=false;
-    if(institutionalUrl){
-      sidebarInstitution.onload=()=>{sidebarInstitution.hidden=false;sidebarDecoration.hidden=true};
-      sidebarInstitution.onerror=()=>{sidebarInstitution.hidden=true;sidebarDecoration.hidden=false};
-      sidebarInstitution.src=institutionalUrl;
-    }else sidebarInstitution.removeAttribute('src');
-  }
   const favicon=document.querySelector('link[rel="icon"]');
   const faviconUrl=custom&&brandAssetUrl('favicon')?brandAssetUrl('favicon'):productBrandAssetUrl('favicon');
   if(favicon){
@@ -119,6 +106,51 @@ function fileAsDataUrl(file){
     reader.onerror=()=>reject(new Error('Não foi possível ler o arquivo.'));
     reader.readAsDataURL(file);
   });
+}
+/* Favicon: normaliza um arquivo grande ou retangular ainda no navegador.
+   Mantém fundo transparente, preserva proporção e gera PNG 512x512.
+   O upload continua usando a API autenticada atual. */
+async function prepareFavicon(file){
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)){
+    throw Error('Selecione uma imagem PNG, JPG ou WebP para o favicon.');
+  }
+  if(file.size>25_000_000){
+    throw Error('A imagem original deve ter até 25 MB. Escolha uma versão menor.');
+  }
+  const url=URL.createObjectURL(file);
+  let picture;
+  try{
+    picture=await new Promise((resolve,reject)=>{
+      const image=new Image();
+      image.onload=()=>resolve(image);
+      image.onerror=()=>reject(Error('Não foi possível abrir a imagem. Utilize PNG, JPG ou WebP.'));
+      image.src=url;
+    });
+    const w=picture.naturalWidth,h=picture.naturalHeight;
+    if(!w||!h||w*h>32_000_000){
+      throw Error('Imagem muito grande em resolução. Use até 32 megapixels.');
+    }
+    const canvas=document.createElement('canvas');
+    canvas.width=512;
+    canvas.height=512;
+    const context=canvas.getContext('2d');
+    if(!context)throw Error('Não foi possível preparar o favicon neste navegador.');
+    const safeArea=476;
+    const scale=Math.min(safeArea/w,safeArea/h);
+    const width=w*scale,height=h*scale;
+    context.clearRect(0,0,512,512);
+    context.imageSmoothingEnabled=true;
+    context.imageSmoothingQuality='high';
+    context.drawImage(picture,(512-width)/2,(512-height)/2,width,height);
+    const blob=await new Promise((resolve,reject)=>canvas.toBlob(
+      value=>value?resolve(value):reject(Error('Não foi possível converter o favicon.')),
+      'image/png'
+    ));
+    if(blob.size>2_500_000)throw Error('Não foi possível otimizar a imagem. Escolha outro arquivo.');
+    return blob;
+  }finally{
+    URL.revokeObjectURL(url);
+  }
 }
 async function refresh(){try{Object.assign(state,await api('/state'));$('#display-name').textContent=state.user;const platformContext=Boolean(state.organization?.is_platform);const canManagePlatform=Boolean(state.platform_admin && platformContext);state.platform_admin=canManagePlatform;const platformNav=$('#atria-platform-nav');if(platformNav){platformNav.hidden=!canManagePlatform;platformNav.setAttribute('aria-hidden',String(!canManagePlatform));platformNav.style.display=canManagePlatform?'':'none';}document.querySelectorAll('.nav-link[data-route]').forEach(link=>{if(link.id==='atria-platform-nav')return;link.hidden=platformContext&&!['configuracoes'].includes(link.dataset.route)});document.querySelectorAll('.nav-section').forEach(section=>section.hidden=platformContext);if(route==='administracao-atria'&&!state.platform_admin){route='inicio';history.replaceState(null,'','#inicio')}if(platformContext&&!['administracao-atria','configuracoes'].includes(route)){route='administracao-atria';history.replaceState(null,'','#administracao-atria')}applyOrganizationBrand();const avatar=$('#avatar');avatar.textContent=initials(state.user);if(state.has_photo){const image=document.createElement('img');image.alt='';image.className='profile-avatar-image';image.onerror=()=>image.remove();image.src='/api/profile/avatar?updated='+Date.now();avatar.appendChild(image);}const alertCount=buildNotifications().length;$('#bell-dot').hidden=!alertCount;$('#bell').setAttribute('aria-label',alertCount?'Notificações, '+alertCount+' alerta(s)':'Notificações, nenhum alerta');render()}catch(e){notice(e.message)}}
 function heading(title,description,button=''){return `<div class="simple-head"><div><h1>${esc(title)}</h1><p>${esc(description)}</p></div>${button}</div>`}
@@ -261,7 +293,7 @@ function platformAdminPage(){
     '<div class="brand-assets-grid">'+
       productBrandAssetCard('logo','Logo principal ATRIA','Uso padrão em fundos claros, documentos, assinatura e cartão.')+
       productBrandAssetCard('logo_dark','Logo ATRIA para fundo escuro','Uso padrão no login e na barra lateral.')+
-      productBrandAssetCard('favicon','Favicon oficial ATRIA','Símbolo padrão do navegador e atalhos.')+
+      productBrandAssetCard('favicon','Favicon oficial ATRIA','Imagens PNG, JPG ou WebP de até 25 MB. Ajuste automático para PNG quadrado (512 × 512), sem distorcer.')+
        productBrandAssetCard('institutional_logo','Logo institucional Nexon Labs','Assinatura global no login, início e rodapé do menu. Herdada pelo Demo e por todos os clientes sem substituir a logo própria.')+
       productBrandAssetCard('watermark','Marca d’água ATRIA','Padrão disponível para PDFs, relatórios e documentos.')+
     '</div>'+
@@ -293,7 +325,7 @@ function settingsPage(){
     '<div class="brand-assets-grid">'+
       brandAssetCard('logo','Logo principal','Uso em fundos claros e documentos.')+
       brandAssetCard('logo_dark','Logo para fundo escuro','Usada na barra lateral. Se não houver, o ATRIA mantém sua marca oficial para preservar o contraste.')+
-      brandAssetCard('favicon','Favicon','Ícone quadrado do navegador e atalhos.')+
+      brandAssetCard('favicon','Favicon','Envie PNG, JPG ou WebP até 25 MB: ajuste automático para 512 × 512, sem distorção.')+
       brandAssetCard('watermark','Marca d’água','Reservada para PDFs, relatórios e documentos.')+
     '</div>'+
     '<div class="brand-product-signature"><span>Assinatura do produto</span><strong>'+(org.use_custom_brand&&!org.is_demo?'Powered by ATRIA · by Nexon Labs':'A marca ATRIA já inclui BY NEXON LABS')+'</strong></div>'+
@@ -385,16 +417,24 @@ document.addEventListener('change',async e=>{
   const input=productInput||e.target.closest('[data-brand-file]');
   if(!input||!input.files?.length)return;
   const file=input.files[0],kind=productInput?productInput.dataset.productBrandFile:input.dataset.brandFile;
-  const limit=kind==='favicon'?1_000_000:2_500_000;
-  if(file.size>limit){notice('Arquivo maior que o limite permitido.');input.value='';return;}
+  // Limite do ORIGINAL para favicon é maior porque o PNG final é otimizado.
+  const originalLimit=kind==='favicon'?25_000_000:2_500_000;
+  if(file.size>originalLimit){
+    notice(kind==='favicon'?'Selecione uma imagem de até 25 MB.':'Imagem maior que 2,5 MB.');
+    input.value='';
+    return;
+  }
+  input.disabled=true;
   try{
-    const image_data=await fileAsDataUrl(file);
+    const ready=kind==='favicon'?await prepareFavicon(file):file;
+    const image_data=await fileAsDataUrl(ready);
     const endpoint=productInput?'/product-brand/assets/':'/organization/brand/assets/';
     await api(endpoint+kind,{method:'PUT',body:JSON.stringify({image_data})});
-    notice(productInput?'Identidade oficial do ATRIA atualizada.':'Arquivo de identidade visual atualizado.');
+    notice(kind==='favicon'?'Favicon preparado em 512 × 512 e salvo com sucesso.':
+      productInput?'Identidade oficial do ATRIA atualizada.':'Arquivo de identidade visual atualizado.');
     await refresh();
   }catch(error){notice(error.message)}
-  finally{input.value=''}
+  finally{input.value='';input.disabled=false}
 });
 document.addEventListener('input',e=>{
   const color=e.target.closest('#organization-brand-form input[type="color"],#product-brand-form input[type="color"]');
