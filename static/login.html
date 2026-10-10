@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/static/style.css?v=1">
   <link rel="stylesheet" href="/static/atria-premium.css?v=mobile-frame-v2">
   <link rel="stylesheet" href="/static/nexon-signature.css?v=20261009">
+  <link rel="stylesheet" href="/static/atria-institutional-brand.css?v=institutional-r1">
 </head>
 <body class="login-page">
   <main class="login-shell">
@@ -42,7 +43,7 @@
           <button class="primary" type="submit">Entrar no ATRIA <span class="login-button-arrow" aria-hidden="true">→</span></button>
           <small id="login-error" role="alert"></small>
         </form>
-        <div class="login-note atria-nexon-note"><span>Acesso restrito a usuários autorizados.</span><img src="/static/nexon-monochrome-dark.svg" alt="Nexon Labs — Soluções Digitais" width="150" height="30"></div>
+        <div class="login-note atria-nexon-note"><span>Acesso restrito a usuários autorizados.</span><img id="login-institutional-logo" src="/static/nexon-monochrome-dark.svg" alt="Nexon Labs — Soluções Digitais" width="150" height="30"></div>
       </div>
     </section>
   </main>
@@ -72,6 +73,12 @@
         fallback.hidden=false;
       }
       if(brand.asset_urls?.favicon)favicon.href=brand.asset_urls.favicon;
+      const institutional=document.querySelector('#login-institutional-logo');
+      const institutionalUrl=brand.asset_urls?.institutional_logo||'';
+      if(institutional&&institutionalUrl){
+        institutional.onerror=()=>{institutional.onerror=null;institutional.src='/static/nexon-monochrome-dark.svg'};
+        institutional.src=institutionalUrl;
+      }
     }catch{
       fallback.hidden=false;
     }
