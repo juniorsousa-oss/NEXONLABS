@@ -28,10 +28,11 @@ def test_login_and_app_use_one_global_image_with_fallback():
     assert 'id="login-institutional-logo"' in login
     assert "brand.asset_urls?.institutional_logo" in login
     assert "/static/nexon-monochrome-dark.svg" in login
-    assert 'id="sidebar-institutional-logo"' in html
+    assert 'id="sidebar-institutional-logo"' not in html
     assert 'id="sidebar-footer-decoration"' in html
-    assert "const institutionalUrl=productBrandAssetUrl('institutional_logo')" in app
-    assert "sidebarDecoration.hidden=true" in app
+    assert 'src="/static/footer-network.svg?v=2"' in html
+    assert "sidebarInstitution" not in app
+    assert "const institutionalUrl=productBrandAssetUrl('institutional_logo')" not in app
     assert "productBrandAssetUrl('institutional_logo')||'/static/nexon-monochrome-dark.svg'" in app
     assert "organization-brand-image" in html
     assert "const logo=custom?brandAssetUrl('logo_dark'):officialLogo" in app
@@ -40,11 +41,11 @@ def test_login_and_app_use_one_global_image_with_fallback():
 
 
 def test_menu_click_targets_larger_and_mobile_remains_scrollable():
-    assert 'atria-institutional-brand.css?v=institutional-r1' in html
-    assert 'atria-institutional-brand.css?v=institutional-r1' in login
+    assert 'atria-institutional-brand.css?v=institutional-r2' in html
+    assert 'atria-institutional-brand.css?v=institutional-r2' in login
     assert 'min-height:50px!important' in css
     assert 'min-height:49px!important' in css
     assert 'overflow-y:auto!important' in css
-    assert '.sidebar-institutional-logo[hidden]' in css
-    assert '.footer-molecule[hidden]' in css
+    assert '#sidebar-footer-decoration' in css
+    assert 'sidebar-institutional-logo' not in css
     assert 'max-height:45px' in css
