@@ -610,7 +610,7 @@ def product_brand_payload(db: Session):
         'assets': {kind: kind in kinds for kind in sorted(PRODUCT_BRAND_ASSET_KINDS)},
         'asset_urls': {
             kind: (
-                f'/api/product-brand/assets/{kind}?v={_brand_asset_version(assets[kind].updated_at)}'
+                f'/api/product-brand/assets/{kind}?v={_brand_asset_version(assets[kind].updated_at)}{"-tight2" if kind == "favicon" else ""}'
                 if kind in assets else ''
             )
             for kind in sorted(PRODUCT_BRAND_ASSET_KINDS)
@@ -634,7 +634,7 @@ def organization_brand_payload(db: Session, organization):
     payload['assets'] = {kind: kind in kinds for kind in sorted(BRAND_ASSET_KINDS)}
     payload['asset_urls'] = {
         kind: (
-            f'/api/organization/brand/assets/{kind}?v={_brand_asset_version(assets[kind].updated_at)}'
+            f'/api/organization/brand/assets/{kind}?v={_brand_asset_version(assets[kind].updated_at)}{"-tight2" if kind == "favicon" else ""}'
             if kind in assets else ''
         )
         for kind in sorted(BRAND_ASSET_KINDS)
@@ -644,8 +644,47 @@ def organization_brand_payload(db: Session, organization):
     payload['signature'] = 'Powered by ATRIA · by Nexon Labs'
     return payload
 
+def normalize_favicon_image(raw: bytes, mime_type: str):
+    """Prepara PNG 512² preenchendo ~92% do ícone (sem alterar proporção).
+
+    PNG/WebP com transparência são recortados pelo conteúdo visível,
+    ignorando halos quase invisíveis. JPEG e fundos opacos são mantidos
+    inteiros; ícones de tile conservam cantos e composição.
+    Executada tanto no upload quanto na leitura para recuperar imagens
+    antigas já cadastradas sem alterar seu conteúdo no banco.
+    """
+    from PIL import Image, ImageOps
+    try:
+        with Image.open(io.BytesIO(raw)) as source:
+            image=ImageOps.exif_transpose(source).convert('RGBA')
+            alpha=image.getchannel('A')
+            visible=alpha.point(lambda value: 255 if value >= 20 else 0)
+            bbox=visible.getbbox() or alpha.getbbox()
+            if bbox is None:
+                raise HTTPException(422,'O favicon está completamente transparente.')
+            # Margem de segurança para antialias e brilho periférico.
+            x1,y1,x2,y2=bbox
+            guard=max(2,int(max(x2-x1,y2-y1)*.015))
+            bbox=(max(0,x1-guard),max(0,y1-guard),
+                  min(image.width,x2+guard),min(image.height,y2+guard))
+            mark=image.crop(bbox)
+            mark.thumbnail((476,476),Image.Resampling.LANCZOS)
+            if mark.width < 1 or mark.height < 1:
+                raise HTTPException(422,'O favicon não contém uma imagem válida.')
+            canvas=Image.new('RGBA',(512,512),(0,0,0,0))
+            canvas.alpha_composite(mark,((512-mark.width)//2,(512-mark.height)//2))
+            output=io.BytesIO()
+            canvas.save(output,format='PNG',optimize=True)
+            return output.getvalue(),'image/png'
+    except HTTPException:
+        raise
+    except (OSError, ValueError, Image.DecompressionBombError) as error:
+        raise HTTPException(422,'Não foi possível otimizar o favicon.') from error
+
 def normalize_brand_logo(kind: str, raw: bytes, mime_type: str):
-    """Recorta margens transparentes de logos para que ocupem corretamente a sidebar."""
+    """Normaliza logos, e favicons com margens internas reduzidas sem distorção."""
+    if kind == 'favicon':
+        return normalize_favicon_image(raw, mime_type)
     if kind not in {'logo', 'logo_dark', 'institutional_logo'} or mime_type not in {'image/png', 'image/webp'}:
         return raw, mime_type
     try:
@@ -708,22 +747,8 @@ def decode_brand_asset(kind: str, image_data: str):
         raise HTTPException(422, 'Arquivo de imagem inválido.') from error
     if width < 32 or height < 32 or width > 4096 or height > 4096:
         raise HTTPException(422, 'Use uma imagem entre 32 e 4096 pixels por lado.')
-    # Logos retangulares usadas como favicon serão centralizadas em uma tela
-    # quadrada; a imagem original conserva sua proporção e transparência.
-    # O servidor repete o ajuste mesmo quando o cliente não usar o novo JS.
-    if kind == 'favicon':
-        try:
-            from PIL import ImageOps
-            with Image.open(io.BytesIO(raw)) as image:
-                icon = ImageOps.exif_transpose(image).convert('RGBA')
-                icon.thumbnail((476, 476), Image.Resampling.LANCZOS)
-                canvas = Image.new('RGBA', (512, 512), (0, 0, 0, 0))
-                canvas.alpha_composite(icon, ((512-icon.width)//2, (512-icon.height)//2))
-                output = io.BytesIO()
-                canvas.save(output, format='PNG', optimize=True)
-                raw, mime_type = output.getvalue(), 'image/png'
-        except (OSError, ValueError, Image.DecompressionBombError) as error:
-            raise HTTPException(422, 'Não foi possível normalizar o favicon.') from error
+    # A rotina comum normalize_brand_logo tratará o favicon. A mesma
+    # transformação na leitura recupera automaticamente imagens antigas.
     return raw, mime_type
 
 def product_brand_admin(request: Request):
