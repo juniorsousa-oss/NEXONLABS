@@ -1,87 +1,125 @@
-/* ATRIA · Login alinhado à escala externa do AXORA (100%).
-   Só afeta o login; não modifica autenticação, elementos do app ou ativos.
-   Grid compacto para desktop, distribuição equilibrada e mobile sem corte. */
+/* ATRIA · Login v2, proporções comparadas ao AXORA em zoom 100%.
+   A versão anterior preservou a largura e achatou excessivamente o cartão.
+   Desktop: o mesmo respiro vertical do AXORA, sem ampliar fonte/elementos.
+   Login móvel segue a estrutura empilhada e respeita áreas seguras. */
 @media (min-width:901px){
   body.login-page{
-    min-height:100vh;
-    min-height:100dvh;
-    height:auto;
-    padding:clamp(18px,3vh,28px);
-    overflow-x:hidden;
     display:grid;
     place-items:center;
+    box-sizing:border-box;
+    width:100%;
+    min-height:100dvh;
+    height:auto;
+    padding:clamp(22px,3.2vh,38px);
+    overflow-x:hidden;
   }
   body.login-page .login-shell{
     box-sizing:border-box;
     display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
     width:min(960px,calc(100vw - 56px));
     max-width:100%;
     min-height:0;
-    height:min(550px,calc(100dvh - 64px));
-    max-height:calc(100dvh - 64px);
-    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    height:min(680px,calc(100dvh - 64px));
+    max-height:none;
     overflow:hidden;
-    border-radius:26px;
+    border-radius:27px;
   }
   body.login-page .login-brand-panel{
     display:flex;
     flex-direction:column;
     justify-content:flex-start;
+    gap:0;
     min-width:0;
     min-height:0;
-    padding:39px 43px 34px;
+    padding:40px 44px 43px;
   }
   body.login-page .login-brand-official{
     display:flex;
     align-items:center;
-    flex-shrink:0;
-    min-height:76px;
-    max-height:80px;
+    flex:0 0 auto;
+    min-height:77px;
   }
   body.login-page .login-brand-official img{
     display:block;
-    width:min(255px,100%);
-    max-height:80px;
+    width:min(248px,100%);
+    height:auto;
+    max-height:79px;
+    object-position:left center;
   }
   body.login-page .login-brand-copy{
-    margin-top:clamp(51px,7vh,72px);
-    margin-bottom:0;
+    flex:0 0 auto;
+    margin:clamp(63px,8vh,84px) 0 0;
   }
   body.login-page .login-brand-copy h2{
-    max-width:385px;
-    margin:0 0 16px;
-    font-size:clamp(28px,2.4vw,33px);
-    line-height:1.15;
-    letter-spacing:-.035em;
+    max-width:390px;
+    margin:0 0 18px;
+    font-size:clamp(28px,2.45vw,33px);
+    font-weight:800;
+    line-height:1.18;
+    letter-spacing:-.036em;
+    text-wrap:balance;
   }
   body.login-page .login-brand-copy p{
-    max-width:365px;
+    max-width:360px;
+    margin:0;
     font-size:13px;
-    line-height:1.57;
+    line-height:1.63;
+  }
+  body.login-page .login-brand-foot{
+    position:relative;
+    z-index:1;
+    margin:auto 0 0;
+    padding-top:18px;
+    color:#D7F0F4;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.01em;
+  }
+  body.login-page .login-brand-foot::before{
+    content:"";
+    display:block;
+    width:50px;
+    height:2px;
+    margin-bottom:16px;
+    border-radius:2px;
+    background:linear-gradient(90deg,#34E0CF,#28B8D6);
   }
   body.login-page .login-form-panel{
     display:flex;
     align-items:center;
     justify-content:center;
+    width:100%;
     min-width:0;
     height:100%;
     min-height:0;
-    padding:30px 43px;
+    padding:36px 45px;
   }
   body.login-page .login-card{
     width:100%;
     max-width:385px;
+    min-width:0;
     margin:0 auto;
   }
+  body.login-page .login-overline{
+    display:block;
+    margin:0 0 14px;
+    color:#138F9C;
+    font-size:10px;
+    line-height:1.25;
+    letter-spacing:1.8px;
+    font-weight:800;
+  }
   body.login-page .login-card h1{
-    margin:0 0 9px;
+    margin:0 0 10px;
     font-size:30px;
-    line-height:1.2;
+    line-height:1.23;
+    letter-spacing:-.035em;
   }
   body.login-page .login-card>p{
-    margin:0 0 25px;
+    margin:0 0 29px;
     font-size:13px;
-    line-height:1.6;
+    line-height:1.65;
   }
   body.login-page .login-card form{
     gap:11px;
@@ -92,36 +130,40 @@
   }
   body.login-page .login-note.atria-nexon-note{
     display:flex;
+    flex-direction:column;
     align-items:center;
-    justify-content:space-between;
-    margin-top:25px;
-    padding-top:17px;
-    gap:12px;
+    justify-content:center;
+    gap:11px;
+    margin:31px 0 0;
+    padding:19px 0 0;
+    text-align:center;
   }
   body.login-page .atria-nexon-note img{
-    flex-shrink:1;
-    width:145px;
-    max-width:48%;
-    max-height:34px;
+    display:block;
+    flex:0 1 auto;
+    width:min(155px,65%);
+    max-width:65%;
+    height:auto;
+    max-height:32px;
     object-fit:contain;
   }
 }
-/* Em telas baixas, reduzir espaçamento sem esconder campos nem forçar
-   a altura rígida do AXORA; o corpo pode rolar quando necessário. */
-@media (min-width:901px) and (max-height:680px){
+/* Baixa altura: a página rola em vez de esmagar formulário e identidade. */
+@media (min-width:901px) and (max-height:760px){
   body.login-page .login-shell{
     height:auto;
     min-height:0;
     max-height:none;
   }
   body.login-page .login-brand-panel{
-    padding-top:29px;
-    padding-bottom:29px;
+    padding-top:32px;
+    padding-bottom:30px;
   }
-  body.login-page .login-brand-copy{margin-top:40px}
-  body.login-page .login-form-panel{padding-top:27px;padding-bottom:27px}
-  body.login-page .login-card>p{margin-bottom:17px}
-  body.login-page .login-note.atria-nexon-note{margin-top:18px}
+  body.login-page .login-brand-copy{margin-top:42px}
+  body.login-page .login-brand-foot{margin-top:39px}
+  body.login-page .login-form-panel{padding-top:31px;padding-bottom:31px}
+  body.login-page .login-card>p{margin-bottom:20px}
+  body.login-page .login-note.atria-nexon-note{margin-top:21px}
 }
 /* Tablet: conteúdo dividido verticalmente em vez de duas colunas apertadas. */
 @media (min-width:761px) and (max-width:900px){
