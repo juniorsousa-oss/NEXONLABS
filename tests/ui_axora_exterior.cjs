@@ -47,6 +47,23 @@ const server=http.createServer((req,res)=>{
         winWidth:window.innerWidth
       };
     });
+    if(!/nexon-app-atmosphere\\.svg/.test(layout.bodyBg)){
+      const diagnostics=await desktop.evaluate(()=>{
+        const link=document.querySelector('link[href*="atria-axora-exterior"]');
+        return {
+          bodyClasses:document.body.className,
+          sheetHref:link?.href,
+          rules:link?.sheet?.cssRules?.length,
+          rootAtmosphere:getComputedStyle(document.documentElement).getPropertyValue('--atria-shell-atmosphere'),
+          rootColor:getComputedStyle(document.documentElement).backgroundColor,
+          bodyStyle:getComputedStyle(document.body).background,
+          shellStyle:getComputedStyle(document.querySelector('.shell')).background,
+          matches:document.body.matches('body:not(.login-page)'),
+        };
+      });
+      console.error("DESKTOP_STYLE_DIAGNOSTICS",JSON.stringify(diagnostics));
+      await desktop.screenshot({path:path.join(shots,'atria-debug-desktop.png')});
+    }
     assert.match(layout.bodyBg,/nexon-app-atmosphere\.svg/);
     assert.match(layout.workspaceBg,/linear-gradient/);
     assert.ok(layout.shellX>=8 && layout.shellX<=20,JSON.stringify(layout));
