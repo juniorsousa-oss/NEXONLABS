@@ -48,3 +48,21 @@ def test_network_asset_is_valid_embedded_reference():
     graphic = ET.parse(NETWORK).getroot()
     assert graphic.tag.endswith("svg")
     assert graphic.attrib["viewBox"] == "0 0 1400 900"
+
+
+def test_login_uses_axora_reference_size_without_touching_authentication():
+    css=(ROOT/'static/atria-login-axora-scale.css').read_text(encoding='utf-8')
+    html=LOGIN.read_text(encoding='utf-8')
+    assert 'atria-login-axora-scale.css?v=login-scale-r1' in html
+    assert '@media (min-width:901px)' in css
+    assert 'width:min(960px,calc(100vw - 56px))' in css
+    assert 'height:min(550px,calc(100dvh - 64px))' in css
+    assert 'grid-template-columns:minmax(0,1fr) minmax(0,1fr)' in css
+    assert 'margin-top:clamp(51px,7vh,72px)' in css
+    assert 'body.login-page .login-card' in css
+    assert 'body.login-page .login-note.atria-nexon-note' in css
+    assert '@media (min-width:761px) and (max-width:900px)' in css
+    assert '@media (max-width:760px)' in css
+    assert '@media (max-width:520px)' in css
+    assert css.count('{')==css.count('}')
+    assert 'fetch(\'/api/login\'' in html
