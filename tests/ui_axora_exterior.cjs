@@ -70,6 +70,50 @@ const server=http.createServer((req,res)=>{
     assert.ok(parseFloat(layout.shellRadius)>=20);
     assert.ok(Math.abs(layout.shellX-layout.sidebarX)<=2);
     assert.ok(layout.docWidth<=layout.winWidth+2,JSON.stringify(layout));
+    // A falha reportada pelo usuário: a rolagem vertical não pode arrastar a
+    // moldura de 4 cantos para fora do viewport (como ocorria no ATRIA).
+    await desktop.evaluate(()=>{
+      document.querySelector('#main').innerHTML='<section style="height:2600px">ROLAGEM TESTE</section>';
+    });
+    const scrollGeometry=await desktop.evaluate(()=>{
+      const shell=document.querySelector('.shell');
+      const side=document.querySelector('.sidebar');
+      const main=document.querySelector('#main');
+      const ws=document.querySelector('.workspace');
+      return {
+        shellTop:shell.getBoundingClientRect().top,
+        shellBottom:shell.getBoundingClientRect().bottom,
+        shellHeight:shell.getBoundingClientRect().height,
+        viewportHeight:innerHeight,
+        docHeight:document.documentElement.scrollHeight,
+        bodyOverflow:getComputedStyle(document.body).overflowY,
+        mainOverflow:getComputedStyle(main).overflowY,
+        mainScrollHeight:main.scrollHeight,
+        mainClientHeight:main.clientHeight,
+        sidebarBackgroundImage:getComputedStyle(side).backgroundImage,
+        sidebarBackgroundColor:getComputedStyle(side).backgroundColor,
+        workspaceHeight:ws.getBoundingClientRect().height,
+      };
+    });
+    assert.ok(scrollGeometry.shellTop>=7 && scrollGeometry.shellTop<=20,JSON.stringify(scrollGeometry));
+    assert.ok(scrollGeometry.shellBottom<=scrollGeometry.viewportHeight-7,JSON.stringify(scrollGeometry));
+    assert.ok(scrollGeometry.docHeight<=scrollGeometry.viewportHeight+2,JSON.stringify(scrollGeometry));
+    assert.equal(scrollGeometry.bodyOverflow,'hidden',JSON.stringify(scrollGeometry));
+    assert.equal(scrollGeometry.mainOverflow,'auto',JSON.stringify(scrollGeometry));
+    assert.ok(scrollGeometry.mainScrollHeight>scrollGeometry.mainClientHeight,JSON.stringify(scrollGeometry));
+    assert.equal(scrollGeometry.sidebarBackgroundImage,'none',JSON.stringify(scrollGeometry));
+    assert.equal(scrollGeometry.sidebarBackgroundColor,'rgb(11, 45, 74)',JSON.stringify(scrollGeometry));
+    await desktop.evaluate(()=>{document.querySelector('#main').scrollTop=700;});
+    const afterInternalScroll=await desktop.evaluate(()=>({
+      frameBottom:document.querySelector('.shell').getBoundingClientRect().bottom,
+      topbarTop:document.querySelector('.topbar').getBoundingClientRect().top,
+      innerScroll:document.querySelector('#main').scrollTop,
+      pageScroll:scrollY
+    }));
+    assert.ok(afterInternalScroll.innerScroll>=600,JSON.stringify(afterInternalScroll));
+    assert.equal(afterInternalScroll.pageScroll,0,JSON.stringify(afterInternalScroll));
+    assert.ok(afterInternalScroll.frameBottom<=900-7,JSON.stringify(afterInternalScroll));
+
 
     // Referência do usuário: browser em 90%, sem impor escala ao produto.
     await desktop.evaluate(()=>{document.body.style.zoom='90%';});
@@ -119,7 +163,7 @@ const server=http.createServer((req,res)=>{
     assert.ok(drawer.z>drawer.overlayZ && drawer.hit,JSON.stringify(drawer));
     assert.ok(drawer.navScroll==='auto');
     await mobile.screenshot({path:path.join(shots,'atria-mobile-menu.png'),fullPage:false});
-    console.log('ATRIA_AXORA_BROWSER_LAYOUT_OK desktop, zoom90, mobile drawer');
+    console.log('ATRIA_AXORA_BROWSER_LAYOUT_OK desktop fixed frame, homogeneous sidebar, zoom90, mobile drawer');
   }finally{
     await browser.close();
     server.close();
