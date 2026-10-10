@@ -1,0 +1,84 @@
+/* ATRIA · navegação confortável e assinatura institucional herdada.
+   Carregado por último: não altera shell AXORA nem identidade dos clientes. */
+
+/* Aumenta levemente a área de clique sem esmagar títulos/rodapé.
+   O menu já possui rolagem própria para alturas menores e zoom diferente. */
+body:not(.login-page) .shell>.sidebar .menu{
+  gap:4px!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  scrollbar-width:thin;
+}
+body:not(.login-page) .shell>.sidebar .nav-link{
+  flex:0 0 auto!important;
+  min-height:50px!important;
+  padding:11px 13px!important;
+  gap:13px!important;
+  border-radius:13px!important;
+  font-size:14px!important;
+  line-height:1.25!important;
+}
+body:not(.login-page) .shell>.sidebar .nav-link svg{
+  width:23px!important;
+  height:23px!important;
+}
+body:not(.login-page) .shell>.sidebar .nav-section{
+  flex:0 0 auto;
+  padding:11px 13px 5px!important;
+  line-height:1.45!important;
+}
+
+/* Só a assinatura institucional é global. Nunca muda a logo ATRIA ou do cliente. */
+body:not(.login-page) .shell>.sidebar .sidebar-footer{
+  display:flex!important;
+  flex-direction:column;
+  justify-content:flex-start;
+  align-items:flex-start;
+  gap:6px;
+  isolation:isolate;
+}
+body:not(.login-page) .shell>.sidebar .sidebar-institutional-logo{
+  display:block;
+  width:min(175px,100%);
+  max-width:100%;
+  height:60px;
+  min-height:0;
+  margin:2px 0 0;
+  object-fit:contain;
+  object-position:left center;
+  filter:drop-shadow(0 3px 7px rgba(0,0,0,.08));
+}
+body:not(.login-page) .shell>.sidebar .sidebar-institutional-logo[hidden],
+body:not(.login-page) .shell>.sidebar .footer-molecule[hidden]{
+  display:none!important;
+}
+body:not(.login-page) .atria-nexon-footer img{
+  display:block;
+  width:auto;
+  max-width:min(210px,95%);
+  height:auto;
+  max-height:49px;
+  object-fit:contain;
+}
+.login-page .atria-nexon-note img{
+  display:block;
+  width:auto;
+  max-width:min(190px,57%);
+  height:auto;
+  max-height:45px;
+  object-fit:contain;
+}
+@media(max-width:850px){
+  body:not(.login-page) .shell>.sidebar .nav-link{
+    min-height:49px!important;
+    padding:10px 12px!important;
+    font-size:13.5px!important;
+  }
+  body:not(.login-page) .shell>.sidebar .sidebar-institutional-logo{
+    height:52px;
+    width:min(170px,100%);
+  }
+}
+@media(max-width:370px){
+  body:not(.login-page) .shell>.sidebar .nav-link{min-height:47px!important;}
+}
