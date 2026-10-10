@@ -81,12 +81,13 @@ const server=http.createServer((req,res)=>{
       return {height:links[0].getBoundingClientRect().height,
         iconWidth:links[0].querySelector('svg')?.getBoundingClientRect().width,
         menuOverflow:getComputedStyle(document.querySelector('.sidebar .menu')).overflowY,
-        logo:!!document.querySelector('#sidebar-institutional-logo')};
+        watermark:!!document.querySelector('#sidebar-footer-decoration'),duplicate:!!document.querySelector('#sidebar-institutional-logo')};
     });
     assert.ok(nav.height>=49,JSON.stringify(nav));
     assert.ok(nav.iconWidth>=22,JSON.stringify(nav));
     assert.equal(nav.menuOverflow,'auto');
-    assert.ok(nav.logo);
+    assert.ok(nav.watermark);
+    assert.equal(nav.duplicate,false);
 
     // A falha reportada pelo usuário: a rolagem vertical não pode arrastar a
     // moldura de 4 cantos para fora do viewport (como ocorria no ATRIA).
@@ -141,6 +142,54 @@ const server=http.createServer((req,res)=>{
     }));
     assert.ok(zoom.outer>600 && zoom.doc<=zoom.win+2,JSON.stringify(zoom));
     await desktop.screenshot({path:path.join(shots,'atria-desktop-90.png'),fullPage:false});
+
+    // Testa a rotina real de conversão, isolada do login e do banco.
+    // Fonte PNG retangular >1 MB deve resultar em PNG quadrado <=2,5 MB.
+    const appSource=fs.readFileSync(path.join(root,'static/app.js'),'utf8');
+    const faviconStart=appSource.indexOf('async function prepareFavicon(file){');
+    const faviconEnd=appSource.indexOf('\nasync function refresh(){',faviconStart);
+    assert.ok(faviconStart>=0&&faviconEnd>faviconStart);
+    await desktop.addScriptTag({content:appSource.slice(faviconStart,faviconEnd)});
+    const faviconResult=await desktop.evaluate(async()=>{
+      const source=document.createElement('canvas');
+      source.width=1100;source.height=560;
+      const ctx=source.getContext('2d');
+      const pixels=ctx.createImageData(source.width,source.height);
+      // Reprodutível, com ruído RGB evitando compressão excessiva do PNG.
+      let seed=123456789;
+      for(let i=0;i<pixels.data.length;i+=4){
+        seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
+        pixels.data[i]=seed&255;
+        pixels.data[i+1]=(seed>>>8)&255;
+        pixels.data[i+2]=(seed>>>16)&255;
+        pixels.data[i+3]=255;
+      }
+      ctx.putImageData(pixels,0,0);
+      const blob=await new Promise(resolve=>source.toBlob(resolve,'image/png'));
+      const file=new File([blob],'atrialogo.png',{type:'image/png'});
+      const result=await prepareFavicon(file);
+      const url=URL.createObjectURL(result);
+      try{
+        const image=await new Promise((resolve,reject)=>{
+          const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=url;
+        });
+        const output=document.createElement('canvas');
+        output.width=512;output.height=512;
+        const out=output.getContext('2d');
+        out.drawImage(image,0,0);
+        const corner=out.getImageData(0,0,1,1).data[3];
+        const center=out.getImageData(256,256,1,1).data[3];
+        return {original:blob.size,result:result.size,type:result.type,
+          width:image.naturalWidth,height:image.naturalHeight,corner,center};
+      }finally{URL.revokeObjectURL(url);}
+    });
+    assert.ok(faviconResult.original>1_000_000,JSON.stringify(faviconResult));
+    assert.ok(faviconResult.result<=2_500_000,JSON.stringify(faviconResult));
+    assert.equal(faviconResult.type,'image/png');
+    assert.equal(faviconResult.width,512);
+    assert.equal(faviconResult.height,512);
+    assert.equal(faviconResult.corner,0);
+    assert.equal(faviconResult.center,255);
 
     const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
     await mobile.goto(origin+'/',{waitUntil:'domcontentloaded'});
