@@ -1,0 +1,210 @@
+/* ATRIA | Moldura externa inspirada no AXORA, design Nexon Labs.
+   Camada FINAL do aplicativo autenticado; não afeta login nem lógica.
+   Referência visual: AXORA shell-finish + mobile-frame-login-v2.
+   Dimensões em CSS px: responsivo com zoom 90% ou 100%. */
+
+:root{
+  --atria-shell-gutter:12px;
+  --atria-shell-radius:25px;
+  --atria-shell-atmosphere:url("/static/nexon-app-atmosphere.svg");
+  --atria-shell-surface:linear-gradient(150deg,#F9FCFE 0%,#F1F7FA 58%,#F6FAFC 100%);
+}
+
+/* O fundo do AXORA volta a aparecer FORA da interface principal. */
+html{background-color:#062c45;}
+body:not(.login-page){
+  min-height:100vh;
+  min-height:100dvh;
+  background-color:#062c45;
+  background-image:var(--atria-shell-atmosphere);
+  background-position:center center;
+  background-repeat:no-repeat;
+  background-size:cover;
+  background-attachment:fixed;
+}
+
+/* Mesmo enquadramento de produto do AXORA, sem dimensionar a 90% artificialmente. */
+body:not(.login-page) .shell{
+  display:flex;
+  width:calc(100% - 2 * var(--atria-shell-gutter));
+  max-width:none;
+  min-width:0;
+  min-height:calc(100dvh - 2 * var(--atria-shell-gutter));
+  height:auto;
+  margin:var(--atria-shell-gutter) auto;
+  padding:0;
+  overflow:clip;
+  border:1px solid rgba(206,227,237,.62);
+  border-radius:var(--atria-shell-radius);
+  background:transparent;
+  box-shadow:0 24px 68px rgba(0,14,35,.25),0 3px 14px rgba(0,29,52,.11);
+  isolation:isolate;
+}
+body:not(.login-page) .shell>.workspace{
+  flex:1 1 0;
+  width:auto;
+  min-width:0;
+  min-height:calc(100dvh - 2 * var(--atria-shell-gutter) - 2px);
+  max-width:100%;
+  background:var(--atria-shell-surface);
+  border-radius:0 calc(var(--atria-shell-radius) - 1px) calc(var(--atria-shell-radius) - 1px) 0;
+  overflow:visible;
+}
+body:not(.login-page) .shell .topbar{
+  min-width:0;
+  border-radius:0 calc(var(--atria-shell-radius) - 1px) 0 0;
+  border-bottom:1px solid rgba(214,226,237,.92);
+  background:rgba(255,255,255,.96);
+  box-shadow:0 5px 20px rgba(7,38,64,.04);
+}
+body:not(.login-page) .shell .main{
+  min-width:0;
+  max-width:min(1720px,100%);
+}
+
+/* A MESMA textura externa também dialoga com o menu principal, sem perder
+   contraste e sem substituir o branding ATRIA/logo personalizada do cliente. */
+body:not(.login-page) .shell>.sidebar{
+  position:relative;
+  top:auto;
+  left:auto;
+  align-self:stretch;
+  flex-shrink:0;
+  height:auto;
+  min-height:0;
+  overflow:hidden;
+  border-radius:calc(var(--atria-shell-radius) - 1px) 0 0 calc(var(--atria-shell-radius) - 1px);
+  border-right:1px solid rgba(121,213,225,.15);
+  background-color:#071d36;
+  background-image:
+    linear-gradient(180deg,rgba(5,25,47,.92),rgba(7,35,58,.95)),
+    var(--atria-shell-atmosphere);
+  background-position:center center,31% center;
+  background-size:cover,auto 100%;
+  background-repeat:no-repeat;
+  box-shadow:inset -1px 0 rgba(255,255,255,.035);
+}
+body:not(.login-page) .shell>.sidebar .brand{
+  border-bottom:1px solid rgba(173,224,232,.13);
+}
+body:not(.login-page) .shell>.sidebar .nav-section{
+  color:#91B4C6;
+}
+body:not(.login-page) .shell>.sidebar .nav-link{
+  min-width:0;
+  border-radius:13px;
+  border:1px solid transparent;
+  color:#DCEAF4;
+}
+body:not(.login-page) .shell>.sidebar .nav-link:hover{
+  background:rgba(99,207,218,.095);
+  border-color:rgba(121,222,225,.14);
+  color:#fff;
+}
+body:not(.login-page) .shell>.sidebar .nav-link.active{
+  background:linear-gradient(105deg,rgba(7,142,160,.34),rgba(35,97,148,.24));
+  border-color:rgba(114,227,223,.20);
+  box-shadow:inset 3px 0 #37D5C7,0 8px 23px rgba(0,13,38,.15);
+  color:#fff;
+}
+body:not(.login-page) .shell>.sidebar .nav-link.active svg{
+  color:#73F1E6;
+}
+body:not(.login-page) .shell>.sidebar .sidebar-footer{
+  border-top-color:rgba(174,226,229,.18);
+}
+
+/* Tablet: mantém sidebar integrada, sem sobrepor conteúdo. */
+@media (min-width:851px) and (max-width:1180px){
+  :root{--atria-shell-gutter:10px;--atria-shell-radius:22px;}
+  body:not(.login-page) .shell>.workspace{min-width:0;width:auto;}
+}
+
+/* Smartphone: wallpaper do AXORA visível nas margens, cartões arredondados
+   e drawer realmente acima de overlay e moldura. */
+@media (max-width:850px){
+  :root{--atria-shell-gutter:11px;--atria-shell-radius:24px;}
+  html{background-color:#062c45;}
+  body:not(.login-page){
+    background-image:var(--atria-shell-atmosphere);
+    background-size:cover;
+    background-position:center top;
+    background-attachment:scroll;
+  }
+  body:not(.login-page) .shell{
+    display:block;
+    width:calc(100% - 2 * var(--atria-shell-gutter));
+    max-width:calc(100% - 2 * var(--atria-shell-gutter));
+    min-height:calc(100dvh - 2 * var(--atria-shell-gutter));
+    height:auto;
+    margin:var(--atria-shell-gutter) auto;
+    overflow:visible;
+    border:1px solid rgba(206,227,237,.83);
+    border-radius:var(--atria-shell-radius);
+    box-shadow:0 18px 48px rgba(0,16,37,.29),0 3px 12px rgba(0,29,53,.11);
+  }
+  body:not(.login-page) .shell>.workspace{
+    width:100%;
+    max-width:100%;
+    min-height:calc(100dvh - 2 * var(--atria-shell-gutter) - 2px);
+    height:auto;
+    overflow:visible;
+    border-radius:calc(var(--atria-shell-radius) - 1px);
+    background:linear-gradient(156deg,#F9FCFE 0%,#F1F7FA 58%,#F6FAFC 100%);
+  }
+  body:not(.login-page) .shell .topbar{
+    position:relative;
+    top:0;
+    z-index:10;
+    border-radius:calc(var(--atria-shell-radius) - 1px) calc(var(--atria-shell-radius) - 1px) 0 0;
+  }
+  body:not(.login-page) .shell .main{
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    padding:19px 14px 28px;
+  }
+  body:not(.login-page) .shell>.mobile-overlay{
+    z-index:70;
+  }
+  body:not(.login-page) .shell>.sidebar{
+    position:fixed;
+    left:-265px;
+    top:0;
+    bottom:0;
+    z-index:71;
+    width:265px;
+    max-width:calc(100vw - 30px);
+    height:100vh;
+    height:100dvh;
+    min-height:0;
+    overflow-x:hidden;
+    overflow-y:auto;
+    border-radius:0 24px 24px 0;
+    pointer-events:auto;
+    isolation:isolate;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    background-image:
+      linear-gradient(180deg,rgba(5,25,47,.90),rgba(7,35,58,.94)),
+      var(--atria-shell-atmosphere);
+    box-shadow:18px 0 44px rgba(0,17,39,.22);
+  }
+  body:not(.login-page) .shell>.sidebar.open{
+    left:0;
+    z-index:71;
+    pointer-events:auto;
+    box-shadow:18px 0 58px rgba(0,15,37,.37);
+  }
+}
+@media(max-width:520px){
+  :root{--atria-shell-gutter:10px;--atria-shell-radius:23px;}
+  body:not(.login-page) .shell .main{padding:17px 12px 25px;}
+}
+@media(max-width:370px){
+  :root{--atria-shell-gutter:7px;--atria-shell-radius:21px;}
+  body:not(.login-page) .shell .main{padding-left:9px;padding-right:9px;}
+}
+@media(prefers-reduced-motion:reduce){
+  body:not(.login-page) .shell>.sidebar .nav-link{transition:none!important;}
+}
