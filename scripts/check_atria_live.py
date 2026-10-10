@@ -21,7 +21,7 @@ FILES = {
     "/static/atria-login-axora-scale.css?v=login-scale-r1":
         b"width:min(960px,calc(100vw - 56px))",
     "/static/app.js?v=compact-favicon-r3":
-        b"async function prepareFavicon(file){",
+        b"let left=sample.width,top=sample.height,right=-1,bottom=-1;",
 }
 failures = []
 for path, expected in FILES.items():
