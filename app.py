@@ -695,7 +695,8 @@ def decode_brand_asset(kind: str, image_data: str):
         raw = base64.b64decode(image_data.partition(',')[2], validate=True)
     except (ValueError, binascii.Error) as error:
         raise HTTPException(422, 'Não foi possível ler a imagem enviada.') from error
-    max_bytes = 1_000_000 if kind == 'favicon' else 2_500_000
+    # O navegador envia favicon já redimensionado, dentro do mesmo limite das logos.
+    max_bytes = 2_500_000
     if len(raw) > max_bytes:
         raise HTTPException(413, 'A imagem excede o limite permitido para este campo.')
     try:
@@ -707,8 +708,22 @@ def decode_brand_asset(kind: str, image_data: str):
         raise HTTPException(422, 'Arquivo de imagem inválido.') from error
     if width < 32 or height < 32 or width > 4096 or height > 4096:
         raise HTTPException(422, 'Use uma imagem entre 32 e 4096 pixels por lado.')
-    if kind == 'favicon' and abs(width - height) > max(4, int(max(width, height) * .04)):
-        raise HTTPException(422, 'O favicon precisa ser quadrado.')
+    # Logos retangulares usadas como favicon serão centralizadas em uma tela
+    # quadrada; a imagem original conserva sua proporção e transparência.
+    # O servidor repete o ajuste mesmo quando o cliente não usar o novo JS.
+    if kind == 'favicon':
+        try:
+            from PIL import ImageOps
+            with Image.open(io.BytesIO(raw)) as image:
+                icon = ImageOps.exif_transpose(image).convert('RGBA')
+                icon.thumbnail((476, 476), Image.Resampling.LANCZOS)
+                canvas = Image.new('RGBA', (512, 512), (0, 0, 0, 0))
+                canvas.alpha_composite(icon, ((512-icon.width)//2, (512-icon.height)//2))
+                output = io.BytesIO()
+                canvas.save(output, format='PNG', optimize=True)
+                raw, mime_type = output.getvalue(), 'image/png'
+        except (OSError, ValueError, Image.DecompressionBombError) as error:
+            raise HTTPException(422, 'Não foi possível normalizar o favicon.') from error
     return raw, mime_type
 
 def product_brand_admin(request: Request):
