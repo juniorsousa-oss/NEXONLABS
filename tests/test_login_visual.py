@@ -53,12 +53,12 @@ def test_network_asset_is_valid_embedded_reference():
 def test_login_uses_axora_reference_size_without_touching_authentication():
     css=(ROOT/'static/atria-login-axora-scale.css').read_text(encoding='utf-8')
     html=LOGIN.read_text(encoding='utf-8')
-    assert 'atria-login-axora-scale.css?v=login-scale-r1' in html
+    assert 'atria-login-axora-scale.css?v=login-scale-r2' in html
     assert '@media (min-width:901px)' in css
     assert 'width:min(960px,calc(100vw - 56px))' in css
-    assert 'height:min(550px,calc(100dvh - 64px))' in css
+    assert 'height:min(680px,calc(100dvh - 64px))' in css
     assert 'grid-template-columns:minmax(0,1fr) minmax(0,1fr)' in css
-    assert 'margin-top:clamp(51px,7vh,72px)' in css
+    assert 'margin:clamp(63px,8vh,84px) 0 0' in css
     assert 'body.login-page .login-card' in css
     assert 'body.login-page .login-note.atria-nexon-note' in css
     assert '@media (min-width:761px) and (max-width:900px)' in css
@@ -66,3 +66,16 @@ def test_login_uses_axora_reference_size_without_touching_authentication():
     assert '@media (max-width:520px)' in css
     assert css.count('{')==css.count('}')
     assert 'fetch(\'/api/login\'' in html
+
+def test_login_axora_vertical_hierarchy_is_present():
+    css=(ROOT/'static/atria-login-axora-scale.css').read_text(encoding='utf-8')
+    html=LOGIN.read_text(encoding='utf-8')
+    assert 'class="login-overline"' in html
+    assert 'class="login-brand-foot"' in html
+    assert 'Da informação à ação.' in html
+    assert 'flex-direction:column' in css
+    assert 'margin:auto 0 0' in css
+    assert 'body.login-page .login-note.atria-nexon-note' in css
+    assert 'align-items:center' in css
+    assert '@media (min-width:901px) and (max-height:760px)' in css
+    assert '@media(max-width:900px)' in css
