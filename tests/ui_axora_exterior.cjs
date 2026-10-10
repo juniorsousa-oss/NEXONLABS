@@ -71,6 +71,12 @@ const server=http.createServer((req,res)=>{
     assert.ok(Math.abs(layout.shellX-layout.sidebarX)<=2);
     assert.ok(layout.docWidth<=layout.winWidth+2,JSON.stringify(layout));
     const nav=await desktop.evaluate(()=>{
+      // O mock sem app.js não injeta os SVGs; forneça um ícone real para
+      // medir a regra CSS de navegação, sem depender da lógica autenticada.
+      const first=document.querySelector('.sidebar .nav-link');
+      if(first&&!first.querySelector('svg')){
+        first.querySelector('[data-icon]').innerHTML='<svg viewBox="0 0 24 24"><path d="M3 10h18"/></svg>';
+      }
       const links=[...document.querySelectorAll('.sidebar .nav-link')].filter(x=>!x.hidden&&getComputedStyle(x).display!=='none');
       return {height:links[0].getBoundingClientRect().height,
         iconWidth:links[0].querySelector('svg')?.getBoundingClientRect().width,
