@@ -1336,3 +1336,54 @@ def test_favicon_wide_jpeg_and_product_access_permissions():
             if row:
                 db.delete(row)
                 db.commit()
+
+
+def test_transparent_favicon_is_enlarged_even_for_existing_database_asset():
+    """Legacy icon with 75% empty alpha gets visible mark on most of the tab."""
+    import io
+    import base64
+    from PIL import Image, ImageDraw
+    original=Image.new('RGBA',(512,512),(0,0,0,0))
+    pen=ImageDraw.Draw(original)
+    pen.rounded_rectangle((220,213,292,299),radius=15,fill=(10,220,225,255))
+    source=io.BytesIO()
+    original.save(source,format='PNG')
+    data='data:image/png;base64,'+base64.b64encode(source.getvalue()).decode()
+    try:
+        with TestClient(app) as admin:
+            assert admin.post('/api/login',json={'password':'platform-test-password'}).status_code==200
+            response=admin.put('/api/product-brand/assets/favicon',json={'image_data':data})
+            assert response.status_code==200,response.text
+            brand=admin.get('/api/product-brand').json()
+            uri=brand['asset_urls']['favicon']
+            assert uri.endswith('-tight2'),uri
+            loaded=admin.get(uri)
+            assert loaded.status_code==200
+            with Image.open(io.BytesIO(loaded.content)) as icon:
+                assert icon.size==(512,512)
+                alpha=icon.getchannel('A')
+                visible=alpha.point(lambda v: 255 if v >= 20 else 0)
+                bounds=visible.getbbox()
+                assert bounds is not None
+                assert (bounds[2]-bounds[0])>=370,bounds
+                assert (bounds[3]-bounds[1])>=440,bounds
+                assert alpha.getpixel((0,0))==0
+
+            # Simulates a pre-existing stored PNG in the database with generous
+            # transparent padding. GET must normalize it without new upload.
+            with DB() as db:
+                asset=db.get(ProductBrandAsset,'favicon')
+                asset.image=source.getvalue()
+                asset.mime_type='image/png'
+                db.commit()
+            existing=admin.get('/api/product-brand/assets/favicon')
+            assert existing.status_code==200
+            with Image.open(io.BytesIO(existing.content)) as icon:
+                bbox=icon.getchannel('A').getbbox()
+                assert bbox and bbox[3]-bbox[1]>=440
+    finally:
+        with DB() as db:
+            asset=db.get(ProductBrandAsset,'favicon')
+            if asset:
+                db.delete(asset)
+                db.commit()
