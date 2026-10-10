@@ -17,11 +17,11 @@ def test_institutional_identity_is_global_not_an_organization_override():
     assert "PRODUCT_BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark', 'institutional_logo'}" in api
     assert "BRAND_ASSET_KINDS = {'logo', 'logo_dark', 'favicon', 'watermark'}" in api
     assert "required = {'logo_dark', 'favicon'}" in api
-    assert "brand['asset_urls']" not in app or "productBrandAssetUrl('institutional_logo')" in app
+    assert "productBrandAssetUrl('institutional_logo')" in app
     assert "productBrandAssetCard('institutional_logo','Logo institucional Nexon Labs'" in app
     assert "state.platform_admin" in app
     assert "product_brand_admin" in api
-    assert "normaliz" or "institutional_logo" in api
+    assert "normalize_brand_logo(kind, raw, mime_type)" in api
 
 
 def test_login_and_app_use_one_global_image_with_fallback():
