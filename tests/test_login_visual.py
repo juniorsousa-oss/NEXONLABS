@@ -53,7 +53,7 @@ def test_network_asset_is_valid_embedded_reference():
 def test_login_uses_axora_reference_size_without_touching_authentication():
     css=(ROOT/'static/atria-login-axora-scale.css').read_text(encoding='utf-8')
     html=LOGIN.read_text(encoding='utf-8')
-    assert 'atria-login-axora-scale.css?v=login-scale-r3' in html
+    assert 'atria-login-axora-scale.css?v=login-scale-r5-mobile-flex-center' in html
     assert '@media (min-width:901px)' in css
     assert 'width:min(960px,calc(100vw - 56px))' in css
     assert 'height:min(680px,calc(100dvh - 64px))' in css
@@ -82,3 +82,20 @@ def test_login_axora_vertical_hierarchy_is_present():
     assert 'height:min(510px,calc(100dvh - 20px))' in css
     assert '@media (min-width:901px) and (max-height:530px)' in css
     assert '@media(max-width:900px)' in css
+
+
+def test_smartphone_login_centers_without_clipping_short_viewports():
+    """Flex + margens automaticas: centro em telas altas, inicio + scroll nas baixas."""
+    css=(ROOT/'static/atria-login-axora-scale.css').read_text(encoding='utf-8')
+    html=LOGIN.read_text(encoding='utf-8')
+    mobile=css.split('/* Smartphone:',1)[1].split('@media (max-width:520px)',1)[0]
+    assert 'body.login-page{' in mobile
+    assert 'display:flex' in mobile
+    assert 'flex-direction:column' in mobile
+    assert 'justify-content:flex-start' in mobile
+    assert 'margin-block:auto' in mobile
+    assert 'flex:0 0 auto' in mobile
+    assert 'min-height:100svh' in mobile
+    assert 'height:auto' in mobile
+    assert 'login-scale-r5-mobile-flex-center' in html
+    assert css.count('{') == css.count('}')
