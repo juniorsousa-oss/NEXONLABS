@@ -52,7 +52,7 @@ async function inspect(page){
    // Mesma área útil 1440x900 dos testes existentes, navegador a 100%.
    const desktop=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
    await desktop.goto(base,{waitUntil:'networkidle'});
-   await desktop.waitForFunction(()=>document.querySelector('link[href*="login-scale-r3"]')?.sheet);
+   await desktop.waitForFunction(()=>document.querySelector('link[href*="login-scale-r5-mobile-flex-center"]')?.sheet);
    const a=await inspect(desktop);
    assert.ok(a.shell.width>=950 && a.shell.width<=965,JSON.stringify(a));
    assert.ok(a.shell.height>=670 && a.shell.height<=690,JSON.stringify(a));
