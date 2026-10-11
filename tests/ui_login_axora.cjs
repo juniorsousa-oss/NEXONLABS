@@ -120,7 +120,18 @@ async function inspect(page){
    assert.ok(m.docWidth<=m.viewport.width+1,JSON.stringify(m));
    assert.ok(m.password.width>200 && m.action.width>200,JSON.stringify(m));
    assert.ok(m.note.bottom<=m.bodyHeight+1,JSON.stringify(m));
+   // Telas altas: distancias superior e inferior equivalentes, sem card no topo.
+   assert.ok(Math.abs(m.shell.y-(m.viewport.height-m.shell.bottom))<=12,JSON.stringify(m));
    await mobile.screenshot({path:path.join(artifacts,'atria-login-mobile-390.png'),fullPage:true});
+
+   // Telefone de pouca altura: rolagem natural, sem cortar logo nem formulario.
+   const mobileShort=await browser.newPage({viewport:{width:390,height:530},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+   await mobileShort.goto(base,{waitUntil:'networkidle'});
+   const ms=await inspect(mobileShort);
+   assert.ok(ms.shell.y>=8,JSON.stringify(ms));
+   assert.ok(ms.bodyHeight>=ms.viewport.height,JSON.stringify(ms));
+   assert.ok(ms.note.bottom<=ms.bodyHeight+1,JSON.stringify(ms));
+   assert.ok(ms.docWidth<=ms.viewport.width+1,JSON.stringify(ms));
 
    console.log('ATRIA_LOGIN_AXORA_SCALE_OK desktop100 desktop90 laptop650 desktop600 card510 tablet820 mobile390');
  }finally{
