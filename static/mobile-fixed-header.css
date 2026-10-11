@@ -1,0 +1,60 @@
+/* ATRIA — comportamento mobile do AXORA:
+   topo visual fixo; somente a área de trabalho rola sob o cabeçalho.
+   Aplicado após as regras de moldura e sem afetar o login ou desktop. */
+@media (max-width:850px){
+  html:has(body:not(.login-page) .shell),
+  body:not(.login-page):has(.shell){
+    height:100%!important;
+    min-height:0!important;
+    max-height:100dvh!important;
+    overflow:hidden!important;
+    overscroll-behavior:none;
+  }
+  body:not(.login-page) .shell{
+    height:calc(100dvh - 2 * var(--atria-shell-gutter,10px))!important;
+    min-height:0!important;
+    max-height:calc(100dvh - 2 * var(--atria-shell-gutter,10px))!important;
+    overflow:visible!important; /* preservar menu fixo fora do conteúdo */
+  }
+  body:not(.login-page) .shell>.workspace{
+    display:flex!important;
+    flex-direction:column!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    overflow:hidden!important;
+    border-radius:calc(var(--atria-shell-radius,24px) - 1px)!important;
+  }
+  body:not(.login-page) .shell .topbar{
+    position:relative!important;
+    top:auto!important;
+    z-index:10;
+    width:100%;
+    flex:0 0 auto;
+    background:rgba(255,255,255,.98)!important;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+  }
+  body:not(.login-page) .shell .main{
+    flex:1 1 auto;
+    min-width:0;
+    min-height:0;
+    height:auto;
+    max-height:none;
+    margin:0 auto;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+    scrollbar-color:#c2d1df transparent;
+  }
+  body:not(.login-page) .shell>.mobile-overlay{
+    position:fixed;
+    z-index:70;
+  }
+  body:not(.login-page) .shell>.sidebar{
+    position:fixed!important;
+    z-index:71!important;
+  }
+}
