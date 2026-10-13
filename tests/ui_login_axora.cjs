@@ -52,11 +52,11 @@ async function inspect(page){
    // Mesma área útil 1440x900 dos testes existentes, navegador a 100%.
    const desktop=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
    await desktop.goto(base,{waitUntil:'networkidle'});
-   await desktop.waitForFunction(()=>document.querySelector('link[href*="login-scale-r5-mobile-flex-center"]')?.sheet);
+   await desktop.waitForFunction(()=>document.querySelector('link[href*="login-scale-r6-desktop-960x510"]')?.sheet);
    const a=await inspect(desktop);
    assert.ok(a.shell.width>=950 && a.shell.width<=965,JSON.stringify(a));
-   assert.ok(a.shell.height>=670 && a.shell.height<=690,JSON.stringify(a));
-   assert.ok(a.shell.y>25 && a.shell.bottom<900-25,JSON.stringify(a));
+   assert.ok(Math.abs(a.shell.height-510)<=2,JSON.stringify(a));
+   assert.ok(Math.abs(a.shell.y-(900-510)/2)<=3,JSON.stringify(a));
    assert.ok(Math.abs(a.blue.width-a.white.width)<=3,JSON.stringify(a));
    assert.ok(a.logo.bottom+35<a.slogan.y,JSON.stringify(a));
    assert.ok(a.slogan.bottom+15<a.leftFoot.y,JSON.stringify(a));
@@ -67,6 +67,20 @@ async function inspect(page){
    assert.ok(a.note.bottom<a.shell.bottom-18,JSON.stringify(a));
    assert.ok(a.docWidth<=a.viewport.width+1,JSON.stringify(a));
    await desktop.screenshot({path:path.join(artifacts,'atria-login-desktop-100.png'),fullPage:false});
+
+   // Monitor grande 1920x1080: o card NAO deve aumentar sua altura.
+   const wide=await browser.newPage({viewport:{width:1920,height:1080},deviceScaleFactor:1});
+   await wide.goto(base,{waitUntil:'networkidle'});
+   const large=await inspect(wide);
+   assert.ok(Math.abs(large.shell.width-960)<=2,JSON.stringify(large));
+   assert.ok(Math.abs(large.shell.height-510)<=2,JSON.stringify(large));
+   assert.ok(Math.abs(large.shell.y-(1080-510)/2)<=3,JSON.stringify(large));
+   assert.ok(Math.abs(large.shell.height-a.shell.height)<=2,JSON.stringify(large));
+   assert.ok(large.action.bottom<large.note.y,JSON.stringify(large));
+   assert.ok(large.note.bottom<large.shell.bottom-12,JSON.stringify(large));
+   assert.ok(large.slogan.bottom+10<large.leftFoot.y,JSON.stringify(large));
+   assert.ok(large.docWidth<=1921,JSON.stringify(large));
+   await wide.screenshot({path:path.join(artifacts,'atria-login-desktop-large-1920.png'),fullPage:false});
 
    await desktop.evaluate(()=>{document.body.style.zoom='90%'});
    const zoom=await inspect(desktop);
@@ -80,7 +94,7 @@ async function inspect(page){
    const b=await inspect(short);
    assert.ok(b.docWidth<=b.viewport.width+1,JSON.stringify(b));
    assert.ok(b.note.bottom<=b.bodyHeight+1,JSON.stringify(b));
-   assert.ok(b.shell.height>=550 && b.shell.height<=600,JSON.stringify(b));
+   assert.ok(Math.abs(b.shell.height-510)<=2,JSON.stringify(b));
 
    // Reprodução da proporção do usuário: 600 CSS px de altura útil
    // (monitor 1708x896 com escala de exibição do Windows / navegador).
@@ -133,7 +147,7 @@ async function inspect(page){
    assert.ok(ms.note.bottom<=ms.bodyHeight+1,JSON.stringify(ms));
    assert.ok(ms.docWidth<=ms.viewport.width+1,JSON.stringify(ms));
 
-   console.log('ATRIA_LOGIN_AXORA_SCALE_OK desktop100 desktop90 laptop650 desktop600 card510 tablet820 mobile390');
+   console.log('ATRIA_LOGIN_AXORA_SCALE_OK desktop100 large1920 desktop90 laptop650 desktop600 card510 tablet820 mobile390');
  }finally{
    await browser.close();
    server.close();
