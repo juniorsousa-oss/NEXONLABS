@@ -53,10 +53,10 @@ def test_network_asset_is_valid_embedded_reference():
 def test_login_uses_axora_reference_size_without_touching_authentication():
     css=(ROOT/'static/atria-login-axora-scale.css').read_text(encoding='utf-8')
     html=LOGIN.read_text(encoding='utf-8')
-    assert 'atria-login-axora-scale.css?v=login-scale-r5-mobile-flex-center' in html
+    assert 'atria-login-axora-scale.css?v=login-scale-r6-desktop-960x510' in html
     assert '@media (min-width:901px)' in css
     assert 'width:min(960px,calc(100vw - 56px))' in css
-    assert 'height:min(680px,calc(100dvh - 64px))' in css
+    assert 'height:min(510px,calc(100dvh - 64px))' in css
     assert 'grid-template-columns:minmax(0,1fr) minmax(0,1fr)' in css
     assert 'margin:clamp(63px,8vh,84px) 0 0' in css
     assert 'body.login-page .login-card' in css
@@ -97,5 +97,19 @@ def test_smartphone_login_centers_without_clipping_short_viewports():
     assert 'flex:0 0 auto' in mobile
     assert 'min-height:100svh' in mobile
     assert 'height:auto' in mobile
-    assert 'login-scale-r5-mobile-flex-center' in html
+    assert 'login-scale-r6-desktop-960x510' in html
     assert css.count('{') == css.count('}')
+
+
+def test_large_monitor_does_not_stretch_desktop_login_card():
+    css=(ROOT/'static/atria-login-axora-scale.css').read_text(encoding='utf-8')
+    html=LOGIN.read_text(encoding='utf-8')
+    desktop=css.split('@media (min-width:901px){',1)[1].split('@media (min-width:901px) and (max-height:760px)',1)[0]
+    compact=css.split('@media (min-width:901px) and (max-height:760px)',1)[1].split('@media (min-width:901px) and (max-height:630px)',1)[0]
+    assert 'width:min(960px,calc(100vw - 56px))' in desktop
+    assert 'height:min(510px,calc(100dvh - 64px))' in desktop
+    assert 'height:min(510px,calc(100dvh - 60px))' in compact
+    assert 'place-items:center' in desktop
+    assert 'grid-template-columns:minmax(0,1fr) minmax(0,1fr)' in desktop
+    assert 'login-scale-r6-desktop-960x510' in html
+    assert css.count('{')==css.count('}')
