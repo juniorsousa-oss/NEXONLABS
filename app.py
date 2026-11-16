@@ -1417,3 +1417,10 @@ seed_demo_environment(
     hash_password=hash_password,
     password_in_use=password_in_use,
 )
+
+
+@app.get("/service-worker.js", include_in_schema=False)
+def pwa_service_worker():
+    """PWA do ATRIA: não intercepta dados de usuários ou clientes."""
+    return FileResponse(ROOT / "static/pwa/service-worker.js", media_type="application/javascript",
+        headers={"Cache-Control": "no-store", "Service-Worker-Allowed": "/"})

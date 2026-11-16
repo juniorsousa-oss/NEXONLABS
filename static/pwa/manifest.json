@@ -1,0 +1,26 @@
+{
+  "name": "ATRIA — Gestão de Projetos",
+  "short_name": "ATRIA",
+  "description": "Gestão integrada de projetos by Nexon Labs",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "lang": "pt-BR",
+  "background_color": "#0B2D4A",
+  "theme_color": "#0B2D4A",
+  "icons": [
+    {
+      "src": "/static/pwa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
